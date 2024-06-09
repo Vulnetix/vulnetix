@@ -10,31 +10,39 @@ const router = createRouter({
       children: [
         {
           path: 'dashboard',
-          component: () => import('../pages/dashboard.vue'),
+          component: () => import('../pages/Dashboard.vue'),
         },
         {
           path: 'account-settings',
-          component: () => import('../pages/account-settings.vue'),
+          component: () => import('../pages/AccountSettings.vue'),
         },
         {
-          path: 'typography',
-          component: () => import('../pages/typography.vue'),
+          path: 'triage-queue',
+          component: () => import('../pages/TriageQueue.vue'),
         },
         {
-          path: 'icons',
-          component: () => import('../pages/icons.vue'),
+          path: 'triage-overdue',
+          component: () => import('../pages/TriageOverdue.vue'),
         },
         {
-          path: 'cards',
-          component: () => import('../pages/cards.vue'),
+          path: 'sarif-manager',
+          component: () => import('../pages/SARIFManager.vue'),
         },
         {
-          path: 'tables',
-          component: () => import('../pages/tables.vue'),
+          path: 'cyclonedx-manager',
+          component: () => import('../pages/CycloneDXManager.vue'),
         },
         {
-          path: 'form-layouts',
-          component: () => import('../pages/form-layouts.vue'),
+          path: 'vex-manager',
+          component: () => import('../pages/VEXManager.vue'),
+        },
+        {
+          path: 'activity-history',
+          component: () => import('../pages/ActivityHistory.vue'),
+        },
+        {
+          path: 'user-audit',
+          component: () => import('../pages/UserAudit.vue'),
         },
       ],
     },
@@ -44,11 +52,11 @@ const router = createRouter({
       children: [
         {
           path: 'login',
-          component: () => import('../pages/login.vue'),
+          component: () => import('../pages/Login.vue'),
         },
         {
           path: 'register',
-          component: () => import('../pages/register.vue'),
+          component: () => import('../pages/Register.vue'),
         },
         {
           path: '/:pathMatch(.*)*',
