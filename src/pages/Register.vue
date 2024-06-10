@@ -2,8 +2,8 @@
 import IconTrivialSecurity from '@images/IconTrivialSecurity.vue'
 import { useVuelidate } from '@vuelidate/core'
 import { email, required } from '@vuelidate/validators'
-import { PBKDF2 } from 'crypto-es/lib/pbkdf2'
 import { WordArray } from 'crypto-es/lib/core'
+import { PBKDF2 } from 'crypto-es/lib/pbkdf2'
 import { reactive } from 'vue'
 import router from "../router"
 
@@ -38,15 +38,12 @@ const register = () => {
     //   .catch(error => {
     //       console.log(error)
     //   })
-    const salt = WordArray.random(128/8)
-    const passwordHash = PBKDF2(state.password, salt, { keySize: 512/32, iterations: 1000 })
+    const salt = WordArray.random(128/8).toString()
+    localStorage.setItem('/member/password', PBKDF2(state.password, salt, { keySize: 512/32, iterations: 1000 }).toString())
     localStorage.setItem('/account/name', state.org)
     localStorage.setItem('/member/email', state.email)
-    localStorage.setItem('/member/password', passwordHash)
-    localStorage.setItem('/session/token', "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0cmlhZ2UiLCJuYmYiOjE3MTgwMjQzNTgsImlhdCI6MTcxODAyNDM1OCwiZXhwIjoxNzE4MTEwNzU4LCJhdWQiOiJ1cm46dXVpZDowMGQwYzI3ZC1lNjA5LTRiMWMtYjIxMS02NzFjOGFjZDVhYWEiLCJpc3MiOiJ1cm46dXVpZDowMGQwYzI3ZC1lNjA5LTRiMWMtYjIxMS02NzFjOGFjZDVhYWEiLCJraWQiOiJ1cm46dXVpZDo0MjUwNWE1My05YzRiLTQ1OTgtYTcxYy03ZmQzMzI0ZGZhYTIiLCJuYW1lIjoiRGVtbyBVc2VyIiwicm9sZSI6InVybjp1dWlkOjdhZGE1YWNkLWQxOGYtNGZmNC04NDA5LTEzMjk3MmJhYmEyOCJ9.2bLuGpY9APA8qbPp73tk-7sDWO4IoLpC3ifRLWzs_O5jZG9b0kFtQhAo2DiBr_CRBsBYuMMb0zsxaW8Maa2uXQ")
+    localStorage.setItem('/member/password/salt', salt)
     router.push('/dashboard')
-  } else {
-    console.log('Form is invalid', state.email, state.password)
   }
 }
 </script>
