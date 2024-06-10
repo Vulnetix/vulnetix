@@ -1,14 +1,51 @@
 <script setup>
-import AuthProvider from '@/views/pages/authentication/AuthProvider.vue'
 import IconTrivialSecurity from '@images/IconTrivialSecurity.vue'
+import { useVuelidate } from '@vuelidate/core'
+import { email, required } from '@vuelidate/validators'
+import { WordArray } from 'crypto-es/lib/core'
+import { PBKDF2 } from 'crypto-es/lib/pbkdf2'
+import { reactive } from 'vue'
+import router from "../router"
 
-const form = ref({
-  email: '',
+const initialState = {
+  email: localStorage.getItem('/member/email') || '',
   password: '',
-  remember: false,
+  rememberMe: false,
+}
+
+const state = reactive({
+  ...initialState,
 })
 
+const rules = {
+  email: { required, email },
+  password: { required },
+  rememberMe: { required },
+}
+
+const v$ = useVuelidate(rules, state)
 const isPasswordVisible = ref(false)
+
+const login = () => {
+  if (state.email && state.password) {
+    // Do login
+    // axios.get("http://local.getusers.com)
+    //   .then(response => {
+    //       this.users = response.data;
+    //   })
+    //   .catch(error => {
+    //       console.log(error)
+    //   })
+    const salt = WordArray.random(128/8)
+    const passwordHash = PBKDF2(state.password, salt, { keySize: 512/32, iterations: 1000 })
+    localStorage.setItem('/member/password', passwordHash)
+    localStorage.setItem('/member/email', state.rememberMe ? state.email : "")
+    localStorage.setItem('/session/token', "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0cmlhZ2UiLCJuYmYiOjE3MTgwMjQzNTgsImlhdCI6MTcxODAyNDM1OCwiZXhwIjoxNzE4MTEwNzU4LCJhdWQiOiJ1cm46dXVpZDowMGQwYzI3ZC1lNjA5LTRiMWMtYjIxMS02NzFjOGFjZDVhYWEiLCJpc3MiOiJ1cm46dXVpZDowMGQwYzI3ZC1lNjA5LTRiMWMtYjIxMS02NzFjOGFjZDVhYWEiLCJraWQiOiJ1cm46dXVpZDo0MjUwNWE1My05YzRiLTQ1OTgtYTcxYy03ZmQzMzI0ZGZhYTIiLCJuYW1lIjoiRGVtbyBVc2VyIiwicm9sZSI6InVybjp1dWlkOjdhZGE1YWNkLWQxOGYtNGZmNC04NDA5LTEzMjk3MmJhYmEyOCJ9.2bLuGpY9APA8qbPp73tk-7sDWO4IoLpC3ifRLWzs_O5jZG9b0kFtQhAo2DiBr_CRBsBYuMMb0zsxaW8Maa2uXQ")
+    router.push('/dashboard')
+  } else {
+    console.log('Form is invalid', state.email, state.password)
+  }
+}
 </script>
 
 <template>
@@ -35,12 +72,12 @@ const isPasswordVisible = ref(false)
       </VCardText>
 
       <VCardText>
-        <VForm @submit.prevent="$router.push('/')">
+        <VForm @submit.prevent="login">
           <VRow>
             <!-- email -->
             <VCol cols="12">
               <VTextField
-                v-model="form.email"
+                v-model="state.email"
                 autofocus
                 placeholder="johndoe@email.com"
                 label="Email"
@@ -51,7 +88,8 @@ const isPasswordVisible = ref(false)
             <!-- password -->
             <VCol cols="12">
               <VTextField
-                v-model="form.password"
+                required
+                v-model="state.password"
                 label="Password"
                 placeholder="············"
                 :type="isPasswordVisible ? 'text' : 'password'"
@@ -62,7 +100,7 @@ const isPasswordVisible = ref(false)
               <!-- remember me checkbox -->
               <div class="d-flex align-center justify-space-between flex-wrap mt-1 mb-4">
                 <VCheckbox
-                  v-model="form.remember"
+                  v-model="state.rememberMe"
                   label="Remember me"
                 />
 
@@ -76,11 +114,11 @@ const isPasswordVisible = ref(false)
 
               <!-- login button -->
               <VBtn
+                @click="v$.$validate"
                 block
+                text="Login"
                 type="submit"
-              >
-                Login
-              </VBtn>
+              />
             </VCol>
 
             <!-- create account -->
@@ -96,23 +134,6 @@ const isPasswordVisible = ref(false)
                 Create an account
               </RouterLink>
             </VCol>
-
-            <VCol
-              cols="12"
-              class="d-flex align-center"
-            >
-              <VDivider />
-              <span class="mx-4">or</span>
-              <VDivider />
-            </VCol>
-
-            <!-- auth providers -->
-            <VCol
-              cols="12"
-              class="text-center"
-            >
-              <AuthProvider />
-            </VCol>
           </VRow>
         </VForm>
       </VCardText>
@@ -122,4 +143,7 @@ const isPasswordVisible = ref(false)
 
 <style lang="scss" scoped>
 @use "@core/scss/template/pages/page-auth.scss";
+.v-btn {
+  text-transform: none;
+}
 </style>
