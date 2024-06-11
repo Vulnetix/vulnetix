@@ -7,10 +7,10 @@ export async function onRequestGet(context) {
         next, // used for middleware or to fetch assets
         data, // arbitrary space for passing data between middlewares
     } = context
-    if (!request.headers.has('x-trivialsec')) {
+    const token = request.headers.get('x-trivialsec')
+    if (!token) {
         return Response.json({ 'err': 'Forbidden' })
     }
-    const token = request.headers.get('x-trivialsec')
     const session = await env.d1db.prepare("SELECT * FROM sessions WHERE kid = ?")
         .bind(token)
         .first()
@@ -28,12 +28,11 @@ export async function onRequestGet(context) {
         const resp = await fetch(url, { method }).catch(err => {
             throw Error(err)
         })
-        const data = resp.json()
+        const data = await resp.json()
         const info = await env.d1db.prepare('INSERT INTO integration_github (installation_id, memberEmail, access_key) VALUES (?1, ?2, ?3)')
             .bind(token, session.memberEmail, data.access_token)
             .run()
-        console.log(`/github/install installation_id=${params?.installation_id} kid=${session.kid}`, info)
-
+        console.log(`/github/install installation_id=${params?.installation_id} kid=${token}`, info)
         return Response.json(info)
     }
     return Response.json({ 'err': 'OAuth authorization code not provided' })
