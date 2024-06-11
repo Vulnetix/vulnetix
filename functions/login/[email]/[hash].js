@@ -4,10 +4,14 @@ export const onRequestGet = async context => {
         context.params?.hash
     ) {
         console.log('email', context.params.email)
-
-
+        const { results } = await context.env.d1db.prepare(
+            "SELECT * FROM members WHERE email = ?"
+        )
+            .bind(context.params.email)
+            .all()
+        return Response.json(results)
     }
-    return new Response.json({ 'err': 'OAuth authorization code not provided' })
+    return new Response.json({ 'err': 'Authentication' })
 }
 
 async function pbkdf2Verify(key, password, hashBits = 512) {

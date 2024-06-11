@@ -6,14 +6,12 @@ export const onRequestGet = async context => {
     ) {
         console.log('org', context.params.org)
         // const kid = crypto.randomUUID()
-        const { results } = await context.env.trivial_triage.prepare(
-            "SELECT * FROM members WHERE email = ?"
-        )
-            .bind(context.params.email)
-            .all()
-        return Response.json(results)
+        const info = await db.prepare('INSERT INTO members (orgName, email, passwordhash) VALUES (?1, ?2, ?3)')
+            .bind(context.params.org, context.params.email, pbkdf2(context.params.hash))
+            .run()
+        return Response.json(info)
     }
-    return new Response.json({ 'err': 'OAuth authorization code not provided' })
+    return new Response.json({ 'err': 'missing properties /register/[org]/[email]/[sha1]' })
 }
 
 async function pbkdf2(password, iterations = 1e6, hashBits = 512) {
