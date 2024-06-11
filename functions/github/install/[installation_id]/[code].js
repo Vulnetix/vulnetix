@@ -26,12 +26,14 @@ export async function onRequestGet(context) {
             client_secret: env.GITHUB_APP_CLIENT_SECRET
         }).toString()
         const resp = await fetch(url, { method })
-        const data = JSON.parse(await resp.text())
-        const info = await env.d1db.prepare('INSERT INTO integration_github (installation_id, memberEmail, access_key) VALUES (?1, ?2, ?3)')
-            .bind(token, session.memberEmail, data.access_token)
-            .run()
-        console.log(`/github/install installation_id=${params?.installation_id} kid=${token}`, info)
-        return Response.json(info)
+        const text = await resp.text()
+        console.log('text', text)
+        // const data = JSON.parse(await resp.text())
+        // const info = await env.d1db.prepare('INSERT INTO integration_github (installation_id, memberEmail, access_key) VALUES (?1, ?2, ?3)')
+        //     .bind(token, session.memberEmail, data.access_token)
+        //     .run()
+        console.log(`/github/install installation_id=${params?.installation_id} kid=${token}`)
+        return Response.json({})
     }
     return Response.json({ 'err': 'OAuth authorization code not provided' })
 }
