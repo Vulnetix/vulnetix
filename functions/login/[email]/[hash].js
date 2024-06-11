@@ -4,12 +4,25 @@ export const onRequestGet = async context => {
         context.params?.hash
     ) {
         console.log('email', context.params.email)
-        const { results } = await context.env.d1db.prepare(
-            "SELECT * FROM members WHERE email = ?"
+        const passwordHash = await context.env.d1db.prepare(
+            "SELECT passwordHash FROM members WHERE email = ?"
         )
             .bind(context.params.email)
-            .all()
-        return Response.json(results)
+            .first('passwordHash')
+        if (!pbkdf2Verify(passwordHash, context.params.hash)) {
+            return new Response.json({ 'err': 'Forbidden' })
+        }
+        const token = crypto.randomUUID()
+        const authn_ip = context.request.headers.get('cf-connecting-ip')
+        const authn_ua = context.request.headers.get('user-agent')
+        const issued = +new Date()
+        const expiry = (issued / 1000) + (86400 * 30) // 30 days
+        const secret = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-1", crypto.getRandomValues(new Uint32Array(26))))).map((b) => b.toString(16).padStart(2, "0")).join("")
+        const info = await context.env.d1db.prepare('INSERT INTO sessions (kid, memberEmail, expiry, issued, secret, authn_ip, authn_ua) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)')
+            .bind(token, context.params.email, expiry, issued, secret, authn_ip, authn_ua)
+            .run()
+        console.log(`/login kid=${token}`, info)
+        return Response.json({ token, expiry })
     }
     return new Response.json({ 'err': 'Authentication' })
 }

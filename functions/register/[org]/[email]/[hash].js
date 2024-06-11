@@ -5,10 +5,18 @@ export const onRequestGet = async context => {
         context.params?.hash
     ) {
         console.log('org', context.params.org)
-        // const kid = crypto.randomUUID()
+        const exists = await context.env.d1db.prepare(
+            "SELECT * FROM members WHERE email = ?"
+        )
+            .bind(context.params.email)
+            .all()
+        if (exists.length !== 0) {
+            return new Response.json({ 'err': 'Forbidden' })
+        }
         const info = await context.env.d1db.prepare('INSERT INTO members (orgName, email, passwordHash) VALUES (?1, ?2, ?3)')
             .bind(context.params.org, context.params.email, pbkdf2(context.params.hash))
             .run()
+        console.log(`/register email=${context.params.email}`, info)
         return Response.json(info)
     }
     return new Response.json({ 'err': 'missing properties /register/[org]/[email]/[sha1]' })
