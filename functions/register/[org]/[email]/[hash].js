@@ -30,7 +30,7 @@ export async function onRequestGet(context) {
     return new Response.json({ 'err': 'missing properties /register/[org]/[email]/[sha1]' })
 }
 
-async function pbkdf2(password, iterations = 1e6, hashBits = 512) {
+async function pbkdf2(password, iterations = 1e5, hashBits = 512) {
     const pwUtf8 = new TextEncoder().encode(password)                                                   // encode pw as UTF-8
     const pwKey = await crypto.subtle.importKey('raw', pwUtf8, 'PBKDF2', false, ['deriveBits'])         // create pw key
     const saltUint8 = crypto.getRandomValues(new Uint8Array(16))                                        // get random salt
