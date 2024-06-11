@@ -1,5 +1,6 @@
 <script setup>
-import { useTheme } from 'vuetify'
+import axios from 'axios';
+import { useTheme } from 'vuetify';
 
 const { global } = useTheme()
 
@@ -7,23 +8,13 @@ const integrations = []
 const urlQuery = Object.fromEntries(location.search.substring(1).split('&').map(item => item.split('=').map(decodeURIComponent)))
 if (urlQuery?.setup_action === 'install') {
     console.log('urlQuery', urlQuery)
-    if (urlQuery?.code) {
-        const url = new URL("https://github.com/login/oauth/access_token")
-        url.search = new URLSearchParams({
-            code: urlQuery.code,
-            client_id: 'Iv23liW5R5lkjMRgFrWI',
-            client_secret: '33e8e3bd7c04a4d2bf0a80b8c2d970c8056df085'
-        }).toString()
-        fetch(url, {
-            method: 'POST',
-            mode: 'no-cors',
-        })
+    if (urlQuery?.code && urlQuery?.installation_id) {
+        axios.get(`/github/install/${urlQuery.installation_id}/${urlQuery.code}`)
             .then(console.log)
             .catch(console.log)
     }
 }
 
-// /github-integration?code=c1ed5cbf17e7a98da805&installation_id=51710144&setup_action=install
 const install = () => {
     location.href = 'https://github.com/apps/trivial-triage/installations/new/'
 }
