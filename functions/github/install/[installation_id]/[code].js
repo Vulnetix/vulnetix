@@ -1,30 +1,38 @@
-export const onRequestGet = async context => {
-    if (!context.request.headers.has('x-trivialsec')) {
+export async function onRequestGet(context) {
+    const {
+        request, // same as existing Worker API
+        env, // same as existing Worker API
+        params, // if filename includes [id] or [[path]]
+        waitUntil, // same as ctx.waitUntil in existing Worker API
+        next, // used for middleware or to fetch assets
+        data, // arbitrary space for passing data between middlewares
+    } = context
+    if (!request.headers.has('x-trivialsec')) {
         return Response.json({ 'err': 'Forbidden' })
     }
-    const token = context.request.headers.get('x-trivialsec')
-    const session = await context.env.d1db.prepare("SELECT * FROM sessions WHERE kid = ?")
+    const token = request.headers.get('x-trivialsec')
+    const session = await env.d1db.prepare("SELECT * FROM sessions WHERE kid = ?")
         .bind(token)
         .first()
     if (session?.expiry <= +new Date()) {
         return Response.json({ 'err': 'Expired' })
     }
-    if (context.params?.code && session?.secret) {
+    if (params?.code && session?.secret) {
         const method = "POST"
         const url = new URL("https://github.com/login/oauth/access_token")
         url.search = new URLSearchParams({
-            code: context.params.code,
-            client_id: context.env.GITHUB_APP_CLIENT_ID,
-            client_secret: context.env.GITHUB_APP_CLIENT_SECRET
+            code: params.code,
+            client_id: env.GITHUB_APP_CLIENT_ID,
+            client_secret: env.GITHUB_APP_CLIENT_SECRET
         }).toString()
         const resp = await fetch(url, { method }).catch(err => {
             throw Error(err)
         })
         const data = resp.json()
-        const info = await context.env.d1db.prepare('INSERT INTO integration_github (installation_id, memberEmail, access_key) VALUES (?1, ?2, ?3)')
+        const info = await env.d1db.prepare('INSERT INTO integration_github (installation_id, memberEmail, access_key) VALUES (?1, ?2, ?3)')
             .bind(token, session.memberEmail, data.access_token)
             .run()
-        console.log(`/github/install installation_id=${context.params?.installation_id} kid=${session.kid}`, info)
+        console.log(`/github/install installation_id=${params?.installation_id} kid=${session.kid}`, info)
 
         return Response.json(info)
     }
