@@ -19,15 +19,15 @@ export async function onRequestGet(context) {
             .bind(params.email)
             .first('email')
         if (exists === params.email) {
-            return new Response.json({ 'err': 'Forbidden' })
+            return Response.json({ 'err': 'Forbidden' })
         }
         const info = await env.d1db.prepare('INSERT INTO members (orgName, email, passwordHash) VALUES (?1, ?2, ?3)')
             .bind(params.org, params.email, await pbkdf2(params.hash))
             .run()
         console.log(`/register email=${params.email}`, info)
-        return new Response.json(info)
+        return Response.json(info)
     }
-    return new Response.json({ 'err': 'missing properties /register/[org]/[email]/[sha1]' })
+    return Response.json({ 'err': 'missing properties /register/[org]/[email]/[sha1]' })
 }
 
 async function pbkdf2(password, iterations = 1e5, hashBits = 512) {

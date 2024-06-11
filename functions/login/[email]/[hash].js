@@ -18,7 +18,7 @@ export async function onRequestGet(context) {
             .first('passwordHash')
         const verified = await pbkdf2Verify(passwordHash, params.hash)
         if (!verified) {
-            return new Response.json({ 'err': 'Forbidden' })
+            return Response.json({ 'err': 'Forbidden' })
         }
         const token = crypto.randomUUID()
         const authn_ip = request.headers.get('cf-connecting-ip')
@@ -30,9 +30,9 @@ export async function onRequestGet(context) {
             .bind(token, params.email, expiry, issued, secret, authn_ip, authn_ua)
             .run()
         console.log(`/login kid=${token}`, info)
-        return new Response.json({ token, expiry })
+        return Response.json({ token, expiry })
     }
-    return new Response.json({ 'err': 'Authentication' })
+    return Response.json({ 'err': 'Authentication' })
 }
 
 async function pbkdf2Verify(key, password, hashBits = 512) {

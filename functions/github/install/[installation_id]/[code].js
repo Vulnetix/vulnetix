@@ -1,6 +1,6 @@
 export const onRequestGet = async context => {
     if (context.request.headers.has('x-trivialsec')) {
-        return new Response.json({ 'err': 'Forbidden' })
+        return Response.json({ 'err': 'Forbidden' })
     }
     const token = context.request.headers.get('x-trivialsec')
     const session = await context.env.d1db.prepare("SELECT * FROM sessions WHERE kid = ?")
@@ -24,7 +24,7 @@ export const onRequestGet = async context => {
             .run()
         console.log(`/github/install installation_id=${context.params?.installation_id} kid=${session.kid}`, info)
 
-        return new Response.json(info)
+        return Response.json(info)
     }
-    return new Response.json({ 'err': 'OAuth authorization code not provided' })
+    return Response.json({ 'err': 'OAuth authorization code not provided' })
 }
