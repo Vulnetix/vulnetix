@@ -29,8 +29,7 @@ const isPasswordVisible = ref(false)
 
 const register = () => {
   if (state.org && state.email && state.password && state.privacyPolicies) {
-    const passwordHash = new SHA1(state.password)
-    axios.get(`/register/${state.org}/${state.email}/${passwordHash}`)
+    axios.get(`/register/${state.org}/${state.email}/${SHA1(state.password)}`)
       .then(console.log)
       .catch(console.log)
     localStorage.setItem('/account/name', state.org)
