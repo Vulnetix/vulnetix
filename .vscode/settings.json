@@ -6,7 +6,7 @@
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"
   },
   "[typescript]": {
-    "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+    "editor.defaultFormatter": "vscode.typescript-language-features",
     "editor.autoClosingBrackets": "always"
   },
   "[markdown]": {
@@ -22,7 +22,7 @@
     "editor.defaultFormatter": "vscode.json-language-features"
   },
   "[vue]": {
-    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    "editor.defaultFormatter": "Vue.volar"
   },
   "volar.preview.port": 3000,
   "volar.completion.preferredTagNameCase": "pascal",
