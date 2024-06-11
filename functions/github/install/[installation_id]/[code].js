@@ -4,9 +4,11 @@ export const onRequestGet = async context => {
     }
     const token = context.request.headers.get('x-trivialsec')
     const session = await context.env.d1db.prepare("SELECT * FROM sessions WHERE kid = ?")
-        .bind(context.params.email)
+        .bind(token)
         .first()
-    // check expiry
+    if (session?.expiry <= +new Date()) {
+        return Response.json({ 'err': 'Expired' })
+    }
     if (context.params?.code && session?.secret) {
         const method = "POST"
         const url = new URL("https://github.com/login/oauth/access_token")
