@@ -1,5 +1,5 @@
 export const onRequestGet = async context => {
-    if (context.params?.code) { //installation_id
+    if (context.params?.code) {
         console.log('installation_id', context.params?.installation_id)
         const method = "POST"
         const url = new URL("https://github.com/login/oauth/access_token")
@@ -10,5 +10,5 @@ export const onRequestGet = async context => {
         }).toString()
         return fetch(url, { method })
     }
-    return new Response({ 'err': 'OAuth authorization code not provided' })
+    return new Response.json({ 'err': 'OAuth authorization code not provided' })
 }
