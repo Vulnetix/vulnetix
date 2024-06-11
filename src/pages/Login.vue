@@ -71,8 +71,10 @@ const login = () => {
                 :type="isPasswordVisible ? 'text' : 'password'"
                 :append-inner-icon="isPasswordVisible ? 'bx-hide' : 'bx-show'"
                 @click:append-inner="isPasswordVisible = !isPasswordVisible" />
+            </VCol>
 
-              <!-- login button -->
+            <!-- login button -->
+            <VCol cols="12">
               <VBtn @click="v$.$validate" block text="Login" type="submit" />
             </VCol>
 
