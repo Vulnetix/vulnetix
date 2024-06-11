@@ -6,7 +6,7 @@ export const onRequestGet = async context => {
     ) {
         console.log('org', context.params.org)
         // const kid = crypto.randomUUID()
-        const info = await db.prepare('INSERT INTO members (orgName, email, passwordhash) VALUES (?1, ?2, ?3)')
+        const info = await context.env.d1db.prepare('INSERT INTO members (orgName, email, passwordHash) VALUES (?1, ?2, ?3)')
             .bind(context.params.org, context.params.email, pbkdf2(context.params.hash))
             .run()
         return Response.json(info)

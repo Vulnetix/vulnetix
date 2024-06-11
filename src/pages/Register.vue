@@ -35,7 +35,6 @@ const register = () => {
       .catch(console.log)
     localStorage.setItem('/account/name', state.org)
     localStorage.setItem('/member/email', state.email)
-    localStorage.setItem('/session/token', 'temp')
     router.push('/login')
   }
 }
