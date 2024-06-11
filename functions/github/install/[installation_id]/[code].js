@@ -1,5 +1,5 @@
 export const onRequestGet = async context => {
-    if (context.request.headers.has('x-trivialsec')) {
+    if (!context.request.headers.has('x-trivialsec')) {
         return Response.json({ 'err': 'Forbidden' })
     }
     const token = context.request.headers.get('x-trivialsec')
