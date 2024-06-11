@@ -28,7 +28,9 @@ export async function onRequestGet(context) {
         const resp = await fetch(url, { method }).catch(err => {
             throw Error(err)
         })
+        console.log('resp', resp)
         const data = await resp.json()
+        console.log('data', data)
         const info = await env.d1db.prepare('INSERT INTO integration_github (installation_id, memberEmail, access_key) VALUES (?1, ?2, ?3)')
             .bind(token, session.memberEmail, data.access_token)
             .run()
