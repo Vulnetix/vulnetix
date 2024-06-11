@@ -1,24 +1,33 @@
-export const onRequestGet = async context => {
+export async function onRequestGet(context) {
+    const {
+        request, // same as existing Worker API
+        env, // same as existing Worker API
+        params, // if filename includes [id] or [[path]]
+        waitUntil, // same as ctx.waitUntil in existing Worker API
+        next, // used for middleware or to fetch assets
+        data, // arbitrary space for passing data between middlewares
+    } = context
     if (
-        context.params?.email &&
-        context.params?.hash
+        params?.email &&
+        params?.hash
     ) {
-        const passwordHash = await context.env.d1db.prepare(
+        const passwordHash = await env.d1db.prepare(
             "SELECT passwordHash FROM members WHERE email = ?"
         )
-            .bind(context.params.email)
+            .bind(params.email)
             .first('passwordHash')
-        if (!pbkdf2Verify(passwordHash, context.params.hash)) {
+        const verified = await pbkdf2Verify(passwordHash, params.hash)
+        if (!verified) {
             return new Response.json({ 'err': 'Forbidden' })
         }
         const token = crypto.randomUUID()
-        const authn_ip = context.request.headers.get('cf-connecting-ip')
-        const authn_ua = context.request.headers.get('user-agent')
+        const authn_ip = request.headers.get('cf-connecting-ip')
+        const authn_ua = request.headers.get('user-agent')
         const issued = +new Date()
         const expiry = (issued / 1000) + (86400 * 30) // 30 days
         const secret = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-1", crypto.getRandomValues(new Uint32Array(26))))).map((b) => b.toString(16).padStart(2, "0")).join("")
-        const info = await context.env.d1db.prepare('INSERT INTO sessions (kid, memberEmail, expiry, issued, secret, authn_ip, authn_ua) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)')
-            .bind(token, context.params.email, expiry, issued, secret, authn_ip, authn_ua)
+        const info = await env.d1db.prepare('INSERT INTO sessions (kid, memberEmail, expiry, issued, secret, authn_ip, authn_ua) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)')
+            .bind(token, params.email, expiry, issued, secret, authn_ip, authn_ua)
             .run()
         console.log(`/login kid=${token}`, info)
         return new Response.json({ token, expiry })

@@ -6,6 +6,7 @@ export const onRequestGet = async context => {
     const session = await context.env.d1db.prepare("SELECT * FROM sessions WHERE kid = ?")
         .bind(context.params.email)
         .first()
+    // check expiry
     if (context.params?.code && session?.secret) {
         const method = "POST"
         const url = new URL("https://github.com/login/oauth/access_token")

@@ -1,22 +1,30 @@
-export const onRequestGet = async context => {
+export async function onRequestGet(context) {
+    const {
+        request, // same as existing Worker API
+        env, // same as existing Worker API
+        params, // if filename includes [id] or [[path]]
+        waitUntil, // same as ctx.waitUntil in existing Worker API
+        next, // used for middleware or to fetch assets
+        data, // arbitrary space for passing data between middlewares
+    } = context
     if (
-        context.params?.org &&
-        context.params?.email &&
-        context.params?.hash
+        params?.org &&
+        params?.email &&
+        params?.hash
     ) {
-        console.log('org', context.params.org)
-        const exists = await context.env.d1db.prepare(
+        console.log('org', params.org)
+        const exists = await env.d1db.prepare(
             "SELECT email FROM members WHERE email = ?"
         )
-            .bind(context.params.email)
+            .bind(params.email)
             .first('email')
-        if (exists === context.params.email) {
+        if (exists === params.email) {
             return new Response.json({ 'err': 'Forbidden' })
         }
-        const info = await context.env.d1db.prepare('INSERT INTO members (orgName, email, passwordHash) VALUES (?1, ?2, ?3)')
-            .bind(context.params.org, context.params.email, pbkdf2(context.params.hash))
+        const info = await env.d1db.prepare('INSERT INTO members (orgName, email, passwordHash) VALUES (?1, ?2, ?3)')
+            .bind(params.org, params.email, await pbkdf2(params.hash))
             .run()
-        console.log(`/register email=${context.params.email}`, info)
+        console.log(`/register email=${params.email}`, info)
         return new Response.json(info)
     }
     return new Response.json({ 'err': 'missing properties /register/[org]/[email]/[sha1]' })
