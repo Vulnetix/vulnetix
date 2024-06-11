@@ -27,7 +27,6 @@ const isPasswordVisible = ref(false)
 const login = async () => {
   if (state.email && state.password) {
     const data = await axios.get(`/login/${state.email}/${SHA1(state.password)}`)
-      .catch(console.log)
     localStorage.setItem('/member/email', state.email)
     localStorage.setItem('/session/token', data.token)
     router.push('/dashboard')
