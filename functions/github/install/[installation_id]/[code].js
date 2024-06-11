@@ -17,7 +17,7 @@ export async function onRequestGet(context) {
     if (session?.expiry <= +new Date()) {
         return Response.json({ 'err': 'Expired' })
     }
-    if (params?.code && session?.secret) {
+    if (params?.code) {
         const method = "POST"
         const url = new URL("https://github.com/login/oauth/access_token")
         url.search = new URLSearchParams({
