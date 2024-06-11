@@ -25,7 +25,8 @@ export async function onRequestGet(context) {
             client_id: env.GITHUB_APP_CLIENT_ID,
             client_secret: env.GITHUB_APP_CLIENT_SECRET
         }).toString()
-        const data = await fetch(url, { method }).next(r => r.json())
+        const resp = await fetch(url, { method })
+        const data = JSON.parse(resp.text())
         const info = await env.d1db.prepare('INSERT INTO integration_github (installation_id, memberEmail, access_key) VALUES (?1, ?2, ?3)')
             .bind(token, session.memberEmail, data.access_token)
             .run()
