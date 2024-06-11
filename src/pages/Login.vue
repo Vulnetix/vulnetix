@@ -24,14 +24,13 @@ const rules = {
 const v$ = useVuelidate(rules, state)
 const isPasswordVisible = ref(false)
 
-const login = () => {
+const login = async () => {
   if (state.email && state.password) {
-    axios.get(`/login/${state.email}/${SHA1(state.password)}`)
-      .then(console.log)
+    const resp = await axios.get(`/login/${state.email}/${SHA1(state.password)}`)
       .catch(console.log)
-
+    const data = resp.json()
     localStorage.setItem('/member/email', state.email)
-    localStorage.setItem('/session/token', "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0cmlhZ2UiLCJuYmYiOjE3MTgwMjQzNTgsImlhdCI6MTcxODAyNDM1OCwiZXhwIjoxNzE4MTEwNzU4LCJhdWQiOiJ1cm46dXVpZDowMGQwYzI3ZC1lNjA5LTRiMWMtYjIxMS02NzFjOGFjZDVhYWEiLCJpc3MiOiJ1cm46dXVpZDowMGQwYzI3ZC1lNjA5LTRiMWMtYjIxMS02NzFjOGFjZDVhYWEiLCJraWQiOiJ1cm46dXVpZDo0MjUwNWE1My05YzRiLTQ1OTgtYTcxYy03ZmQzMzI0ZGZhYTIiLCJuYW1lIjoiRGVtbyBVc2VyIiwicm9sZSI6InVybjp1dWlkOjdhZGE1YWNkLWQxOGYtNGZmNC04NDA5LTEzMjk3MmJhYmEyOCJ9.2bLuGpY9APA8qbPp73tk-7sDWO4IoLpC3ifRLWzs_O5jZG9b0kFtQhAo2DiBr_CRBsBYuMMb0zsxaW8Maa2uXQ")
+    localStorage.setItem('/session/token', data.token)
     router.push('/dashboard')
   }
 }

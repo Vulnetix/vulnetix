@@ -24,7 +24,7 @@ export async function onRequestGet(context) {
         const authn_ip = request.headers.get('cf-connecting-ip')
         const authn_ua = request.headers.get('user-agent')
         const issued = +new Date()
-        const expiry = (issued / 1000) + (86400 * 30) // 30 days
+        const expiry = issued + (86400 * 30) // 30 days
         const secret = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-1", crypto.getRandomValues(new Uint32Array(26))))).map((b) => b.toString(16).padStart(2, "0")).join("")
         const info = await env.d1db.prepare('INSERT INTO sessions (kid, memberEmail, expiry, issued, secret, authn_ip, authn_ua) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)')
             .bind(token, params.email, expiry, issued, secret, authn_ip, authn_ua)

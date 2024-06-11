@@ -4,6 +4,8 @@ import { useTheme } from 'vuetify';
 
 const { global } = useTheme()
 
+axios.headers['x-trivialsec'] = localStorage.getItem('/session/token') || ''
+
 const integrations = []
 const urlQuery = Object.fromEntries(location.search.substring(1).split('&').map(item => item.split('=').map(decodeURIComponent)))
 if (urlQuery?.setup_action === 'install') {
