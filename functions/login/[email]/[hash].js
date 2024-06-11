@@ -3,7 +3,6 @@ export const onRequestGet = async context => {
         context.params?.email &&
         context.params?.hash
     ) {
-        console.log('email', context.params.email)
         const passwordHash = await context.env.d1db.prepare(
             "SELECT passwordHash FROM members WHERE email = ?"
         )
@@ -22,7 +21,7 @@ export const onRequestGet = async context => {
             .bind(token, context.params.email, expiry, issued, secret, authn_ip, authn_ua)
             .run()
         console.log(`/login kid=${token}`, info)
-        return Response.json({ token, expiry })
+        return new Response.json({ token, expiry })
     }
     return new Response.json({ 'err': 'Authentication' })
 }
