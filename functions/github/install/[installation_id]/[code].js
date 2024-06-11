@@ -11,7 +11,9 @@ export async function onRequestGet(context) {
     if (!token) {
         return Response.json({ 'err': 'Forbidden' })
     }
-    const session = await env.d1db.prepare("SELECT memberEmail, expiry FROM sessions WHERE kid = ?")
+    console.log('token', token)
+    const session = await
+ env.d1db.prepare("SELECT memberEmail, expiry FROM sessions WHERE kid = ?")
         .bind(token)
         .first()
     console.log('session', session)
