@@ -1,3 +1,5 @@
+import { GitHubRepoFetcher } from "../../../../src/github"
+
 export async function onRequestGet(context) {
     const {
         request, // same as existing Worker API
@@ -53,80 +55,4 @@ export async function onRequestGet(context) {
         return Response.json(repos)
     }
     return Response.json({ 'err': 'OAuth authorization code not provided' })
-}
-
-const fetch = require('node-fetch')
-
-class GitHubRepoFetcher {
-    constructor(accessKey) {
-        this.accessKey = accessKey
-        this.headers = {
-            'Authorization': `Bearer ${this.accessKey}`,
-            'Accept': 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28'
-        }
-    }
-    async fetchJSON(url) {
-        const response = await fetch(url, { headers: this.headers })
-        if (!response.ok) {
-            throw new Error(`GitHubRepoFetcher error! status: ${response.status}`)
-        }
-        return response.json()
-    }
-    async getRepos() {
-        return await this.fetchJSON('https://api.github.com/user/repos')
-    }
-    async getBranches(repo) {
-        return await this.fetchJSON(`https://api.github.com/repos/${repo.full_name}/branches`)
-    }
-    async getLatestCommit(repo, branch) {
-        const commit = await this.fetchJSON(`https://api.github.com/repos/${repo.full_name}/commits/${branch.name}`)
-        return {
-            hash: commit.sha,
-            message: commit.commit.message,
-            url: commit.html_url
-        }
-    }
-    async getFileContents(repo, branch) {
-        const fileUrl = `https://api.github.com/repos/${repo.full_name}/contents/.trivialsec?ref=${branch.name}`
-        try {
-            const fileResponse = await fetch(fileUrl, { headers: this.headers })
-            if (!fileResponse.ok) {
-                if (fileResponse.status === 404) {
-                    return { exists: false, content: null }
-                }
-                throw new Error(`getFileContents error! status: ${fileResponse.status}`)
-            }
-            const file = await fileResponse.json()
-            const content = Buffer.from(file.content, 'base64').toString('utf-8')
-            return { exists: true, content }
-        } catch (error) {
-            console.error(error)
-            return { exists: false, content: null }
-        }
-    }
-    async getRepoDetails() {
-        const repos = await this.getRepos()
-        const repoDetails = []
-
-        for (const repo of repos) {
-            const branches = await this.getBranches(repo)
-
-            for (const branch of branches) {
-                const latestCommit = await this.getLatestCommit(repo, branch)
-                const fileDetails = await this.getFileContents(repo, branch)
-
-                repoDetails.push({
-                    branch: branch.name,
-                    latestCommitHash: latestCommit.hash,
-                    latestCommitMessage: latestCommit.message,
-                    repoUrl: repo.html_url,
-                    fileExists: fileDetails.exists,
-                    fileContents: fileDetails.content
-                })
-            }
-        }
-
-        return repoDetails
-    }
 }

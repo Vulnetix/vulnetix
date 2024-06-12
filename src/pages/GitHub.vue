@@ -3,11 +3,11 @@ import axios from 'axios';
 import { useTheme } from 'vuetify';
 
 const { global } = useTheme()
-
+const install = () => location.href = 'https://github.com/apps/triage-by-trivial-security/installations/new/'
 axios.defaults.headers.common = {
     'x-trivialsec': localStorage.getItem('/session/token') || ''
 }
-const integrations = []
+const integrations = ref([])
 const urlQuery = Object.fromEntries(location.search.substring(1).split('&').map(item => item.split('=').map(decodeURIComponent)))
 const url = new URL(location)
 url.search = ""
@@ -15,14 +15,15 @@ history.pushState({}, "", url)
 if (urlQuery?.setup_action === 'install') {
     console.log('urlQuery', urlQuery)
     if (urlQuery?.code && urlQuery?.installation_id) {
-        axios.get(`/github/install/${urlQuery.installation_id}/${urlQuery.code}`)
-            .then(console.log)
-            .catch(console.log)
+        const { data } = await axios.get(`/github/install/${urlQuery.installation_id}/${urlQuery.code}`)
+        localStorage.setItem('/github/repos', data)
+        integrations = data
     }
+} else {
+    const { data } = await axios.get('/github/repos')
+    localStorage.setItem('/github/repos', data)
+    integrations = data
 }
-
-const install = () => location.href = 'https://github.com/apps/triage-by-trivial-security/installations/new/'
-
 </script>
 
 <template>
