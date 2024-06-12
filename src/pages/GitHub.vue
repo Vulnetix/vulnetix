@@ -2,6 +2,7 @@
 import axios from 'axios';
 import { reactive } from 'vue';
 import { useTheme } from 'vuetify';
+import router from "../router";
 import { isJSON } from '../utils';
 
 const { global } = useTheme()
