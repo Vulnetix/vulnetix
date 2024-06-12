@@ -33,17 +33,21 @@ export async function onRequestGet(context) {
     }
     try {
         const fetcher = new GitHubRepoFetcher(access_token)
+        console.log('fetcher', fetcher)
         const details = await fetcher.getRepoDetails()
+        console.log('details', details)
         const repos = JSON.stringify(details, null, 2)
         console.log('repos', repos)
         return Response.json(repos)
     } catch (e) {
+        console.error(e)
         return Response.json(e)
     }
 }
 
 class GitHubRepoFetcher {
     constructor(accessKey) {
+        this.repos = []
         this.accessKey = accessKey
         this.headers = {
             'Authorization': 'Bearer ${this.accessKey}',
@@ -53,6 +57,7 @@ class GitHubRepoFetcher {
         this.baseUrl = "https://api.github.com"
     }
     async fetchJSON(url) {
+        console.log(url)
         const response = await fetch(url, { headers: this.headers })
         if (!response.ok) {
             throw new Error(`GitHubRepoFetcher error! status: ${response.status}`)
@@ -70,6 +75,7 @@ class GitHubRepoFetcher {
     }
     async getFileContents(repo, branch) {
         const fileUrl = `${this.baseUrl}/repos/${repo.full_name}/contents/.trivialsec?ref=${branch.name}`
+        console.log(fileUrl)
         try {
             const fileResponse = await fetch(fileUrl, { headers: this.headers })
             if (!fileResponse.ok) {
@@ -88,7 +94,6 @@ class GitHubRepoFetcher {
     }
     async getRepoDetails() {
         const repos = await this.getRepos()
-        const repoDetails = []
 
         for (const repo of repos) {
             const branches = await this.getBranches(repo)
@@ -97,7 +102,7 @@ class GitHubRepoFetcher {
                 const latestCommit = await this.getLatestCommit(repo, branch)
                 const fileDetails = await this.getFileContents(repo, branch)
 
-                repoDetails.push({
+                this.repos.push({
                     ghid: repo.id,
                     fullName: repo.full_name,
                     branch: branch.name,
@@ -120,6 +125,6 @@ class GitHubRepoFetcher {
             }
         }
 
-        return repoDetails
+        return this.repos
     }
 }
