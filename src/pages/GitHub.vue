@@ -9,6 +9,9 @@ axios.defaults.headers.common = {
 }
 const integrations = []
 const urlQuery = Object.fromEntries(location.search.substring(1).split('&').map(item => item.split('=').map(decodeURIComponent)))
+const url = new URL(location)
+url.search = ""
+history.pushState({}, "", url)
 if (urlQuery?.setup_action === 'install') {
     console.log('urlQuery', urlQuery)
     if (urlQuery?.code && urlQuery?.installation_id) {
@@ -18,9 +21,8 @@ if (urlQuery?.setup_action === 'install') {
     }
 }
 
-const install = () => {
-    location.href = 'https://github.com/apps/trivial-triage/installations/new/'
-}
+const install = () => location.href = 'https://github.com/apps/triage-by-trivial-security/installations/new/'
+
 </script>
 
 <template>

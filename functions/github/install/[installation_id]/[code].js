@@ -13,9 +13,9 @@ export async function onRequestGet(context) {
     }
     console.log('token', token)
     const session = await
- env.d1db.prepare("SELECT memberEmail, expiry FROM sessions WHERE kid = ?")
-        .bind(token)
-        .first()
+        env.d1db.prepare("SELECT memberEmail, expiry FROM sessions WHERE kid = ?")
+            .bind(token)
+            .first()
     console.log('session', session)
     if (!session) {
         return Response.json({ 'err': 'Revoked' })
@@ -36,11 +36,11 @@ export async function onRequestGet(context) {
         const data = Object.fromEntries(text.split('&').map(item => item.split('=').map(decodeURIComponent)))
         if (data?.error) {
             console.log(data)
-            throw Error(data.error)
+            throw new Error(data.error)
         }
         if (!data?.access_token) {
             console.log(data)
-            throw Error('OAuth response invalid')
+            throw new Error('OAuth response invalid')
         }
         const info = await env.d1db.prepare('INSERT INTO integration_github (installation_id, memberEmail, access_key) VALUES (?1, ?2, ?3)')
             .bind(token, session?.memberEmail, data.access_token)

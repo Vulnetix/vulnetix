@@ -50,7 +50,7 @@ async function readRequestBody(request) {
     } else {
         // Perhaps some other type of data was submitted in the form
         // like an image, or some other binary data.
-        throw Error("Unhandled type")
+        throw new Error("Unhandled type")
     }
 }
 async function verifySignature(secret, header, payload) {

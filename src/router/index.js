@@ -1,6 +1,6 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import publicRoutes from '@/router/public-routes.js'
 import protectedRoutes from '@/router/protected-routes.js'
+import publicRoutes from '@/router/public-routes.js'
+import { createRouter, createWebHistory } from 'vue-router'
 
 const allRoutes = Array.from(publicRoutes)
 const routes = allRoutes.concat(protectedRoutes)
@@ -23,7 +23,7 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-    const publicPages = ['/register', '/logout']
+    const publicPages = ["/", '/register', '/logout']
     const publicPrefixes = [
         '/login',
     ]
