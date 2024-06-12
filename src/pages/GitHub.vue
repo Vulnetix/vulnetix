@@ -6,6 +6,15 @@ import { isJSON } from '../utils';
 
 const { global } = useTheme()
 
+const initialState = {
+    error: "",
+    warning: "",
+}
+
+const state = reactive({
+    ...initialState,
+})
+
 axios.defaults.headers.common = {
     'x-trivialsec': localStorage.getItem('/session/token') || ''
 }
@@ -34,13 +43,24 @@ class GitHub {
         location.href = 'https://github.com/apps/triage-by-trivial-security/installations/new/'
     }
     async refresh() {
-        console.log('loading')
-        const { data } = await axios.get('/github/repos')
-        console.log('data', data)
-        if (isJSON(data)) {
-            localStorage.setItem('/github/repos', JSON.stringify(data))
-            this.repos = data
-            this.cached = false
+        try {
+            const { data } = await axios.get('/github/repos')
+            if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
+                console.log('data', data)
+                state.error = data.err
+                router.push('/logout')
+                return
+            }
+            if (isJSON(data)) {
+                localStorage.setItem('/github/repos', JSON.stringify(data))
+                this.repos = data
+                this.cached = false
+            } else {
+                state.warning = "No data retrieved from GitHub."
+            }
+        } catch (e) {
+            console.error(e)
+            state.error = e.code
         }
     }
 }
@@ -49,6 +69,12 @@ const gh = reactive(new GitHub())
 
 <template>
     <VRow>
+        <VCol cols="12">
+            <VAlert color="error" icon="$error" title="Server Error" :text="state.error" v-if="state.error"
+                border="start" variant="tonal" closable close-label="Close Alert" />
+            <VAlert color="warning" icon="$warning" title="Warning" :text="state.warning" v-if="state.warning"
+                border="start" variant="tonal" closable close-label="Close Alert" />
+        </VCol>
         <VCol cols="12">
             <VCard title="GitHub">
                 <VCardText>
