@@ -52,9 +52,12 @@ const register = () => {
       </VCardItem>
 
       <VCardText class="pt-2">
-        <h5 class="text-h5 mb-1 text-center">
-          Trivial Triage
+        <h5 class="text-h5 mb-0 text-center">
+          Triage
         </h5>
+        <div class="subheading mb-2 mt-0 text-center">
+          By, Trivial Security
+        </div>
         <p class="mb-0">
           Make vulnerability management easy and fun!
         </p>
@@ -108,5 +111,9 @@ const register = () => {
 
 .v-btn {
   text-transform: none;
+}
+
+.subheading {
+  font-size: 0.8em;
 }
 </style>
