@@ -16,7 +16,7 @@ export async function onRequestGet(context) {
         env.d1db.prepare("SELECT memberEmail, expiry FROM sessions WHERE kid = ?")
             .bind(token)
             .first()
-    console.log('session', session)
+    console.log('session expiry', session?.expiry)
     if (!session) {
         return Response.json({ 'err': 'Revoked' })
     }
@@ -39,11 +39,11 @@ export async function onRequestGet(context) {
             throw new Error(data.error)
         }
         if (!data?.access_token) {
-            console.log(data)
+            console.log('installation_id', params?.installation_id, 'kid', token, 'data', data)
             throw new Error('OAuth response invalid')
         }
         const info = await env.d1db.prepare('INSERT INTO integration_github (installation_id, memberEmail, access_key) VALUES (?1, ?2, ?3)')
-            .bind(token, session?.memberEmail, data.access_token)
+            .bind(params?.installation_id, session?.memberEmail, data.access_token)
             .run()
         console.log(`/github/install installation_id=${params?.installation_id} kid=${token}`, info)
         return Response.json(info)
