@@ -33,9 +33,11 @@ export async function onRequestGet(context) {
     }
     try {
         const fetcher = new GitHubRepoFetcher(access_token)
-        console.log('fetcher', fetcher)
+        console.log('headers', fetcher.headers)
+        console.log('fetcher', fetcher.repos)
         const details = await fetcher.getRepoDetails()
         console.log('details', details)
+        console.log('fetcher', fetcher.repos)
         const repos = JSON.stringify(details, null, 2)
         console.log('repos', repos)
         return Response.json(repos)
@@ -48,9 +50,8 @@ export async function onRequestGet(context) {
 class GitHubRepoFetcher {
     constructor(accessKey) {
         this.repos = []
-        this.accessKey = accessKey
         this.headers = {
-            'Authorization': 'Bearer ${this.accessKey}',
+            'Authorization': `Bearer ${accessKey}`,
             'Accept': 'application/vnd.github+json',
             'X-GitHub-Api-Version': '2022-11-28'
         }
