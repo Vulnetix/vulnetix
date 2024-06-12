@@ -1,4 +1,3 @@
-import { GitHubRepoFetcher } from "../../../../src/github"
 
 export async function onRequestGet(context) {
     const {
@@ -48,11 +47,7 @@ export async function onRequestGet(context) {
             .bind(params?.installation_id, session?.memberEmail, data.access_token)
             .run()
         console.log(`/github/install installation_id=${params?.installation_id} kid=${token}`, info)
-        const fetcher = new GitHubRepoFetcher(data.access_token)
-        const details = await fetcher.getRepoDetails()
-        const repos = JSON.stringify(details, null, 2)
-        console.log('repos', repos)
-        return Response.json(repos)
+        return Response.json(info)
     }
     return Response.json({ 'err': 'OAuth authorization code not provided' })
 }

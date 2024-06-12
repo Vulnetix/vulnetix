@@ -3,7 +3,7 @@
  * Use await readRequestBody(..) in an async function to get the string
  * @param {Request} request the incoming request to read from
  */
-async function readRequestBody(request) {
+export async function readRequestBody(request) {
     const contentType = request.headers.get("content-type")
     if (contentType.includes("application/json")) {
         return JSON.stringify(await request.json())
@@ -25,7 +25,7 @@ async function readRequestBody(request) {
     }
 }
 
-async function pbkdf2Verify(key, password, hashBits = 512) {
+export async function pbkdf2Verify(key, password, hashBits = 512) {
     let compositeStr = null                     // composite key is salt, iteration count, and derived key
     try { compositeStr = atob(key) } catch (e) { throw new Error('Invalid key') }                       // decode from base64
     const version = compositeStr.slice(0, 3)    //  3 bytes
@@ -50,7 +50,7 @@ async function pbkdf2Verify(key, password, hashBits = 512) {
     return keyStrNew === keyStr // test if newly generated key matches stored key
 }
 
-async function pbkdf2(password, iterations = 1e5, hashBits = 512) {
+export async function pbkdf2(password, iterations = 1e5, hashBits = 512) {
     const pwUtf8 = new TextEncoder().encode(password)                                                   // encode pw as UTF-8
     const pwKey = await crypto.subtle.importKey('raw', pwUtf8, 'PBKDF2', false, ['deriveBits'])         // create pw key
     const saltUint8 = crypto.getRandomValues(new Uint8Array(16))                                        // get random salt
@@ -63,4 +63,12 @@ async function pbkdf2(password, iterations = 1e5, hashBits = 512) {
     const compositeArray = [].concat(saltArray, iterArray, keyArray)                                    // combined array
     const compositeStr = compositeArray.map(byte => String.fromCharCode(byte)).join('')                 // combined as string
     return btoa('v01' + compositeStr)
+}
+
+export function isJSON(str) {
+    try {
+        return (JSON.parse(str) && !!str);
+    } catch (e) {
+        return false;
+    }
 }

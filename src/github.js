@@ -55,13 +55,14 @@ class GitHubRepoFetcher {
 
                 repoDetails.push({
                     ghid: repo.id,
+                    fullName: repo.full_name,
                     branch: branch.name,
-                    default_branch: repo.default_branch,
-                    avatar_url: repo.owner.avatar_url,
+                    defaultBranch: repo.default_branch,
+                    avatarUrl: repo.owner.avatar_url,
                     archived: repo.archived,
                     visibility: repo.visibility,
-                    created_at: repo.created_at,
-                    pushed_at: repo.pushed_at,
+                    createdAt: repo.created_at,
+                    pushedAt: repo.pushed_at,
                     license: repo.license,
                     latestCommitSHA: latestCommit.sha,
                     latestCommitMessage: latestCommit.commit.message,
@@ -69,7 +70,6 @@ class GitHubRepoFetcher {
                     latestCommitter: latestCommit.commit.committer,
                     latestStats: latestCommit.stats,
                     latestFilesChanged: latestCommit.files.length,
-                    repoUrl: repo.full_name,
                     dotfileExists: fileDetails.exists,
                     dotfileContents: fileDetails.content
                 })

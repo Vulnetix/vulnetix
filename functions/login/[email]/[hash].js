@@ -1,4 +1,4 @@
-import { pbkdf2Verify } from "../../../src/cf-utils"
+import { pbkdf2Verify } from "../../../src/utils"
 
 export async function onRequestGet(context) {
     const {

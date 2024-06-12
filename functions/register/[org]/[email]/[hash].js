@@ -1,4 +1,4 @@
-import { pbkdf2 } from "../../../../src/cf-utils"
+import { pbkdf2 } from "../../../../src/utils"
 
 export async function onRequestGet(context) {
     const {

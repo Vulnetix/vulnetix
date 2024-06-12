@@ -1,4 +1,4 @@
-import { readRequestBody } from "../../src/cf-utils"
+import { readRequestBody } from "../../src/utils"
 
 export async function onRequestPost(context) {
     const {

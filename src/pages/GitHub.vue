@@ -1,29 +1,50 @@
 <script setup>
 import axios from 'axios';
+import { reactive } from 'vue';
 import { useTheme } from 'vuetify';
+import { isJSON } from '../utils';
 
 const { global } = useTheme()
-const install = () => location.href = 'https://github.com/apps/triage-by-trivial-security/installations/new/'
+
 axios.defaults.headers.common = {
     'x-trivialsec': localStorage.getItem('/session/token') || ''
 }
-const integrations = ref([])
-const urlQuery = Object.fromEntries(location.search.substring(1).split('&').map(item => item.split('=').map(decodeURIComponent)))
-const url = new URL(location)
-url.search = ""
-history.pushState({}, "", url)
-if (urlQuery?.setup_action === 'install') {
-    console.log('urlQuery', urlQuery)
-    if (urlQuery?.code && urlQuery?.installation_id) {
-        const { data } = await axios.get(`/github/install/${urlQuery.installation_id}/${urlQuery.code}`)
-        localStorage.setItem('/github/repos', data)
-        integrations = data
+
+class GitHub {
+    constructor() {
+        this.cached = true
+        this.urlQuery = Object.fromEntries(location.search.substring(1).split('&').map(item => item.split('=').map(decodeURIComponent)))
+        const url = new URL(location)
+        url.search = ""
+        history.pushState({}, "", url)
+        const stored = localStorage.getItem('/github/repos')
+        this.repos = stored ? JSON.parse(stored) : []
+        if (this.urlQuery?.setup_action === 'install' && this.urlQuery?.code && this.urlQuery?.installation_id) {
+            this.install(this.urlQuery.code, this.urlQuery.installation_id)
+        }
+        if (this.repos.length === 0) {
+            this.refresh()
+        }
     }
-} else {
-    const { data } = await axios.get('/github/repos')
-    localStorage.setItem('/github/repos', data)
-    integrations = data
+    async install(code, installation_id) {
+        const { data } = await axios.get(`/github/install/${installation_id}/${code}`)
+        console.log(data)
+    }
+    async integrate() {
+        location.href = 'https://github.com/apps/triage-by-trivial-security/installations/new/'
+    }
+    async refresh() {
+        console.log('loading')
+        const { data } = await axios.get('/github/repos')
+        console.log('data', data)
+        if (isJSON(data)) {
+            localStorage.setItem('/github/repos', JSON.stringify(data))
+            this.repos = data
+            this.cached = false
+        }
+    }
 }
+const gh = reactive(new GitHub())
 </script>
 
 <template>
@@ -32,7 +53,10 @@ if (urlQuery?.setup_action === 'install') {
             <VCard title="GitHub">
                 <VCardText>
                     <VBtn text="Connect to GitHub" prepend-icon="mdi-github" variant="text"
-                        :color="global.name.value === 'dark' ? '#fff' : '#272727'" @click="install" />
+                        :color="global.name.value === 'dark' ? '#fff' : '#272727'" v-if="gh.repos.length === 0"
+                        @click="gh.integrate" />
+                    <VBtn text="Refresh" prepend-icon="mdi-github" variant="text"
+                        :color="global.name.value === 'dark' ? '#fff' : '#272727'" v-else @click="gh.refresh" />
                 </VCardText>
                 <VTable height="80%" fixed-header>
                     <thead>
@@ -41,36 +65,43 @@ if (urlQuery?.setup_action === 'install') {
                                 Repository
                             </th>
                             <th>
-                                Public
+                                Branch
                             </th>
                             <th>
-                                Target
+                                Visibility
                             </th>
                             <th>
-                                Type
+                                Latest Commit
                             </th>
                             <th>
-                                Dependency count
+                                Pushed
+                            </th>
+                            <th>
+                                .trivialsec
                             </th>
                         </tr>
                     </thead>
 
                     <tbody>
-                        <tr v-for="item in integrations" :key="item.uuid">
-                            <td>
-                                {{ item.repo }}
+                        <tr v-for="item in gh.repos" :key="item.latestCommitSHA">
+                            <td :title="item.createdAt">
+                                {{ item.fullName }}
+                            </td>
+                            <td class="text-center" :title="item.latestCommitSHA">
+                                {{ item.branch }}<span v-if="item.branch === item.defaultBranch"> (default)</span>
                             </td>
                             <td class="text-center">
                                 {{ item.visibility }}
                             </td>
-                            <td class="text-center">
-                                {{ item.target }}
+                            <td class="text-center" :title="item.latestCommitSHA">
+                                <img :src="item.avatarUrl" class="mr-1" v-if="item.avatarUrl" />
+                                {{ item.latestCommitMessage }}
                             </td>
                             <td class="text-center">
-                                {{ item.type }}
+                                {{ item.pushedAt }}
                             </td>
-                            <td class="text-center">
-                                {{ item.Dependencies.length }}
+                            <td class="text-center" :title="item.dotfileContents">
+                                {{ item.dotfileExists }}
                             </td>
                         </tr>
                     </tbody>
