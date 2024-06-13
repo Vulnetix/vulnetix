@@ -35,7 +35,7 @@ class GitHub {
 
         if (this.urlQuery?.setup_action === 'install' && this.urlQuery?.code && this.urlQuery?.installation_id) {
             this.install(this.urlQuery.code, this.urlQuery.installation_id)
-        } else {
+        } else if (!state.cached) {
             this.refresh()
         }
     }
@@ -50,32 +50,38 @@ class GitHub {
         state.loading = true
         try {
             const { data } = await axios.get('/github/repos')
+            console.log('data', data)
             state.loading = false
             if (typeof data === "string" && isJSON(data)) {
                 localStorage.setItem('/github/installs', data)
                 data = JSON.parse(data)
-                if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
-                    state.error = data.err
-                    return setTimeout(router.push('/logout'), 2000)
+            } else if (typeof data === "object" && data !== null) {
+                localStorage.setItem('/github/installs', JSON.parse(data))
+            } else {
+                state.warning = state.cached ? "No data retrieved from GitHub. Was this GitHub App uninstalled?" : "No cached data. Have you tried to install the GitHub App?"
+                state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
+                return
+            }
+            if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
+                state.error = data.err
+                return setTimeout(router.push('/logout'), 2000)
+            }
+            if (data.length > 0) {
+                state.installs = true
+                if (data.map(i => i.repos.length).reduce((a, b) => a + b, 0) === 0) {
+                    state.error = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
+                    state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
+                    state.cached = false
+                } else {
+                    state.success = "Refreshed GitHub repositories"
+                    state.cached = true
                 }
-                if (data.length > 0) {
-                    state.installs = true
-                    if (data.map(i => i.repos.length).reduce((a, b) => a + b, 0) === 0) {
-                        state.error = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
-                        state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
-                        state.cached = false
-                    } else {
-                        state.success = "Refreshed GitHub repositories"
-                        state.cached = true
-                    }
-                    return
-                }
+                return
             }
         } catch (e) {
             console.error(e)
             state.error = `${e.code} ${e.message}`
         }
-        state.installs = false
         state.warning = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
         state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
         state.loading = false
@@ -94,12 +100,9 @@ function clearAlerts() {
 function loadCached() {
     clearAlerts()
     const stored = localStorage.getItem('/github/installs')
-    state.apps = stored ? JSON.parse(stored) : []
+    state.apps = isJSON(stored) ? JSON.parse(stored) : []
     state.installs = state.apps.length > 0
     state.cached = state.apps.map(i => i.repos.length).reduce((a, b) => a + b, 0) > 0
-    if (!state.installs) {
-        state.warning = "No cached data. Have you tried to install the GitHub App?"
-    }
 }
 loadCached()
 const gh = reactive(new GitHub())
@@ -131,7 +134,7 @@ const gh = reactive(new GitHub())
         </VCol>
         <VCol cols="12">
             <VEmptyState
-                v-if="!state.installs"
+                v-if="!state.installs && !state.loading"
                 :image="state.octodexImageUrl"
             >
                 <template v-slot:title>
@@ -160,7 +163,7 @@ const gh = reactive(new GitHub())
             </VEmptyState>
             <VCard
                 title="Repositories"
-                v-if="state.installs"
+                v-if="state.installs || state.loading"
             >
                 <VCardText>
                     <VBtn
