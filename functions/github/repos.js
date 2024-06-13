@@ -25,31 +25,26 @@ export async function onRequestGet(context) {
     if (session?.expiry <= +new Date()) {
         return Response.json({ 'err': 'Expired' })
     }
-
-    let repos = []
     try {
         const { results } = await env.d1db.prepare("SELECT * FROM github_apps WHERE memberEmail = ?")
             .bind(session.memberEmail)
             .all()
 
-        console.log('results', results)
+        let repos = []
         for (const github_app of results) {
-            if (!github_app.access_token) {
-                console.log(`github_apps kid=${token}`, github_app) //TODO remove secrets
+            if (!github_app.accessToken) {
+                console.log(`github_apps kid=${token} installationId=${installationId}`)
                 throw new Error('github_apps invalid')
             }
-            const fetcher = new GitHubRepoFetcher(github_app.access_token)
+            const fetcher = new GitHubRepoFetcher(github_app.accessToken)
 
             console.log('headers', fetcher.headers)
             console.log('fetcher', fetcher.repos)
 
-            const details = await fetcher.getRepoDetails()
-
-            console.log('details', details)
+            await fetcher.getRepoDetails()
             console.log('fetcher', fetcher.repos)
 
-            repos = repos.join(JSON.stringify(details, null, 2))
-
+            repos = repos.concat(fetcher.repos)
             console.log('repos', repos)
         }
 
@@ -62,11 +57,11 @@ export async function onRequestGet(context) {
 }
 
 class GitHubRepoFetcher {
-    constructor(accessKey) {
+    constructor(accessToken) {
         this.repos = []
         this.headers = {
             'Accept': 'application/vnd.github+json',
-            'Authorization': `Bearer ${accessKey}`,
+            'Authorization': `token ${accessToken}`,
             'X-GitHub-Api-Version': '2022-11-28',
         }
         this.baseUrl = "https://api.github.com"
