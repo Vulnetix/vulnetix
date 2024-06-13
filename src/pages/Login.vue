@@ -89,7 +89,6 @@ const login = async () => {
                                 :text="state.error"
                                 border="start"
                                 variant="tonal"
-                                close-label="Close Alert"
                             />
                         </VCol>
 

@@ -114,7 +114,6 @@ const gh = reactive(new GitHub())
                 :text="state.error"
                 border="start"
                 variant="tonal"
-                close-label="Close Alert"
             />
             <VAlert
                 v-if="state.warning"
@@ -124,7 +123,15 @@ const gh = reactive(new GitHub())
                 :text="state.warning"
                 border="start"
                 variant="tonal"
-                close-label="Close Alert"
+            />
+            <VAlert
+                v-if="state.success"
+                color="success"
+                icon="$success"
+                title="Success"
+                :text="state.success"
+                border="start"
+                variant="tonal"
             />
         </VCol>
         <VCol cols="12">
@@ -182,7 +189,7 @@ const gh = reactive(new GitHub())
                     type="table"
                 ></v-skeleton-loader>
                 <VTable
-                    v-if="state.apps.length && !state.loading"
+                    v-else
                     height="80%"
                     fixed-header
                 >
