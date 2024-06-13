@@ -128,7 +128,7 @@ class GitHubRepoFetcher {
             for (const branch of await this.getBranches(repo)) {
                 data.branch = branch.name
                 data.latestCommitSHA = branch.commit.sha
-                const branchData = data.clone()
+                const branchData = Object.assign({}, data)
                 if (repo.default_branch === branch.name) {
                     const latestCommit = await this.getCommit(repo, branch)
                     branchData.latestCommitMessage = latestCommit.commit.message
