@@ -49,11 +49,17 @@ const login = async () => {
 
 <template>
     <div class="auth-wrapper d-flex align-center justify-center pa-4">
-        <VCard class="auth-card pa-4 pt-7" max-width="448">
+        <VCard
+            class="auth-card pa-4 pt-7"
+            max-width="448"
+        >
             <VCardItem class="justify-center">
                 <template #prepend>
                     <div class="d-flex">
-                        <IconTrivialSecurity class="d-flex text-primary" width="150" />
+                        <IconTrivialSecurity
+                            class="d-flex text-primary"
+                            width="150"
+                        />
                     </div>
                 </template>
             </VCardItem>
@@ -74,34 +80,64 @@ const login = async () => {
                 <VForm @submit.prevent="login">
                     <VRow>
                         <VCol cols="12">
-                            <VAlert v-if="state.error" color="error" icon="$error" title="Server Error"
-                                :text="state.error" border="start" variant="tonal" closable close-label="Close Alert" />
+                            <VAlert
+                                v-if="state.error"
+                                color="error"
+                                icon="$error"
+                                title="Server Error"
+                                :text="state.error"
+                                border="start"
+                                variant="tonal"
+                                closable
+                                close-label="Close Alert"
+                            />
                         </VCol>
 
                         <!-- email -->
                         <VCol cols="12">
-                            <VTextField v-model="state.email" autofocus placeholder="johndoe@email.com" label="Email"
-                                type="email" />
+                            <VTextField
+                                v-model="state.email"
+                                autofocus
+                                placeholder="johndoe@email.com"
+                                label="Email"
+                                type="email"
+                            />
                         </VCol>
 
                         <!-- password -->
                         <VCol cols="12">
-                            <VTextField v-model="state.password" required label="Password" placeholder="············"
+                            <VTextField
+                                v-model="state.password"
+                                required
+                                label="Password"
+                                placeholder="············"
                                 :error-messages="v$.password.$errors.map(e => e.$message)"
                                 :type="isPasswordVisible ? 'text' : 'password'"
                                 :append-inner-icon="isPasswordVisible ? 'bx-hide' : 'bx-show'"
-                                @click:append-inner="isPasswordVisible = !isPasswordVisible" />
+                                @click:append-inner="isPasswordVisible = !isPasswordVisible"
+                            />
                         </VCol>
 
                         <!-- login button -->
                         <VCol cols="12">
-                            <VBtn block text="Login" type="submit" @click="v$.$validate" />
+                            <VBtn
+                                block
+                                text="Login"
+                                type="submit"
+                                @click="v$.$validate"
+                            />
                         </VCol>
 
                         <!-- create account -->
-                        <VCol cols="12" class="text-center text-base">
+                        <VCol
+                            cols="12"
+                            class="text-center text-base"
+                        >
                             <span>New on our platform?</span>
-                            <RouterLink class="text-primary ms-2" to="/register">
+                            <RouterLink
+                                class="text-primary ms-2"
+                                to="/register"
+                            >
                                 Create an account
                             </RouterLink>
                         </VCol>

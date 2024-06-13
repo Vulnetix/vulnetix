@@ -27,34 +27,37 @@ export async function onRequestGet(context) {
         return Response.json({ 'err': 'Expired' })
     }
 
-    const access_token = await
-    env.d1db.prepare("SELECT access_key FROM integration_github WHERE memberEmail = ?")
-        .bind(session.memberEmail)
-        .first('access_key')
-
-    if (!access_token) {
-        console.log(`integration_github kid=${token}`)
-        throw new Error('integration_github invalid')
-    }
+    let repos = []
     try {
-        const fetcher = new GitHubRepoFetcher(access_token)
+        const github_apps = await
+        env.d1db.prepare("SELECT * FROM github_apps WHERE memberEmail = ?")
+            .bind(session.memberEmail)
+            .all()
 
-        console.log('headers', fetcher.headers)
-        console.log('fetcher', fetcher.repos)
+        for (const github_app of github_apps) {
+            if (!github_app.access_token) {
+                console.log(`github_apps kid=${token}`, github_app) //TODO remove secrets
+                throw new Error('github_apps invalid')
+            }
+            const fetcher = new GitHubRepoFetcher(github_app.access_token)
 
-        const details = await fetcher.getRepoDetails()
+            console.log('headers', fetcher.headers)
+            console.log('fetcher', fetcher.repos)
 
-        console.log('details', details)
-        console.log('fetcher', fetcher.repos)
+            const details = await fetcher.getRepoDetails()
 
-        const repos = JSON.stringify(details, null, 2)
+            console.log('details', details)
+            console.log('fetcher', fetcher.repos)
 
-        console.log('repos', repos)
-        
+            repos = repos.join(JSON.stringify(details, null, 2))
+
+            console.log('repos', repos)
+        }
+
         return Response.json(repos)
     } catch (e) {
         console.error(e)
-        
+
         return Response.json(e)
     }
 }
@@ -63,8 +66,8 @@ class GitHubRepoFetcher {
     constructor(accessKey) {
         this.repos = []
         this.headers = {
-            'Authorization': `Bearer ${accessKey}`,
             'Accept': 'application/vnd.github+json',
+            'Authorization': `Bearer ${accessKey}`,
             'X-GitHub-Api-Version': '2022-11-28',
         }
         this.baseUrl = "https://api.github.com"
@@ -76,7 +79,7 @@ class GitHubRepoFetcher {
         if (!response.ok) {
             throw new Error(`GitHubRepoFetcher error! status: ${response.status}`)
         }
-        
+
         return response.json()
     }
     async getRepos() {
@@ -102,11 +105,11 @@ class GitHubRepoFetcher {
             }
             const file = await fileResponse.json()
             const content = Buffer.from(file.content, file.encoding).toString('utf-8')
-            
+
             return { exists: true, content }
         } catch (error) {
             console.error(error)
-            
+
             return { exists: false, content: null }
         }
     }
@@ -142,7 +145,5 @@ class GitHubRepoFetcher {
                 })
             }
         }
-
-        return this.repos
     }
 }

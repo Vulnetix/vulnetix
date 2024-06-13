@@ -27,7 +27,7 @@ export async function onRequestGet(context) {
     if (session?.expiry <= +new Date()) {
         return Response.json({ 'err': 'Expired' })
     }
-    if (params?.code) {
+    if (params?.code && params?.installation_id) {
         const method = "POST"
         const url = new URL("https://github.com/login/oauth/access_token")
 
@@ -45,18 +45,19 @@ export async function onRequestGet(context) {
             throw new Error(data.error)
         }
         if (!data?.access_token) {
-            console.log('installation_id', params?.installation_id, 'kid', token, 'data', data)
+            console.log('installationId', params.installation_id, 'kid', token, 'data', data)
             throw new Error('OAuth response invalid')
         }
+        const created = +new Date()
 
-        const info = await env.d1db.prepare('INSERT INTO integration_github (installation_id, memberEmail, access_key) VALUES (?1, ?2, ?3)')
-            .bind(params?.installation_id, session?.memberEmail, data.access_token)
+        const info = await env.d1db.prepare('INSERT INTO github_apps (installationId, memberEmail, accessToken, created, expires) VALUES (?1, ?2, ?3, ?4, ?5)')
+            .bind(params.installation_id, session.memberEmail, data.access_token, created, (86400000 * 365 * 10) + created)
             .run()
 
-        console.log(`/github/install installation_id=${params?.installation_id} kid=${token}`, info)
-        
+        console.log(`/github/install installationId=${params?.installation_id} kid=${token}`, info)
+
         return Response.json(info)
     }
-    
+
     return Response.json({ 'err': 'OAuth authorization code not provided' })
 }
