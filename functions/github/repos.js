@@ -36,7 +36,7 @@ export async function onRequestGet(context) {
                 console.log(`github_apps kid=${token} installationId=${installationId}`)
                 throw new Error('github_apps invalid')
             }
-            const fetcher = new GitHubRepoFetcher(github_app.accessToken).getRepoDetails()
+            const fetcher = (new GitHubRepoFetcher(github_app.accessToken)).getRepoDetails()
 
             console.log('fetcher', fetcher.repos)
             repos = repos.concat(fetcher.repos)
