@@ -1,6 +1,5 @@
 <script setup>
-// eslint-disable-next-line import/no-unresolved
-import axios from '@axios'
+import { default as axios } from 'axios'
 import { reactive } from 'vue'
 import { useTheme } from 'vuetify'
 import router from "../router"
@@ -56,7 +55,7 @@ class GitHub {
                 console.log('data', data)
                 state.error = data.err
                 router.push('/logout')
-                
+
                 return
             }
             if (isJSON(data)) {
@@ -78,53 +77,20 @@ const gh = reactive(new GitHub())
 <template>
     <VRow>
         <VCol cols="12">
-            <VAlert
-                v-if="state.error"
-                color="error"
-                icon="$error"
-                title="Server Error"
-                :text="state.error"
-                border="start"
-                variant="tonal"
-                closable
-                close-label="Close Alert"
-            />
-            <VAlert
-                v-if="state.warning"
-                color="warning"
-                icon="$warning"
-                title="Warning"
-                :text="state.warning"
-                border="start"
-                variant="tonal"
-                closable
-                close-label="Close Alert"
-            />
+            <VAlert v-if="state.error" color="error" icon="$error" title="Server Error" :text="state.error"
+                border="start" variant="tonal" closable close-label="Close Alert" />
+            <VAlert v-if="state.warning" color="warning" icon="$warning" title="Warning" :text="state.warning"
+                border="start" variant="tonal" closable close-label="Close Alert" />
         </VCol>
         <VCol cols="12">
             <VCard title="GitHub">
                 <VCardText>
-                    <VBtn
-                        v-if="gh.repos.length === 0"
-                        text="Connect to GitHub"
-                        prepend-icon="mdi-github"
-                        variant="text"
-                        :color="global.name.value === 'dark' ? '#fff' : '#272727'"
-                        @click="gh.integrate"
-                    />
-                    <VBtn
-                        v-else
-                        text="Refresh"
-                        prepend-icon="mdi-github"
-                        variant="text"
-                        :color="global.name.value === 'dark' ? '#fff' : '#272727'"
-                        @click="gh.refresh"
-                    />
+                    <VBtn v-if="gh.repos.length === 0" text="Connect to GitHub" prepend-icon="mdi-github" variant="text"
+                        :color="global.name.value === 'dark' ? '#fff' : '#272727'" @click="gh.integrate" />
+                    <VBtn v-else text="Refresh" prepend-icon="mdi-github" variant="text"
+                        :color="global.name.value === 'dark' ? '#fff' : '#272727'" @click="gh.refresh" />
                 </VCardText>
-                <VTable
-                    height="80%"
-                    fixed-header
-                >
+                <VTable height="80%" fixed-header>
                     <thead>
                         <tr>
                             <th class="text-uppercase">
@@ -149,39 +115,24 @@ const gh = reactive(new GitHub())
                     </thead>
 
                     <tbody>
-                        <tr
-                            v-for="item in gh.repos"
-                            :key="item.latestCommitSHA"
-                        >
+                        <tr v-for="item in gh.repos" :key="item.latestCommitSHA">
                             <td :title="item.createdAt">
                                 {{ item.fullName }}
                             </td>
-                            <td
-                                class="text-center"
-                                :title="item.latestCommitSHA"
-                            >
+                            <td class="text-center" :title="item.latestCommitSHA">
                                 {{ item.branch }}<span v-if="item.branch === item.defaultBranch"> (default)</span>
                             </td>
                             <td class="text-center">
                                 {{ item.visibility }}
                             </td>
-                            <td
-                                class="text-center"
-                                :title="item.latestCommitSHA"
-                            >
-                                <img
-                                    v-if="item.avatarUrl"
-                                    :src="item.avatarUrl"
-                                >
+                            <td class="text-center" :title="item.latestCommitSHA">
+                                <img v-if="item.avatarUrl" :src="item.avatarUrl">
                                 <span class="ms-1">{{ item.latestCommitMessage }}</span>
                             </td>
                             <td class="text-center">
                                 {{ item.pushedAt }}
                             </td>
-                            <td
-                                class="text-center"
-                                :title="item.dotfileContents"
-                            >
+                            <td class="text-center" :title="item.dotfileContents">
                                 {{ item.dotfileExists }}
                             </td>
                         </tr>

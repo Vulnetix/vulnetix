@@ -2,8 +2,7 @@
 import IconTrivialSecurity from '@images/IconTrivialSecurity.vue'
 import { useVuelidate } from '@vuelidate/core'
 import { email, required } from '@vuelidate/validators'
-// eslint-disable-next-line import/no-unresolved
-import axios from '@axios'
+import { default as axios } from 'axios'
 import { SHA1 } from 'crypto-es/lib/sha1'
 import { reactive } from 'vue'
 import router from "../router"
@@ -43,17 +42,11 @@ const register = () => {
 
 <template>
     <div class="auth-wrapper d-flex align-center justify-center pa-4">
-        <VCard
-            class="auth-card pa-4 pt-7"
-            max-width="448"
-        >
+        <VCard class="auth-card pa-4 pt-7" max-width="448">
             <VCardItem class="justify-center">
                 <template #prepend>
                     <div class="d-flex">
-                        <IconTrivialSecurity
-                            class="d-flex text-primary"
-                            width="150"
-                        />
+                        <IconTrivialSecurity class="d-flex text-primary" width="150" />
                     </div>
                 </template>
             </VCardItem>
@@ -75,73 +68,36 @@ const register = () => {
                     <VRow>
                         <!-- Org -->
                         <VCol cols="12">
-                            <VTextField
-                                v-model="state.org"
-                                required
-                                autofocus
-                                label="Organization"
-                                placeholder="ACME Corp."
-                            />
+                            <VTextField v-model="state.org" required autofocus label="Organization"
+                                placeholder="ACME Corp." />
                         </VCol>
                         <!-- email -->
                         <VCol cols="12">
-                            <VTextField
-                                v-model="state.email"
-                                required
-                                label="Email"
-                                placeholder="johndoe@email.com"
-                                type="email"
-                            />
+                            <VTextField v-model="state.email" required label="Email" placeholder="johndoe@email.com"
+                                type="email" />
                         </VCol>
 
                         <!-- password -->
                         <VCol cols="12">
-                            <VTextField
-                                v-model="state.password"
-                                required
-                                label="Password"
-                                placeholder="············"
+                            <VTextField v-model="state.password" required label="Password" placeholder="············"
                                 :type="isPasswordVisible ? 'text' : 'password'"
                                 :append-inner-icon="isPasswordVisible ? 'bx-hide' : 'bx-show'"
-                                @click:append-inner="isPasswordVisible = !isPasswordVisible"
-                            />
+                                @click:append-inner="isPasswordVisible = !isPasswordVisible" />
                             <div class="d-flex align-center mt-1 mb-4">
-                                <VCheckbox
-                                    id="privacy-policy"
-                                    v-model="state.privacyPolicies"
-                                    required
-                                    inline
-                                />
-                                <VLabel
-                                    for="privacy-policy"
-                                    style="opacity: 1;"
-                                >
+                                <VCheckbox id="privacy-policy" v-model="state.privacyPolicies" required inline />
+                                <VLabel for="privacy-policy" style="opacity: 1;">
                                     <span class="me-1">I agree to</span>
-                                    <a
-                                        href="javascript:void(0)"
-                                        class="text-primary"
-                                    >privacy policy & terms</a>
+                                    <a href="javascript:void(0)" class="text-primary">privacy policy & terms</a>
                                 </VLabel>
                             </div>
 
-                            <VBtn
-                                block
-                                text="Sign up"
-                                type="submit"
-                                @click="v$.$validate"
-                            />
+                            <VBtn block text="Sign up" type="submit" @click="v$.$validate" />
                         </VCol>
 
                         <!-- login instead -->
-                        <VCol
-                            cols="12"
-                            class="text-center text-base"
-                        >
+                        <VCol cols="12" class="text-center text-base">
                             <span>Already have an account?</span>
-                            <RouterLink
-                                class="text-primary ms-2"
-                                to="/login"
-                            >
+                            <RouterLink class="text-primary ms-2" to="/login">
                                 Sign in instead
                             </RouterLink>
                         </VCol>
@@ -156,10 +112,10 @@ const register = () => {
 @use "@core/scss/template/pages/page-auth.scss";
 
 .v-btn {
-  text-transform: none;
+    text-transform: none;
 }
 
 .subheading {
-  font-size: 0.8em;
+    font-size: 0.8em;
 }
 </style>
