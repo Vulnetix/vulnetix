@@ -48,40 +48,37 @@ class GitHub {
     async refresh() {
         clearAlerts()
         state.loading = true
-        setTimeout(async () => {
-            try {
-                const { data } = await axios.get('/github/repos')
-                state.loading = false
+        try {
+            const { data } = await axios.get('/github/repos')
+            state.loading = false
+            if (typeof data === "string" && isJSON(data)) {
+                localStorage.setItem('/github/installs', data)
+                data = JSON.parse(data)
                 if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
-                    console.log('data', data)
                     state.error = data.err
                     return setTimeout(router.push('/logout'), 2000)
                 }
-                if (isJSON(data)) {
-                    localStorage.setItem('/github/installs', JSON.stringify(data))
-                    if (data.length > 0) {
-                        state.installs = true
-                        if (data.map(i => i.repos.length).reduce((a, b) => a + b, 0) === 0) {
-                            state.error = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
-                            state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
-                        } else {
-                            state.installs = true
-                            state.cached = false
-                            state.success = "Refreshed GitHub repositories"
-                        }
-                        return
+                if (data.length > 0) {
+                    state.installs = true
+                    if (data.map(i => i.repos.length).reduce((a, b) => a + b, 0) === 0) {
+                        state.error = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
+                        state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
+                        state.cached = false
+                    } else {
+                        state.success = "Refreshed GitHub repositories"
+                        state.cached = true
                     }
+                    return
                 }
-                state.installs = false
-                state.error = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
-            } catch (e) {
-                console.error(e)
-                state.error = `${e.code} ${e.message}`
             }
-            state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
-            state.loading = false
-
-        }, 5000)
+        } catch (e) {
+            console.error(e)
+            state.error = `${e.code} ${e.message}`
+        }
+        state.installs = false
+        state.warning = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
+        state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
+        state.loading = false
     }
 }
 function installApp() {
