@@ -51,7 +51,7 @@ class GitHub {
         try {
             const { data } = await axios.get('/github/repos')
             state.loading = false
-            if (!isJSON(data)) {
+            if (typeof data === "string" && !isJSON(data)) {
                 state.warning = state.cached ? "No data retrieved from GitHub. Was this GitHub App uninstalled?" : "No cached data. Have you tried to install the GitHub App?"
                 state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
                 return
