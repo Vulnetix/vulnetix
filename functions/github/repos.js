@@ -28,28 +28,21 @@ export async function onRequestGet(context) {
             .bind(session.memberEmail)
             .all()
 
-        let installations = []
+        let installs = []
         for (const github_app of results) {
             if (!github_app.accessToken) {
                 console.log(`github_apps kid=${token} installationId=${github_app.installationId}`)
                 throw new Error('github_apps invalid')
             }
             const fetcher = new GitHubRepoFetcher(github_app.accessToken)
-
-            await fetcher.getRepoDetails()
-            installations = installations.concat({
-                'repos': fetcher.repos,
-                'installation_id': github_app.installationId,
-                'created': github_app.created
+            installs = installs.concat({
+                repos: await fetcher.getRepoDetails(),
+                installationId: github_app.installationId,
+                created: github_app.created
             })
         }
-        console.log('installations', installations)
 
-        return Response.json({
-            'repos': repos,
-            'installation_id': github_app.installationId,
-            'created': github_app.created
-        })
+        return Response.json(installs)
     } catch (e) {
         console.error(e)
 
@@ -59,7 +52,6 @@ export async function onRequestGet(context) {
 
 class GitHubRepoFetcher {
     constructor(accessToken) {
-        this.repos = []
         this.headers = {
             'Accept': 'application/vnd.github+json',
             'Authorization': `token ${accessToken}`,
@@ -120,38 +112,38 @@ class GitHubRepoFetcher {
         }
     }
     async getRepoDetails() {
-        const repos = await this.getRepos()
-
-        for (const repo of repos) {
-            const branches = await this.getBranches(repo)
-
-            for (const branch of branches) {
-                const data = {
-                    ghid: repo.id,
-                    fullName: repo.full_name,
-                    createdAt: repo.created_at,
-                    visibility: repo.visibility,
-                    archived: repo.archived,
-                    defaultBranch: repo.default_branch,
-                    branch: branch.name,
-                    latestCommitSHA: branch.commit.sha,
-                    pushedAt: repo.pushed_at,
-                    avatarUrl: repo.owner.avatar_url,
-                    license: repo.license,
-                }
+        const collection = []
+        for (const repo of await this.getRepos()) {
+            const data = {
+                ghid: repo.id,
+                fullName: repo.full_name,
+                createdAt: repo.created_at,
+                visibility: repo.visibility,
+                archived: repo.archived,
+                defaultBranch: repo.default_branch,
+                pushedAt: repo.pushed_at,
+                avatarUrl: repo.owner.avatar_url,
+                license: repo.license,
+            }
+            for (const branch of await this.getBranches(repo)) {
+                data.branch = branch.name
+                data.latestCommitSHA = branch.commit.sha
+                const branchData = data.clone()
                 if (repo.default_branch === branch.name) {
                     const latestCommit = await this.getCommit(repo, branch)
-                    data.latestCommitMessage = latestCommit.commit.message
-                    data.latestCommitVerification = latestCommit.commit.verification
-                    data.latestCommitter = latestCommit.commit.committer
-                    data.latestStats = latestCommit.stats
-                    data.latestFilesChanged = latestCommit.files.length
+                    branchData.latestCommitMessage = latestCommit.commit.message
+                    branchData.latestCommitVerification = latestCommit.commit.verification
+                    branchData.latestCommitter = latestCommit.commit.committer
+                    branchData.latestStats = latestCommit.stats
+                    branchData.latestFilesChanged = latestCommit.files.length
                     const fileDetails = await this.getFileContents(repo, branch)
-                    data.dotfileExists = fileDetails.exists
-                    data.dotfileContents = fileDetails.content
+                    branchData.dotfileExists = fileDetails.exists
+                    branchData.dotfileContents = fileDetails.content
                 }
-                this.repos.push(data)
+                collection.push(branchData)
             }
         }
+
+        return collection
     }
 }
