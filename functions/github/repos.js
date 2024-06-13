@@ -12,8 +12,6 @@ export async function onRequestGet(context) {
     if (!token) {
         return Response.json({ 'err': 'Forbidden' })
     }
-    console.log('token', token)
-
     const session = await env.d1db.prepare("SELECT memberEmail, expiry FROM sessions WHERE kid = ?")
         .bind(token)
         .first()
@@ -30,22 +28,28 @@ export async function onRequestGet(context) {
             .bind(session.memberEmail)
             .all()
 
-        let repos = []
+        let installations = []
         for (const github_app of results) {
             if (!github_app.accessToken) {
-                console.log(`github_apps kid=${token} installationId=${installationId}`)
+                console.log(`github_apps kid=${token} installationId=${github_app.installationId}`)
                 throw new Error('github_apps invalid')
             }
             const fetcher = new GitHubRepoFetcher(github_app.accessToken)
 
             await fetcher.getRepoDetails()
-
-            console.log('fetcher', fetcher.repos)
-            repos = repos.concat(fetcher.repos)
+            installations = installations.concat({
+                'repos': fetcher.repos,
+                'installation_id': github_app.installationId,
+                'created': github_app.created
+            })
         }
-        console.log('repos', repos)
+        console.log('installations', installations)
 
-        return Response.json(repos)
+        return Response.json({
+            'repos': repos,
+            'installation_id': github_app.installationId,
+            'created': github_app.created
+        })
     } catch (e) {
         console.error(e)
 
@@ -60,6 +64,7 @@ class GitHubRepoFetcher {
             'Accept': 'application/vnd.github+json',
             'Authorization': `token ${accessToken}`,
             'X-GitHub-Api-Version': '2022-11-28',
+            'User-Agent': 'Triage-by-Trivial-Security',
         }
         this.baseUrl = "https://api.github.com"
     }
