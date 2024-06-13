@@ -41,14 +41,19 @@
     "vue"
   ],
   "cSpell.words": [
+    "axios",
     "Composables",
     "Customizer",
+    "dotfile",
     "flagpack",
+    "ghid",
     "Iconify",
     "psudo",
     "stylelint",
     "touchless",
     "triggerer",
+    "trivialsec",
+    "Vuelidate",
     "vuetify"
   ],
   "commentAnchors.tags.list": [

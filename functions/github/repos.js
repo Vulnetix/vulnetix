@@ -7,15 +7,18 @@ export async function onRequestGet(context) {
         next, // used for middleware or to fetch assets
         data, // arbitrary space for passing data between middlewares
     } = context
+
     const token = request.headers.get('x-trivialsec')
     if (!token) {
         return Response.json({ 'err': 'Forbidden' })
     }
     console.log('token', token)
+
     const session = await
-        env.d1db.prepare("SELECT memberEmail, expiry FROM sessions WHERE kid = ?")
-            .bind(token)
-            .first()
+    env.d1db.prepare("SELECT memberEmail, expiry FROM sessions WHERE kid = ?")
+        .bind(token)
+        .first()
+
     console.log('session expiry', session?.expiry)
     if (!session) {
         return Response.json({ 'err': 'Revoked' })
@@ -23,26 +26,35 @@ export async function onRequestGet(context) {
     if (session?.expiry <= +new Date()) {
         return Response.json({ 'err': 'Expired' })
     }
+
     const access_token = await
-        env.d1db.prepare("SELECT access_key FROM integration_github WHERE memberEmail = ?")
-            .bind(session.memberEmail)
-            .first('access_key')
+    env.d1db.prepare("SELECT access_key FROM integration_github WHERE memberEmail = ?")
+        .bind(session.memberEmail)
+        .first('access_key')
+
     if (!access_token) {
         console.log(`integration_github kid=${token}`)
         throw new Error('integration_github invalid')
     }
     try {
         const fetcher = new GitHubRepoFetcher(access_token)
+
         console.log('headers', fetcher.headers)
         console.log('fetcher', fetcher.repos)
+
         const details = await fetcher.getRepoDetails()
+
         console.log('details', details)
         console.log('fetcher', fetcher.repos)
+
         const repos = JSON.stringify(details, null, 2)
+
         console.log('repos', repos)
+        
         return Response.json(repos)
     } catch (e) {
         console.error(e)
+        
         return Response.json(e)
     }
 }
@@ -53,16 +65,18 @@ class GitHubRepoFetcher {
         this.headers = {
             'Authorization': `Bearer ${accessKey}`,
             'Accept': 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28'
+            'X-GitHub-Api-Version': '2022-11-28',
         }
         this.baseUrl = "https://api.github.com"
     }
     async fetchJSON(url) {
         console.log(url)
+
         const response = await fetch(url, { headers: this.headers })
         if (!response.ok) {
             throw new Error(`GitHubRepoFetcher error! status: ${response.status}`)
         }
+        
         return response.json()
     }
     async getRepos() {
@@ -76,6 +90,7 @@ class GitHubRepoFetcher {
     }
     async getFileContents(repo, branch) {
         const fileUrl = `${this.baseUrl}/repos/${repo.full_name}/contents/.trivialsec?ref=${branch.name}`
+
         console.log(fileUrl)
         try {
             const fileResponse = await fetch(fileUrl, { headers: this.headers })
@@ -87,9 +102,11 @@ class GitHubRepoFetcher {
             }
             const file = await fileResponse.json()
             const content = Buffer.from(file.content, file.encoding).toString('utf-8')
+            
             return { exists: true, content }
         } catch (error) {
             console.error(error)
+            
             return { exists: false, content: null }
         }
     }
@@ -121,7 +138,7 @@ class GitHubRepoFetcher {
                     latestStats: latestCommit.stats,
                     latestFilesChanged: latestCommit.files.length,
                     dotfileExists: fileDetails.exists,
-                    dotfileContents: fileDetails.content
+                    dotfileContents: fileDetails.content,
                 })
             }
         }

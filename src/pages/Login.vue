@@ -1,8 +1,9 @@
 <script setup>
+// eslint-disable-next-line import/no-unresolved
+import axios from '@axios'
 import IconTrivialSecurity from '@images/IconTrivialSecurity.vue'
 import { useVuelidate } from '@vuelidate/core'
 import { email, minLength, required } from '@vuelidate/validators'
-import axios from 'axios'
 import { SHA1 } from 'crypto-es/lib/sha1'
 import { reactive } from 'vue'
 import router from "../router"
@@ -29,16 +30,18 @@ const login = async () => {
     if (state.email && state.password) {
         try {
             const { data } = await axios.get(`/login/${state.email}/${SHA1(state.password)}`)
+            if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
+                state.error = data.err
+
+                return
+            }
             localStorage.setItem('/member/email', state.email)
             localStorage.setItem('/session/token', data.token)
             router.push('/dashboard')
         } catch (e) {
             console.error(e)
             state.error = e.code
-            return
-        }
-        if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
-            state.error = data.err
+
             return
         }
     }
@@ -47,11 +50,17 @@ const login = async () => {
 
 <template>
     <div class="auth-wrapper d-flex align-center justify-center pa-4">
-        <VCard class="auth-card pa-4 pt-7" max-width="448">
+        <VCard
+            class="auth-card pa-4 pt-7"
+            max-width="448"
+        >
             <VCardItem class="justify-center">
                 <template #prepend>
                     <div class="d-flex">
-                        <IconTrivialSecurity class="d-flex text-primary" width="150" />
+                        <IconTrivialSecurity
+                            class="d-flex text-primary"
+                            width="150"
+                        />
                     </div>
                 </template>
             </VCardItem>
@@ -72,34 +81,64 @@ const login = async () => {
                 <VForm @submit.prevent="login">
                     <VRow>
                         <VCol cols="12">
-                            <VAlert color="error" icon="$error" title="Server Error" :text="state.error"
-                                v-if="state.error" border="start" variant="tonal" closable close-label="Close Alert" />
+                            <VAlert
+                                v-if="state.error"
+                                color="error"
+                                icon="$error"
+                                title="Server Error"
+                                :text="state.error"
+                                border="start"
+                                variant="tonal"
+                                closable
+                                close-label="Close Alert"
+                            />
                         </VCol>
 
                         <!-- email -->
                         <VCol cols="12">
-                            <VTextField v-model="state.email" autofocus placeholder="johndoe@email.com" label="Email"
-                                type="email" />
+                            <VTextField
+                                v-model="state.email"
+                                autofocus
+                                placeholder="johndoe@email.com"
+                                label="Email"
+                                type="email"
+                            />
                         </VCol>
 
                         <!-- password -->
                         <VCol cols="12">
-                            <VTextField required v-model="state.password" label="Password" placeholder="············"
+                            <VTextField
+                                v-model="state.password"
+                                required
+                                label="Password"
+                                placeholder="············"
                                 :error-messages="v$.password.$errors.map(e => e.$message)"
                                 :type="isPasswordVisible ? 'text' : 'password'"
                                 :append-inner-icon="isPasswordVisible ? 'bx-hide' : 'bx-show'"
-                                @click:append-inner="isPasswordVisible = !isPasswordVisible" />
+                                @click:append-inner="isPasswordVisible = !isPasswordVisible"
+                            />
                         </VCol>
 
                         <!-- login button -->
                         <VCol cols="12">
-                            <VBtn @click="v$.$validate" block text="Login" type="submit" />
+                            <VBtn
+                                block
+                                text="Login"
+                                type="submit"
+                                @click="v$.$validate"
+                            />
                         </VCol>
 
                         <!-- create account -->
-                        <VCol cols="12" class="text-center text-base">
+                        <VCol
+                            cols="12"
+                            class="text-center text-base"
+                        >
                             <span>New on our platform?</span>
-                            <RouterLink class="text-primary ms-2" to="/register">
+                            <RouterLink
+                                class="text-primary ms-2"
+                                to="/register"
+                            >
                                 Create an account
                             </RouterLink>
                         </VCol>

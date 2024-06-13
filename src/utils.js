@@ -17,6 +17,7 @@ export async function readRequestBody(request) {
         for (const entry of formData.entries()) {
             body[entry[0]] = entry[1]
         }
+        
         return JSON.stringify(body)
     } else {
         // Perhaps some other type of data was submitted in the form
@@ -35,6 +36,7 @@ export async function pbkdf2Verify(key, password, hashBits = 512) {
     if (version != 'v01') {
         throw new Error('Invalid key')
     }
+
     // -- recover salt & iterations from stored (composite) key
     const saltUint8 = new Uint8Array(saltStr.match(/./g).map(ch => ch.charCodeAt(0)))                   // salt as Uint8Array
     // note: cannot use TextEncoder().encode(saltStr) as it generates UTF-8
@@ -47,6 +49,7 @@ export async function pbkdf2Verify(key, password, hashBits = 512) {
     const keyBuffer = await crypto.subtle.deriveBits(params, pwKey, hashBits)                           // derive key
     const keyArray = Array.from(new Uint8Array(keyBuffer))                                      // key as byte array
     const keyStrNew = keyArray.map(byte => String.fromCharCode(byte)).join('')                  // key as string
+    
     return keyStrNew === keyStr // test if newly generated key matches stored key
 }
 
@@ -62,13 +65,14 @@ export async function pbkdf2(password, iterations = 1e5, hashBits = 512) {
     const iterArray = iterHex.match(/.{2}/g).map(byte => parseInt(byte, 16))                            // iter’ns as byte array
     const compositeArray = [].concat(saltArray, iterArray, keyArray)                                    // combined array
     const compositeStr = compositeArray.map(byte => String.fromCharCode(byte)).join('')                 // combined as string
+    
     return btoa('v01' + compositeStr)
 }
 
 export function isJSON(str) {
     try {
-        return (JSON.parse(str) && !!str);
+        return (JSON.parse(str) && !!str)
     } catch (e) {
-        return false;
+        return false
     }
 }

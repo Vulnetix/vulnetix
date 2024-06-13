@@ -23,7 +23,7 @@ const routes = [
         beforeEnter: (to, from, next) => {
             localStorage.setItem('/session/token', '')
             next('/login')
-        }
+        },
     },
 ]
 

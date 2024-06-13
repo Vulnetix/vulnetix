@@ -9,6 +9,7 @@ export async function onRequestPost(context) {
         next, // used for middleware or to fetch assets
         data, // arbitrary space for passing data between middlewares
     } = context
+
     const signature = request.headers.get('X-Hub-Signature-256')
     if (!signature) {
         return Response.json({ 'err': 'Forbidden' })
@@ -48,14 +49,13 @@ async function verifySignature(secret, header, payload) {
 
     let sigBytes = hexToBytes(sigHex)
     let dataBytes = encoder.encode(payload)
-    let equal = await crypto.subtle.verify(
+    
+    return await crypto.subtle.verify(
         algorithm.name,
         key,
         sigBytes,
         dataBytes,
     )
-
-    return equal
 }
 
 function hexToBytes(hex) {
