@@ -11,7 +11,7 @@ const initialState = {
     error: "",
     warning: "",
     success: "",
-    loading: true,
+    loading: false,
     installs: false,
     cached: false,
     octodexImageUrl: `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`,
@@ -35,6 +35,8 @@ class GitHub {
 
         if (this.urlQuery?.setup_action === 'install' && this.urlQuery?.code && this.urlQuery?.installation_id) {
             this.install(this.urlQuery.code, this.urlQuery.installation_id)
+        } else {
+            this.refresh()
         }
     }
     async install(code, installation_id) {
@@ -46,37 +48,40 @@ class GitHub {
     async refresh() {
         clearAlerts()
         state.loading = true
-        try {
-            const { data } = await axios.get('/github/repos')
-            state.loading = false
-            if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
-                console.log('data', data)
-                state.error = data.err
-                return setTimeout(router.push('/logout'), 2000)
-            }
-            if (isJSON(data)) {
-                localStorage.setItem('/github/installs', JSON.stringify(data))
-                if (data.length > 0) {
-                    state.installs = true
-                    if (data.map(i => i.repos.length).reduce((a, b) => a + b, 0) === 0) {
-                        state.error = "No data retrieved from GitHub. Is it still installed?"
-                        state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
-                    } else {
-                        state.installs = true
-                        state.cached = false
-                        state.success = "Refreshed GitHub repositories"
-                    }
-                    return
+        setTimeout(async () => {
+            try {
+                const { data } = await axios.get('/github/repos')
+                state.loading = false
+                if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
+                    console.log('data', data)
+                    state.error = data.err
+                    return setTimeout(router.push('/logout'), 2000)
                 }
+                if (isJSON(data)) {
+                    localStorage.setItem('/github/installs', JSON.stringify(data))
+                    if (data.length > 0) {
+                        state.installs = true
+                        if (data.map(i => i.repos.length).reduce((a, b) => a + b, 0) === 0) {
+                            state.error = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
+                            state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
+                        } else {
+                            state.installs = true
+                            state.cached = false
+                            state.success = "Refreshed GitHub repositories"
+                        }
+                        return
+                    }
+                }
+                state.installs = false
+                state.error = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
+            } catch (e) {
+                console.error(e)
+                state.error = `${e.code} ${e.message}`
             }
-            state.installs = false
-            state.error = "No data retrieved from GitHub. Is it still installed?"
-        } catch (e) {
-            console.error(e)
-            state.error = `${e.code} ${e.message}`
-        }
-        state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
-        state.loading = false
+            state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
+            state.loading = false
+
+        }, 5000)
     }
 }
 function installApp() {
@@ -93,8 +98,11 @@ function loadCached() {
     clearAlerts()
     const stored = localStorage.getItem('/github/installs')
     state.apps = stored ? JSON.parse(stored) : []
-    state.cached = true
-    state.installs = true
+    state.installs = state.apps.length > 0
+    state.cached = state.apps.map(i => i.repos.length).reduce((a, b) => a + b, 0) > 0
+    if (!state.installs) {
+        state.warning = "No cached data. Have you tried to install the GitHub App?"
+    }
 }
 loadCached()
 const gh = reactive(new GitHub())
@@ -153,7 +161,6 @@ const gh = reactive(new GitHub())
                     />
                 </template>
             </VEmptyState>
-
             <VCard
                 title="Repositories"
                 v-if="state.installs"
@@ -172,15 +179,15 @@ const gh = reactive(new GitHub())
                         variant="text"
                         :color="global.name.value === 'dark' ? '#fff' : '#272727'"
                         @click="gh.refresh"
+                        :disabled="state.loading"
                     />
                 </VCardText>
                 <v-skeleton-loader
-                    v-if="!state.apps.length"
-                    :loading="loading"
+                    v-if="state.loading"
                     type="table"
                 ></v-skeleton-loader>
                 <VTable
-                    v-if="state.apps.length"
+                    v-if="state.apps.length && !state.loading"
                     height="80%"
                     fixed-header
                 >
