@@ -36,17 +36,12 @@ export async function onRequestGet(context) {
                 console.log(`github_apps kid=${token} installationId=${installationId}`)
                 throw new Error('github_apps invalid')
             }
-            const fetcher = new GitHubRepoFetcher(github_app.accessToken)
+            const fetcher = new GitHubRepoFetcher(github_app.accessToken).getRepoDetails()
 
-            console.log('headers', fetcher.headers)
             console.log('fetcher', fetcher.repos)
-
-            await fetcher.getRepoDetails()
-            console.log('fetcher', fetcher.repos)
-
             repos = repos.concat(fetcher.repos)
-            console.log('repos', repos)
         }
+        console.log('repos', repos)
 
         return Response.json(repos)
     } catch (e) {
@@ -71,6 +66,7 @@ class GitHubRepoFetcher {
 
         const response = await fetch(url, { headers: this.headers })
         if (!response.ok) {
+            console.error(response)
             throw new Error(`GitHubRepoFetcher error! status: ${response.status}`)
         }
 
@@ -95,6 +91,7 @@ class GitHubRepoFetcher {
                 if (fileResponse.status === 404) {
                     return { exists: false, content: null }
                 }
+                console.error(response)
                 throw new Error(`getFileContents error! status: ${fileResponse.status}`)
             }
             const file = await fileResponse.json()
@@ -139,5 +136,7 @@ class GitHubRepoFetcher {
                 })
             }
         }
+
+        return this
     }
 }
