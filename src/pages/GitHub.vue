@@ -50,18 +50,13 @@ class GitHub {
         state.loading = true
         try {
             const { data } = await axios.get('/github/repos')
-            console.log('data', data)
             state.loading = false
-            if (typeof data === "string" && isJSON(data)) {
-                localStorage.setItem('/github/installs', data)
-                data = JSON.parse(data)
-            } else if (typeof data === "object" && data !== null) {
-                localStorage.setItem('/github/installs', JSON.parse(data))
-            } else {
+            if (!isJSON(data)) {
                 state.warning = state.cached ? "No data retrieved from GitHub. Was this GitHub App uninstalled?" : "No cached data. Have you tried to install the GitHub App?"
                 state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
                 return
             }
+            localStorage.setItem('/github/installs', JSON.stringify(data))
             if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
                 state.error = data.err
                 return setTimeout(router.push('/logout'), 2000)
