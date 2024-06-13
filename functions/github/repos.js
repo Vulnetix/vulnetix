@@ -29,12 +29,12 @@ export async function onRequestGet(context) {
 
     let repos = []
     try {
-        const github_apps = await
+        const { results } = await
         env.d1db.prepare("SELECT * FROM github_apps WHERE memberEmail = ?")
             .bind(session.memberEmail)
             .all()
 
-        for (const github_app of github_apps) {
+        for (const github_app of results) {
             if (!github_app.access_token) {
                 console.log(`github_apps kid=${token}`, github_app) //TODO remove secrets
                 throw new Error('github_apps invalid')
