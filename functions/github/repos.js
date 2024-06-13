@@ -14,8 +14,7 @@ export async function onRequestGet(context) {
     }
     console.log('token', token)
 
-    const session = await
-    env.d1db.prepare("SELECT memberEmail, expiry FROM sessions WHERE kid = ?")
+    const session = await env.d1db.prepare("SELECT memberEmail, expiry FROM sessions WHERE kid = ?")
         .bind(token)
         .first()
 
@@ -29,11 +28,11 @@ export async function onRequestGet(context) {
 
     let repos = []
     try {
-        const { results } = await
-        env.d1db.prepare("SELECT * FROM github_apps WHERE memberEmail = ?")
+        const { results } = await env.d1db.prepare("SELECT * FROM github_apps WHERE memberEmail = ?")
             .bind(session.memberEmail)
             .all()
 
+        console.log('results', results)
         for (const github_app of results) {
             if (!github_app.access_token) {
                 console.log(`github_apps kid=${token}`, github_app) //TODO remove secrets
