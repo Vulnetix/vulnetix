@@ -80,15 +80,23 @@ class GitHubRepoFetcher {
         return response.json()
     }
     async getRepos() {
+        // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repositories-for-the-authenticated-user
         return await this.fetchJSON(`${this.baseUrl}/user/repos`)
     }
+    async getBranch(repo, branch) {
+        // https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#get-a-branch
+        return await this.fetchJSON(`${this.baseUrl}/repos/${repo.full_name}/branches/${branch}`)
+    }
     async getBranches(repo) {
+        // https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#list-branches
         return await this.fetchJSON(`${this.baseUrl}/repos/${repo.full_name}/branches`)
     }
-    async getLatestCommit(repo, branch) {
+    async getCommit(repo, branch) {
+        // https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28
         return await this.fetchJSON(`${this.baseUrl}/repos/${repo.full_name}/commits/${branch.commit.sha}`)
     }
     async getFileContents(repo, branch) {
+        // https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28
         const fileUrl = `${this.baseUrl}/repos/${repo.full_name}/contents/.trivialsec?ref=${branch.name}`
 
         console.log(fileUrl)
@@ -118,29 +126,31 @@ class GitHubRepoFetcher {
             const branches = await this.getBranches(repo)
 
             for (const branch of branches) {
-                const latestCommit = await this.getLatestCommit(repo, branch)
-                const fileDetails = await this.getFileContents(repo, branch)
-
-                this.repos.push({
+                const data = {
                     ghid: repo.id,
                     fullName: repo.full_name,
-                    branch: branch.name,
-                    defaultBranch: repo.default_branch,
-                    avatarUrl: repo.owner.avatar_url,
-                    archived: repo.archived,
-                    visibility: repo.visibility,
                     createdAt: repo.created_at,
+                    visibility: repo.visibility,
+                    archived: repo.archived,
+                    defaultBranch: repo.default_branch,
+                    branch: branch.name,
+                    latestCommitSHA: branch.commit.sha,
                     pushedAt: repo.pushed_at,
+                    avatarUrl: repo.owner.avatar_url,
                     license: repo.license,
-                    latestCommitSHA: latestCommit.sha,
-                    latestCommitMessage: latestCommit.commit.message,
-                    latestCommitVerification: latestCommit.commit.verification,
-                    latestCommitter: latestCommit.commit.committer,
-                    latestStats: latestCommit.stats,
-                    latestFilesChanged: latestCommit.files.length,
-                    dotfileExists: fileDetails.exists,
-                    dotfileContents: fileDetails.content,
-                })
+                }
+                if (repo.default_branch === branch.name) {
+                    const latestCommit = await this.getCommit(repo, branch)
+                    data.latestCommitMessage = latestCommit.commit.message
+                    data.latestCommitVerification = latestCommit.commit.verification
+                    data.latestCommitter = latestCommit.commit.committer
+                    data.latestStats = latestCommit.stats
+                    data.latestFilesChanged = latestCommit.files.length
+                    const fileDetails = await this.getFileContents(repo, branch)
+                    data.dotfileExists = fileDetails.exists
+                    data.dotfileContents = fileDetails.content
+                }
+                this.repos.push(data)
             }
         }
     }
