@@ -26,6 +26,7 @@ const v$ = useVuelidate(rules, state)
 const isPasswordVisible = ref(false)
 
 const login = async () => {
+    state.error = ''
     if (state.email && state.password) {
         try {
             const { data } = await axios.get(`/login/${state.email}/${SHA1(state.password)}`)
@@ -88,7 +89,6 @@ const login = async () => {
                                 :text="state.error"
                                 border="start"
                                 variant="tonal"
-                                closable
                                 close-label="Close Alert"
                             />
                         </VCol>

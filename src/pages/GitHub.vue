@@ -13,7 +13,9 @@ const initialState = {
     success: "",
     loading: true,
     installs: false,
-    octodexImageUrl: `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
+    cached: false,
+    octodexImageUrl: `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`,
+    apps: []
 }
 
 const state = reactive({
@@ -26,67 +28,75 @@ axios.defaults.headers.common = {
 
 class GitHub {
     constructor() {
-        this.cached = true
         this.urlQuery = Object.fromEntries(location.search.substring(1).split('&').map(item => item.split('=').map(decodeURIComponent)))
-
         const url = new URL(location)
-
         url.search = ""
         history.pushState({}, "", url)
 
-        const stored = localStorage.getItem('/github/installs')
-        this.installs = stored ? JSON.parse(stored) : []
-
         if (this.urlQuery?.setup_action === 'install' && this.urlQuery?.code && this.urlQuery?.installation_id) {
             this.install(this.urlQuery.code, this.urlQuery.installation_id)
-            return
-        }
-        if (this.installs.length === 0) {
-            this.refresh()
-        } else {
-            this.cached = true
-            state.installs = true
         }
     }
     async install(code, installation_id) {
         const { data } = await axios.get(`/github/install/${installation_id}/${code}`)
         console.log(data)
-        state.success = "GitHub App installed successfully."
-        if (this.installs.length === 0) {
-            this.refresh()
-        }
-    }
-    async integrate() {
-        location.href = 'https://github.com/apps/triage-by-trivial-security/installations/new/'
+        this.refresh()
+        return setTimeout(state.success = "GitHub App installed successfully.", 1000)
     }
     async refresh() {
+        clearAlerts()
+        state.loading = true
         try {
             const { data } = await axios.get('/github/repos')
+            state.loading = false
             if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
                 console.log('data', data)
                 state.error = data.err
-                router.push('/logout')
-
-                return
+                return setTimeout(router.push('/logout'), 2000)
             }
             if (isJSON(data)) {
                 localStorage.setItem('/github/installs', JSON.stringify(data))
-                this.installs = data
-                this.cached = false
                 if (data.length > 0) {
                     state.installs = true
-                    state.success = "Refreshed GitHub repositories"
+                    if (data.map(i => i.repos.length).reduce((a, b) => a + b, 0) === 0) {
+                        state.error = "No data retrieved from GitHub. Is it still installed?"
+                        state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
+                    } else {
+                        state.installs = true
+                        state.cached = false
+                        state.success = "Refreshed GitHub repositories"
+                    }
                     return
                 }
             }
+            state.installs = false
             state.error = "No data retrieved from GitHub. Is it still installed?"
-            state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
         } catch (e) {
             console.error(e)
             state.error = `${e.code} ${e.message}`
         }
+        state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
+        state.loading = false
     }
 }
+function installApp() {
+    location.href = 'https://github.com/apps/triage-by-trivial-security/installations/new/'
+}
+
+function clearAlerts() {
+    state.error = ''
+    state.warning = ''
+    state.success = ''
+}
+
+function loadCached() {
+    clearAlerts()
+    const stored = localStorage.getItem('/github/installs')
+    state.apps = stored ? JSON.parse(stored) : []
+    state.cached = true
+    state.installs = true
+}
+loadCached()
 const gh = reactive(new GitHub())
 </script>
 
@@ -97,11 +107,10 @@ const gh = reactive(new GitHub())
                 v-if="state.error"
                 color="error"
                 icon="$error"
-                title="Server Error"
+                title="Error"
                 :text="state.error"
                 border="start"
                 variant="tonal"
-                closable
                 close-label="Close Alert"
             />
             <VAlert
@@ -112,7 +121,6 @@ const gh = reactive(new GitHub())
                 :text="state.warning"
                 border="start"
                 variant="tonal"
-                closable
                 close-label="Close Alert"
             />
         </VCol>
@@ -130,18 +138,18 @@ const gh = reactive(new GitHub())
                 <template v-slot:actions>
                     <VBtn
                         text="Install GitHub App"
-                        prepend-icon="mdi-github"
+                        prepend-icon="line-md:github-loop"
                         variant="text"
                         :color="global.name.value === 'dark' ? '#fff' : '#272727'"
-                        @click="gh.integrate"
+                        @click="installApp"
                     />
                     <VBtn
-                        v-if="state.installs"
-                        text="Refresh Repositories"
-                        prepend-icon="mdi-refresh"
+                        v-if="state.cached"
+                        text="Show Cached Repositories"
+                        prepend-icon="line-md:downloading-loop"
                         variant="text"
                         :color="global.name.value === 'dark' ? '#fff' : '#272727'"
-                        @click="gh.refresh"
+                        @click="loadCached"
                     />
                 </template>
             </VEmptyState>
@@ -153,10 +161,10 @@ const gh = reactive(new GitHub())
                 <VCardText>
                     <VBtn
                         text="Install another GitHub Account"
-                        prepend-icon="mdi-github"
+                        prepend-icon="line-md:github-loop"
                         variant="text"
                         :color="global.name.value === 'dark' ? '#fff' : '#272727'"
-                        @click="gh.integrate"
+                        @click="installApp"
                     />
                     <VBtn
                         text="Refresh Repositories"
@@ -166,7 +174,13 @@ const gh = reactive(new GitHub())
                         @click="gh.refresh"
                     />
                 </VCardText>
+                <v-skeleton-loader
+                    v-if="!state.apps.length"
+                    :loading="loading"
+                    type="table"
+                ></v-skeleton-loader>
                 <VTable
+                    v-if="state.apps.length"
                     height="80%"
                     fixed-header
                 >
@@ -204,7 +218,7 @@ const gh = reactive(new GitHub())
 
                     <tbody>
                         <template
-                            v-for="item in gh.installs"
+                            v-for="item in state.apps"
                             :key="item.installationId"
                         >
                             <tr
