@@ -68,8 +68,8 @@ class GitHubRepoFetcher {
 
         const response = await fetch(url, { headers: this.headers })
         if (!response.ok) {
-            console.error(response)
-            throw new Error(`GitHubRepoFetcher error! status: ${response.status}`)
+            console.error(response.text(), response.headers)
+            throw new Error(`GitHubRepoFetcher error! status: ${response.status} ${response.statusText}`)
         }
 
         return response.json()
@@ -93,8 +93,8 @@ class GitHubRepoFetcher {
                 if (fileResponse.status === 404) {
                     return { exists: false, content: null }
                 }
-                console.error(response)
-                throw new Error(`getFileContents error! status: ${fileResponse.status}`)
+                console.error(response.text(), response.headers)
+                throw new Error(`getFileContents error! status: ${response.status} ${response.statusText}`)
             }
             const file = await fileResponse.json()
             const content = Buffer.from(file.content, file.encoding).toString('utf-8')
