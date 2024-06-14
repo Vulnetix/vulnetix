@@ -31,6 +31,7 @@ export async function onRequestGet(context) {
     try {
         const githubApps = await cf.d1all(env.d1db, "SELECT * FROM github_apps WHERE memberEmail = ?", session.memberEmail)
         let installs = []
+        const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
         for (const app of githubApps) {
             if (!app.accessToken) {
                 console.log(`github_apps kid=${token} installationId=${app.installationId}`)
@@ -45,7 +46,7 @@ export async function onRequestGet(context) {
                 const pathSuffix = `${repo.full_name}/${repo.id}.json`
                 const repoMetadata = repoCache.filter(r => r.key.endsWith(pathSuffix))
                 if (repoMetadata.length === 0) {
-                    await cf.r2put(env.r2icache, `${prefixRepos}${pathSuffix}`, repo)
+                    await env.r2icache.put(`${prefixRepos}${pathSuffix}`, JSON.stringify(repo), putOptions)
                 }
                 const data = {
                     ghid: repo.id,
