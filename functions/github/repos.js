@@ -30,6 +30,7 @@ export async function onRequestGet(context) {
     }
     try {
         const githubApps = cf.d1all("d1db", "SELECT * FROM github_apps WHERE memberEmail = ?", session.memberEmail)
+        console.log('githubApps', githubApps)
         let installs = []
         for (const app of githubApps) {
             if (!app.accessToken) {
