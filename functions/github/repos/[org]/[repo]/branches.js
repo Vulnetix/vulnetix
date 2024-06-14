@@ -39,12 +39,12 @@ export async function onRequestGet(context) {
             const gh = new GitHub(app.accessToken)
 
             const branches = []
-            const repoFullName = `${params.org}/${params.repo}`
-            const prefixBranches = `/github/${app.installationId}/branches/${repoFullName}/`
-            for (const branch of await gh.getBranches(repoFullName)) {
+            const full_name = `${params.org}/${params.repo}`
+            const prefixBranches = `/github/${app.installationId}/branches/${full_name}/`
+            for (const branch of await gh.getBranches({ full_name })) {
                 await cf.r2put(env.r2icache, `${prefixBranches}/${branch.name}.json`, branch)
                 branches.push({
-                    fullName: repoFullName,
+                    fullName: full_name,
                     branch: branch.name,
                     latestCommitSHA: branch.commit.sha,
                 })
