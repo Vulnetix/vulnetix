@@ -62,7 +62,9 @@ class GitHub {
 
                 return
             }
-            localStorage.setItem('/github/installs', JSON.stringify(data))
+            if (Array.isArray(data) && data.length > 0) {
+                localStorage.setItem('/github/installs', JSON.stringify(data))
+            }
             if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
                 state.error = data.err
 
@@ -106,6 +108,7 @@ function loadCached() {
     const stored = localStorage.getItem('/github/installs')
 
     state.apps = isJSON(stored) ? JSON.parse(stored) : []
+    console.log('state.apps', state.apps)
     state.installs = state.apps.length > 0
     state.cached = state.apps.map(i => i.repos.length).reduce((a, b) => a + b, 0) > 0
 }
