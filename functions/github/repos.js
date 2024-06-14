@@ -12,6 +12,7 @@ export async function onRequestGet(context) {
     if (!token) {
         return Response.json({ 'err': 'Forbidden' })
     }
+
     const session = await env.d1db.prepare("SELECT memberEmail, expiry FROM sessions WHERE kid = ?")
         .bind(token)
         .first()
@@ -35,10 +36,11 @@ export async function onRequestGet(context) {
                 throw new Error('github_apps invalid')
             }
             const fetcher = new GitHubRepoFetcher(github_app.accessToken)
+
             installs = installs.concat({
                 repos: await fetcher.getRepoDetails(),
                 installationId: github_app.installationId,
-                created: github_app.created
+                created: github_app.created,
             })
         }
 
@@ -125,18 +127,23 @@ class GitHubRepoFetcher {
                 avatarUrl: repo.owner.avatar_url,
                 license: repo.license,
             }
+
             for (const branch of await this.getBranches(repo)) {
                 data.branch = branch.name
                 data.latestCommitSHA = branch.commit.sha
+
                 const branchData = Object.assign({}, data)
                 if (repo.default_branch === branch.name) {
                     const latestCommit = await this.getCommit(repo, branch)
+
                     branchData.latestCommitMessage = latestCommit.commit.message
                     branchData.latestCommitVerification = latestCommit.commit.verification
                     branchData.latestCommitter = latestCommit.commit.committer
                     branchData.latestStats = latestCommit.stats
                     branchData.latestFilesChanged = latestCommit.files.length
+
                     const fileDetails = await this.getFileContents(repo, branch)
+
                     branchData.dotfileExists = fileDetails.exists
                     branchData.dotfileContents = fileDetails.content
                 }

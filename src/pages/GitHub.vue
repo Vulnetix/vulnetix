@@ -15,7 +15,7 @@ const initialState = {
     installs: false,
     cached: false,
     octodexImageUrl: `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`,
-    apps: []
+    apps: [],
 }
 
 const state = reactive({
@@ -29,7 +29,9 @@ axios.defaults.headers.common = {
 class GitHub {
     constructor() {
         this.urlQuery = Object.fromEntries(location.search.substring(1).split('&').map(item => item.split('=').map(decodeURIComponent)))
+
         const url = new URL(location)
+
         url.search = ""
         history.pushState({}, "", url)
 
@@ -41,8 +43,10 @@ class GitHub {
     }
     async install(code, installation_id) {
         const { data } = await axios.get(`/github/install/${installation_id}/${code}`)
+
         console.log(data)
         this.refresh()
+
         return setTimeout(state.success = "GitHub App installed successfully.", 1000)
     }
     async refresh() {
@@ -50,15 +54,18 @@ class GitHub {
         state.loading = true
         try {
             const { data } = await axios.get('/github/repos')
+
             state.loading = false
             if (typeof data === "string" && !isJSON(data)) {
                 state.warning = state.cached ? "No data retrieved from GitHub. Was this GitHub App uninstalled?" : "No cached data. Have you tried to install the GitHub App?"
                 state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
+
                 return
             }
             localStorage.setItem('/github/installs', JSON.stringify(data))
             if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
                 state.error = data.err
+
                 return setTimeout(router.push('/logout'), 2000)
             }
             if (data.length > 0) {
@@ -71,6 +78,7 @@ class GitHub {
                     state.success = "Refreshed GitHub repositories"
                     state.cached = true
                 }
+
                 return
             }
         } catch (e) {
@@ -94,12 +102,15 @@ function clearAlerts() {
 
 function loadCached() {
     clearAlerts()
+
     const stored = localStorage.getItem('/github/installs')
+
     state.apps = isJSON(stored) ? JSON.parse(stored) : []
     state.installs = state.apps.length > 0
     state.cached = state.apps.map(i => i.repos.length).reduce((a, b) => a + b, 0) > 0
 }
 loadCached()
+
 const gh = reactive(new GitHub())
 </script>
 
@@ -139,13 +150,13 @@ const gh = reactive(new GitHub())
                 v-if="!state.installs && !state.loading"
                 :image="state.octodexImageUrl"
             >
-                <template v-slot:title>
+                <template #title>
                     <div class="text-subtitle-1 mt-8">
                         GitHub Repositories
                     </div>
                 </template>
 
-                <template v-slot:actions>
+                <template #actions>
                     <VBtn
                         text="Install GitHub App"
                         prepend-icon="line-md:github-loop"
@@ -164,8 +175,8 @@ const gh = reactive(new GitHub())
                 </template>
             </VEmptyState>
             <VCard
-                title="Repositories"
                 v-if="state.installs || state.loading"
+                title="Repositories"
             >
                 <VCardText>
                     <VBtn
@@ -180,14 +191,14 @@ const gh = reactive(new GitHub())
                         prepend-icon="mdi-refresh"
                         variant="text"
                         :color="global.name.value === 'dark' ? '#fff' : '#272727'"
-                        @click="gh.refresh"
                         :disabled="state.loading"
+                        @click="gh.refresh"
                     />
                 </VCardText>
-                <v-skeleton-loader
+                <VSkeletonLoader
                     v-if="state.loading"
                     type="table"
-                ></v-skeleton-loader>
+                />
                 <VTable
                     v-else
                     height="80%"
@@ -236,8 +247,8 @@ const gh = reactive(new GitHub())
                             >
                                 <td>
                                     <img
-                                        width="25"
                                         v-if="repo.avatarUrl"
+                                        width="25"
                                         :src="repo.avatarUrl"
                                     >
                                 </td>
