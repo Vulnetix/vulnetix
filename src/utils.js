@@ -236,7 +236,7 @@ export const octodex = [
     "idokungfoo-avatar.jpg"
 ]
 
-class CloudFlare {
+export class CloudFlare {
     constructor() {
 
     }
@@ -280,7 +280,7 @@ class CloudFlare {
     }
 }
 
-class GitHub {
+export class GitHub {
     constructor(accessToken) {
         this.headers = {
             'Accept': 'application/vnd.github+json',
