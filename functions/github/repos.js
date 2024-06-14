@@ -44,7 +44,7 @@ export async function onRequestGet(context) {
 
             const repos = []
             for (const repo of await gh.getRepos()) {
-                const pathSuffix = `${repo.full_name}/${repo.id}.json`
+                const pathSuffix = `${repo.full_name}.json`
                 const repoMetadata = repoCache.filter(r => r.key.endsWith(pathSuffix))
                 if (repoMetadata.length === 0) {
                     await env.r2icache.put(`${prefixRepos}${pathSuffix}`, JSON.stringify(repo), putOptions)

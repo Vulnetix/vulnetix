@@ -38,18 +38,18 @@ class GitHub {
         if (this.urlQuery?.setup_action === 'install' && this.urlQuery?.code && this.urlQuery?.installation_id) {
             this.install(this.urlQuery.code, this.urlQuery.installation_id)
         } else if (!state.cached) {
-            this.refresh()
+            this.refreshRepos()
         }
     }
     async install(code, installation_id) {
         const { data } = await axios.get(`/github/install/${installation_id}/${code}`)
 
         console.log(data)
-        this.refresh()
+        this.refreshRepos()
 
         return setTimeout(state.success = "GitHub App installed successfully.", 1000)
     }
-    async refresh() {
+    async refreshRepos() {
         clearAlerts()
         state.loading = true
         try {
@@ -89,6 +89,46 @@ class GitHub {
         state.warning = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
         state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
         state.loading = false
+    }
+    async refreshLatestCommit(repoFullName, branchName) {
+        clearAlerts()
+    }
+    async refreshDotfile(repoFullName, branchName) {
+        clearAlerts()
+    }
+    async refreshBranch(repoFullName) {
+        clearAlerts()
+    }
+    async refreshBranches(repoFullName) {
+        clearAlerts()
+        try {
+            const { data } = await axios.get(`/github/repos/${repoFullName}/branches`)
+
+            if (typeof data === "string" && !isJSON(data)) {
+                state.warning = "No data retrieved from GitHub. Was this GitHub App uninstalled?"
+
+                return
+            }
+            if (Array.isArray(data) && data.length > 0) {
+                if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
+                    state.error = data.err
+
+                    return setTimeout(router.push('/logout'), 2000)
+                }
+                state.success = "Refreshed GitHub repositories"
+                for (const branch of data) {
+                    if (state.apps.filter(r => r.fullName === branch.fullName && r.branch === branch.branch).length === 0) {
+                        state.apps.push(branch)
+                    }
+                }
+
+                return
+            }
+        } catch (e) {
+            console.error(e)
+            state.error = `${e.code} ${e.message}`
+        }
+        state.warning = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
     }
 }
 function installApp() {
@@ -165,7 +205,7 @@ const gh = reactive(new GitHub())
                     />
                     <VBtn
                         v-if="state.cached"
-                        text="Show Cached Repositories"
+                        text="Reload Cached Repositories"
                         prepend-icon="line-md:downloading-loop"
                         variant="text"
                         :color="global.name.value === 'dark' ? '#fff' : '#272727'"
@@ -191,7 +231,7 @@ const gh = reactive(new GitHub())
                         variant="text"
                         :color="global.name.value === 'dark' ? '#fff' : '#272727'"
                         :disabled="state.loading"
-                        @click="gh.refresh"
+                        @click="gh.refreshRepos"
                     />
                 </VCardText>
                 <VSkeletonLoader
@@ -252,9 +292,23 @@ const gh = reactive(new GitHub())
                                     >
                                 </td>
                                 <td :title="new Date(repo.createdAt).toLocaleDateString()">
+                                    <VBtn
+                                        title="Refresh Branches"
+                                        icon="mdi-refresh"
+                                        variant="plain"
+                                        color="rgb(26, 187, 156)"
+                                        @click="gh.refreshBranches(repo.fullName)"
+                                    />
                                     {{ repo.fullName }}
                                 </td>
                                 <td class="text-center">
+                                    <VBtn
+                                        title="Refresh all branch metadata"
+                                        icon="mdi-refresh"
+                                        variant="plain"
+                                        color="rgb(26, 187, 156)"
+                                        @click="gh.refreshBranch(repo.fullName)"
+                                    />
                                     {{ repo.branch }}<span v-if="repo.branch === repo.defaultBranch"> (default)</span>
                                 </td>
                                 <td class="text-center">
@@ -262,18 +316,58 @@ const gh = reactive(new GitHub())
                                 </td>
                                 <td
                                     class="text-center"
-                                    :title="repo.latestCommitSHA"
+                                    :title="repo?.latestCommitSHA"
                                 >
-                                    <span class="ms-1">{{ repo.latestCommitMessage }}</span>
+                                    <span
+                                        class="ms-1"
+                                        v-if="repo?.latestCommitMessage"
+                                    >
+                                        <VBtn
+                                            title="Check Latest Commit"
+                                            icon="mdi-refresh"
+                                            variant="plain"
+                                            color="rgb(26, 187, 156)"
+                                            @click="gh.refreshLatestCommit(repo.fullName, repo.branch)"
+                                        />
+                                        {{ repo.latestCommitMessage }}
+                                    </span>
+                                    <VBtn
+                                        v-else
+                                        text="Check"
+                                        prepend-icon="ph:git-commit-duotone"
+                                        variant="plain"
+                                        color="rgb(26, 187, 156)"
+                                        @click="gh.refreshLatestCommit(repo.fullName, repo.branch)"
+                                    />
                                 </td>
                                 <td class="text-center">
                                     {{ new Date(repo.pushedAt).toLocaleDateString() }}
                                 </td>
                                 <td
                                     class="text-center"
-                                    :title="repo.dotfileContents"
+                                    :title="repo?.dotfileContents"
                                 >
-                                    {{ repo.dotfileExists }}
+                                    <span
+                                        class="ms-1"
+                                        v-if="repo?.dotfileExists"
+                                    >
+                                        <VBtn
+                                            title="Check dotfile contents"
+                                            icon="mdi-refresh"
+                                            variant="plain"
+                                            color="rgb(26, 187, 156)"
+                                            @click="gh.refreshDotfile(repo.fullName, repo.branch)"
+                                        />
+                                        {{ repo.dotfileExists }}
+                                    </span>
+                                    <VBtn
+                                        v-else
+                                        text="Check"
+                                        prepend-icon="ph:git-commit-duotone"
+                                        variant="plain"
+                                        color="rgb(26, 187, 156)"
+                                        @click="gh.refreshDotfile(repo.fullName, repo.branch)"
+                                    />
                                 </td>
                                 <td>
                                     {{ item.installationId }}
