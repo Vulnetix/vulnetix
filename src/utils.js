@@ -241,7 +241,7 @@ export class CloudFlare {
 
     }
     async d1all(db, sql, bind) {
-        const { results } = await env[db].prepare(sql).bind(bind).all()
+        const { results } = await db.prepare(sql).bind(bind).all()
         return results
     }
     async r2get(db, objectKey, uploadedAfter) {
@@ -251,7 +251,7 @@ export class CloudFlare {
             },
         }
 
-        return await env[db].get(objectKey, options)
+        return await db.get(objectKey, options)
     }
     async r2list(db, prefix = '/', limit = 1000) {
         const options = {
@@ -260,13 +260,13 @@ export class CloudFlare {
             include: ['customMetadata'],
         }
 
-        const listed = await env[db].list(options)
+        const listed = await db.list(options)
 
         let { truncated } = listed
         let cursor = truncated ? listed.cursor : undefined
 
         while (truncated) {
-            const next = await env[db].list({
+            const next = await db.list({
                 ...options,
                 cursor: cursor,
             })
