@@ -31,7 +31,7 @@ export async function onRequestGet(context) {
     try {
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
         const githubApps = cf.d1all("d1db", "SELECT * FROM github_apps WHERE memberEmail = ?", session.memberEmail)
-        const installs = []
+        let installs = []
         for (const app of githubApps) {
             if (!app.accessToken) {
                 console.log(`github_apps kid=${token} installationId=${app.installationId}`)
