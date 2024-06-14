@@ -29,8 +29,7 @@ export async function onRequestGet(context) {
         return Response.json({ 'err': 'Expired' })
     }
     try {
-        const githubApps = cf.d1all("d1db", "SELECT * FROM github_apps WHERE memberEmail = ?", session.memberEmail)
-        console.log('githubApps', githubApps)
+        const githubApps = await cf.d1all("d1db", "SELECT * FROM github_apps WHERE memberEmail = ?", session.memberEmail)
         let installs = []
         for (const app of githubApps) {
             if (!app.accessToken) {
@@ -39,7 +38,7 @@ export async function onRequestGet(context) {
             }
             const gh = new GitHub(app.accessToken)
             const prefixRepos = `/github/${app.installationId}/repos/`
-            let repoCache = cf.r2list('r2icache', prefixRepos)
+            let repoCache = await cf.r2list('r2icache', prefixRepos)
 
             const repos = []
             for (const repo of await gh.getRepos()) {
@@ -61,9 +60,9 @@ export async function onRequestGet(context) {
                 }
                 const prefixBranches = `/github/${app.installationId}/branches/${repo.full_name}/`
                 data.branch = repo.default_branch
-                const branchCache = cf.r2get('r2icache', `${prefixBranches}${repo.default_branch}.json`)
+                const branchCache = await cf.r2get('r2icache', `${prefixBranches}${repo.default_branch}.json`)
                 if (branchCache) {
-                    const branch = branchCache.json()
+                    const branch = await branchCache.json()
                     data.latestCommitSHA = branch?.commit?.sha
                     data.latestCommitMessage = branch?.commit?.message
                     data.latestCommitVerification = branch?.commit?.verification
