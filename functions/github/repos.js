@@ -31,6 +31,7 @@ export async function onRequestGet(context) {
     try {
         const githubApps = await cf.d1all(env.d1db, "SELECT * FROM github_apps WHERE memberEmail = ?", session.memberEmail)
         let installs = []
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
         const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
         for (const app of githubApps) {
             if (!app.accessToken) {
@@ -61,7 +62,7 @@ export async function onRequestGet(context) {
                 }
                 const prefixBranches = `/github/${app.installationId}/branches/${repo.full_name}/`
                 data.branch = repo.default_branch
-                const branchCache = await cf.r2get(env.r2icache, `${prefixBranches}${repo.default_branch}.json`)
+                const branchCache = await cf.r2get(env.r2icache, `${prefixBranches}${repo.default_branch}.json`, oneDayAgo)
                 if (branchCache) {
                     const branch = await branchCache.json()
                     data.latestCommitSHA = branch?.commit?.sha

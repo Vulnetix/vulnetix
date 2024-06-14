@@ -63,21 +63,20 @@ class GitHub {
                 return
             }
             if (Array.isArray(data) && data.length > 0) {
-                localStorage.setItem('/github/installs', JSON.stringify(data))
-            }
-            if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
-                state.error = data.err
+                if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
+                    state.error = data.err
 
-                return setTimeout(router.push('/logout'), 2000)
-            }
-            if (data.length > 0) {
+                    return setTimeout(router.push('/logout'), 2000)
+                }
                 state.installs = true
                 if (data.map(i => i.repos.length).reduce((a, b) => a + b, 0) === 0) {
                     state.error = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
                     state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
                     state.cached = false
                 } else {
+                    state.apps = data
                     state.success = "Refreshed GitHub repositories"
+                    localStorage.setItem('/github/installs', JSON.stringify(data))
                     state.cached = true
                 }
 
@@ -104,11 +103,8 @@ function clearAlerts() {
 
 function loadCached() {
     clearAlerts()
-
     const stored = localStorage.getItem('/github/installs')
-
     state.apps = isJSON(stored) ? JSON.parse(stored) : []
-    console.log('state.apps', state.apps)
     state.installs = state.apps.length > 0
     state.cached = state.apps.map(i => i.repos.length).reduce((a, b) => a + b, 0) > 0
 }
