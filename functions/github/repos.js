@@ -1,6 +1,6 @@
 import { CloudFlare, GitHub } from "../../src/utils"
 
-const cf = CloudFlare()
+const cf = new CloudFlare()
 
 export async function onRequestGet(context) {
     const {
@@ -29,7 +29,6 @@ export async function onRequestGet(context) {
         return Response.json({ 'err': 'Expired' })
     }
     try {
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
         const githubApps = cf.d1all("d1db", "SELECT * FROM github_apps WHERE memberEmail = ?", session.memberEmail)
         let installs = []
         for (const app of githubApps) {
