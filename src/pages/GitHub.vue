@@ -116,9 +116,23 @@ class GitHub {
                     return setTimeout(router.push('/logout'), 2000)
                 }
                 state.success = "Refreshed GitHub repositories"
-                for (const branch of data) {
-                    if (state.apps.filter(r => r.fullName === branch.fullName && r.branch === branch.branch).length === 0) {
-                        state.apps.push(branch)
+                for (const branch of data.branches) {
+                    for (const app of state.apps) {
+                        let isMatch = false
+                        let matchedRepo;
+                        for (const repo of app.repos) {
+                            if (repo.fullName === branch.fullName) {
+                                matchedRepo = Object.assign(repo, branch)
+                                if (repo.branch === branch.branch) {
+                                    repo.latestCommitSHA = branch.latestCommitSHA
+                                    isMatch = true
+                                    break
+                                }
+                            }
+                        }
+                        if (!isMatch && matchedRepo) {
+                            app.repos.push(matchedRepo)
+                        }
                     }
                 }
 
@@ -295,27 +309,36 @@ const gh = reactive(new GitHub())
                                     class="text-center"
                                     :title="repo?.latestCommitSHA"
                                 >
-                                    <span
-                                        class="ms-1"
-                                        v-if="repo?.latestCommitMessage"
-                                    >
-                                        <VBtn
-                                            title="Check Latest Commit"
-                                            icon="mdi-refresh"
-                                            variant="plain"
-                                            color="rgb(26, 187, 156)"
-                                            @click="gh.refreshLatestCommit(repo.fullName, repo.branch)"
-                                        />
-                                        {{ repo.latestCommitMessage }}
-                                    </span>
+
+                                </td>
+                                <td class="text-center">
                                     <VBtn
-                                        v-else
-                                        text="Check"
-                                        prepend-icon="ph:git-commit-duotone"
+                                        v-if="repo?.latestCommitSHA"
+                                        title="Check Latest Commit"
+                                        icon="mdi-refresh"
                                         variant="plain"
                                         color="rgb(26, 187, 156)"
                                         @click="gh.refreshLatestCommit(repo.fullName, repo.branch)"
                                     />
+                                    <span
+                                        class="ms-1"
+                                        v-if="repo?.latestCommitMessage"
+                                        :title="repo?.latestCommitSHA"
+                                    >
+                                        {{ repo.latestCommitMessage }}
+                                    </span>
+                                    <span v-else-if="repo?.latestCommitSHA">
+                                        {{ repo.latestCommitSHA }}
+                                    </span>
+                                    <span v-else>
+                                        <VBtn
+                                            text="Check"
+                                            prepend-icon="ph:git-commit-duotone"
+                                            variant="plain"
+                                            color="rgb(26, 187, 156)"
+                                            @click="gh.refreshLatestCommit(repo.fullName, repo.branch)"
+                                        />
+                                    </span>
                                 </td>
                                 <td class="text-center">
                                     {{ new Date(repo.pushedAt).toLocaleDateString() }}
