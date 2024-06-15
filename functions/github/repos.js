@@ -64,14 +64,13 @@ export async function onRequestGet(context) {
                     defaultBranch: repo.default_branch,
                     pushedAt: repo.pushed_at,
                     avatarUrl: repo.owner.avatar_url,
-                    licenseSpdxId: repo.license?.spdx_id,
-                    licenseName: repo.license?.name,
+                    licenseSpdxId: repo.license?.spdx_id || '',
+                    licenseName: repo.license?.name || '',
                 }
+                console.log(`/github/repos github_apps ${data.fullName} kid=${token}`, info)
                 const info = await env.d1db.prepare('INSERT INTO github_apps (pk, fullName, createdAt, updatedAt, pushedAt, defaultBranch, ownerId, memberEmail, licenseSpdxId, licenseName, fork, template, archived, visibility, avatarUrl) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)')
                     .bind(data.ghid, data.fullName, data.createdAt, data.updatedAt, data.pushedAt, data.defaultBranch, data.ownerId, session.memberEmail, data.licenseSpdxId, data.licenseName, data.fork, data.template, data.archived, data.visibility, data.avatarUrl)
                     .run()
-
-                console.log(`/github/repos github_apps ${data.fullName} kid=${token}`, info)
 
                 const prefixBranches = `/github/${app.installationId}/branches/${repo.full_name}/`
                 data.branch = repo.default_branch
