@@ -1,4 +1,4 @@
-import { readRequestBody } from "../../src/utils"
+import { ensureStrReqBody } from "../../src/utils"
 
 export async function onRequestPost(context) {
     const {
@@ -13,20 +13,17 @@ export async function onRequestPost(context) {
     const installation_id = request.headers.get('X-GitHub-Hook-Installation-Target-ID')
     const signature = request.headers.get('X-Hub-Signature-256')
     if (!signature) {
+        console.error(`missing signature hook_id=${hook_id}`)
         return Response.json({ 'err': 'Forbidden' })
     }
-    console.log('signature', signature)
-    const jsonData = await readRequestBody(request)
-    console.log('jsonData', jsonData)
-    const info = await env.r2icache.put(`/github/${installation_id}/${jsonData.action}/${hook_id}.json`, jsonData)
+    const jsonStr = await ensureStrReqBody(request)
+    if (!verifySignature(env.GITHUB_WEBHOOK_SECRET, signature, jsonStr)) {
+        console.error(`missing signature signature=${signature}`)
+        return Response.json({ 'err': 'Unauthorized' })
+    }
+    const jsonData = JSON.parse(jsonStr)
+    const info = await env.r2webhooks.put(`github/${installation_id}/${jsonData.action}/${hook_id}.json`, jsonStr)
 
-    // if (signature) {
-    //     const info = await env.d1db.prepare('INSERT INTO audit (installation_id, memberEmail, access_key) VALUES (?1, ?2, ?3)')
-    //         .bind(token, session?.memberEmail, data.access_token)
-    //         .run()
-    //     console.log(`/github/install installation_id=${params?.installation_id} kid=${token}`, info)
-    //     return Response.json(info)
-    // }
     return new Response(info)
 }
 

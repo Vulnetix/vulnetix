@@ -39,7 +39,7 @@ export async function onRequestGet(context) {
                 throw new Error('github_apps invalid')
             }
             const gh = new GitHub(app.accessToken)
-            const prefixRepos = `/github/${app.installationId}/repos/`
+            const prefixRepos = `github/${app.installationId}/repos/`
             let repoCache = await cf.r2list(env.r2icache, prefixRepos)
 
             const repos = []
