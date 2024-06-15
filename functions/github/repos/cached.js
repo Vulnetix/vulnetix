@@ -31,7 +31,7 @@ export async function onRequestGet(context) {
     }
     try {
         const githubApps = await cf.d1all(env.d1db, "SELECT * FROM github_apps WHERE memberEmail = ?", session.memberEmail)
-        let installs = []
+        const installs = []
 
         for (const app of githubApps) {
             const prefixRepos = `github/${app.installationId}/repos/`
@@ -41,43 +41,50 @@ export async function onRequestGet(context) {
             for (const objectKeyRepo of repoCache.map(r => r.key)) {
                 console.log(`objectKeyRepo = ${objectKeyRepo}`)
                 const repoMetadata = await cf.r2get(env.r2icache, objectKeyRepo)
-                if (repoMetadata) {
-                    const repo = await repoMetadata.json()
-                    const data = {
-                        ghid: repo.id,
-                        fullName: repo.full_name,
-                        branch: repo.default_branch,
-                        createdAt: repo.created_at,
-                        visibility: repo.visibility,
-                        archived: repo.archived,
-                        defaultBranch: repo.default_branch,
-                        pushedAt: repo.pushed_at,
-                        avatarUrl: repo.owner.avatar_url,
-                        license: repo.license,
+                if (!repoMetadata) {
+                    continue
+                }
+                const repo = await repoMetadata.json()
+                const data = {
+                    ghid: repo.id,
+                    fullName: repo.full_name,
+                    createdAt: repo.created_at,
+                    visibility: repo.visibility,
+                    archived: repo.archived,
+                    defaultBranch: repo.default_branch,
+                    pushedAt: repo.pushed_at,
+                    avatarUrl: repo.owner.avatar_url,
+                    license: repo.license,
+                }
+
+                const prefixBranches = `github/${app.installationId}/branches/${repo.full_name}/`
+                console.log(`prefixBranches = ${prefixBranches}`)
+                const branchCache = await cf.r2list(env.r2icache, prefixBranches)
+                const branchObjectKeys = branchCache.map(b => b.key)
+                for (const objectKeyBranch of branchObjectKeys) {
+                    console.log(`objectKeyBranch = ${objectKeyBranch}`)
+                    const branchMetadata = await cf.r2get(env.r2icache, objectKeyBranch)
+                    if (!branchMetadata) {
+                        continue
                     }
-                    const prefixBranches = `github/${app.installationId}/branches/${repo.full_name}/`
-                    console.log(`prefixBranches = ${prefixBranches}`)
-                    const branchCache = await cf.r2list(env.r2icache, prefixBranches)
-                    for (const objectKeyBranch of branchCache.map(b => b.key)) {
-                        console.log(`objectKeyBranch = ${objectKeyBranch}`)
-                        const branchMetadata = await cf.r2get(env.r2icache, objectKeyBranch)
-                        if (branchMetadata) {
-                            const branch = await branchMetadata.json()
-                            data.latestCommitSHA = branch?.commit?.sha
-                            data.branch = branch?.name
-                            // data.latestCommitMessage = branch?.commit?.message
-                            // data.latestCommitVerification = branch?.commit?.verification
-                            // data.latestCommitter = branch?.commit?.committer
-                            // data.latestStats = branch?.stats
-                            // data.latestFilesChanged = branch?.files?.length
-                            // data.dotfileExists = branch?.exists
-                            // data.dotfileContents = branch?.content
-                            repos.push(data)
-                        }
-                    }
+                    const branch = await branchMetadata.json()
+                    data.latestCommitSHA = branch?.commit?.sha
+                    data.branch = branch?.name
+                    // data.latestCommitMessage = branch?.commit?.message
+                    // data.latestCommitVerification = branch?.commit?.verification
+                    // data.latestCommitter = branch?.commit?.committer
+                    // data.latestStats = branch?.stats
+                    // data.latestFilesChanged = branch?.files?.length
+                    // data.dotfileExists = branch?.exists
+                    // data.dotfileContents = branch?.content
+                    repos.push(data)
+                }
+                if (branchObjectKeys === 0) {
+                    data.branch = repo.default_branch
+                    repos.push(data)
                 }
             }
-            installs = installs.concat({
+            installs.push({
                 repos,
                 installationId: app.installationId,
                 created: app.created,
