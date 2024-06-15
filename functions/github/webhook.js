@@ -9,16 +9,16 @@ export async function onRequestPost(context) {
         next, // used for middleware or to fetch assets
         data, // arbitrary space for passing data between middlewares
     } = context
-
+    const hook_id = request.headers.get('X-GitHub-Hook-ID')
+    const installation_id = request.headers.get('X-GitHub-Hook-Installation-Target-ID')
     const signature = request.headers.get('X-Hub-Signature-256')
     if (!signature) {
         return Response.json({ 'err': 'Forbidden' })
     }
     console.log('signature', signature)
-
-    if (request.method !== "POST") {
-        return Response.json({ 'err': 'Method' })
-    }
+    const jsonData = await readRequestBody(request)
+    console.log('jsonData', jsonData)
+    await env.r2icache.put(`/github/${installation_id}/${jsonData.action}/${hook_id}.json`, jsonData)
 
     // if (signature) {
     //     const info = await env.d1db.prepare('INSERT INTO audit (installation_id, memberEmail, access_key) VALUES (?1, ?2, ?3)')
@@ -49,7 +49,7 @@ async function verifySignature(secret, header, payload) {
 
     let sigBytes = hexToBytes(sigHex)
     let dataBytes = encoder.encode(payload)
-    
+
     return await crypto.subtle.verify(
         algorithm.name,
         key,
