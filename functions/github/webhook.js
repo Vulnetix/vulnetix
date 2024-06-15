@@ -10,7 +10,7 @@ export async function onRequestPost(context) {
         data, // arbitrary space for passing data between middlewares
     } = context
     const hook_id = request.headers.get('X-GitHub-Hook-ID')
-    const installation_id = request.headers.get('X-GitHub-Hook-Installation-Target-ID')
+    const webhook_event = request.headers.get('X-GitHub-Event')
     const signature = request.headers.get('X-Hub-Signature-256')
     if (!signature) {
         console.error(`missing signature hook_id=${hook_id}`)
@@ -21,10 +21,14 @@ export async function onRequestPost(context) {
         console.error(`missing signature signature=${signature}`)
         return Response.json({ 'err': 'Unauthorized' })
     }
+    let objectKey = `github/.generic/${webhook_event}/${hook_id}.json`
     const jsonData = JSON.parse(jsonStr)
-    const info = await env.r2webhooks.put(`github/${installation_id}/${jsonData.action}/${hook_id}.json`, jsonStr)
-
-    return new Response(info)
+    if (jsonData?.installation?.id) {
+        objectKey = `github/${jsonData.installation.id}/${webhook_event}/${hook_id}.json`
+    }
+    const info = await env.r2webhooks.put(objectKey, jsonStr)
+    console.log(info)
+    return Response.json(info)
 }
 
 async function verifySignature(secret, header, payload) {
