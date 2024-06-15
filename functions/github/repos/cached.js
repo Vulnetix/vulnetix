@@ -65,6 +65,8 @@ export async function onRequestGet(context) {
                     console.log(`objectKeyBranch = ${objectKeyBranch}`)
                     const branchMetadata = await cf.r2get(env.r2icache, objectKeyBranch)
                     if (!branchMetadata) {
+                        data.branch = repo.default_branch
+                        repos.push(data)
                         continue
                     }
                     const branch = await branchMetadata.json()

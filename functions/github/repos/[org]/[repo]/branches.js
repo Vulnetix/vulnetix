@@ -31,6 +31,7 @@ export async function onRequestGet(context) {
     try {
         const githubApps = await cf.d1all(env.d1db, "SELECT * FROM github_apps WHERE memberEmail = ?", session.memberEmail)
         let installs = []
+        const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
         for (const app of githubApps) {
             if (!app.accessToken) {
                 console.log(`github_apps kid=${token} installationId=${app.installationId}`)
@@ -41,7 +42,7 @@ export async function onRequestGet(context) {
             const branches = []
             const full_name = `${params.org}/${params.repo}`
             for (const branch of await gh.getBranches({ full_name })) {
-                await env.r2icache.put(`github/${app.installationId}/branches/${full_name}/${branch.name}.json`, JSON.stringify(branch))
+                await env.r2icache.put(`github/${app.installationId}/branches/${full_name}/${branch.name}.json`, JSON.stringify(branch), putOptions)
                 branches.push({
                     fullName: full_name,
                     branch: branch.name,

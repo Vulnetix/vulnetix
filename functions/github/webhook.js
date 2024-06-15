@@ -9,26 +9,34 @@ export async function onRequestPost(context) {
         next, // used for middleware or to fetch assets
         data, // arbitrary space for passing data between middlewares
     } = context
-    const hook_id = request.headers.get('X-GitHub-Hook-ID')
-    const webhook_event = request.headers.get('X-GitHub-Event')
-    const signature = request.headers.get('X-Hub-Signature-256')
-    if (!signature) {
-        console.error(`missing signature hook_id=${hook_id}`)
-        return Response.json({ 'err': 'Forbidden' })
+    const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
+    try {
+        const hook_id = request.headers.get('X-GitHub-Hook-ID')
+        const webhook_event = request.headers.get('X-GitHub-Event')
+        const signature = request.headers.get('X-Hub-Signature-256')
+        if (!signature) {
+            console.error(`missing signature hook_id=${hook_id}`)
+            return Response.json({ 'err': 'Forbidden' })
+        }
+        const jsonStr = await ensureStrReqBody(request)
+        if (!verifySignature(env.GITHUB_WEBHOOK_SECRET, signature, jsonStr)) {
+            console.error(`missing signature signature=${signature}`)
+            return Response.json({ 'err': 'Unauthorized' })
+        }
+        let objectKey = `github/.generic/${webhook_event}/${hook_id}.json`
+        const jsonData = JSON.parse(jsonStr)
+        if (jsonData?.installation?.id) {
+            objectKey = `github/${jsonData.installation.id}/${webhook_event}/${hook_id}.json`
+        }
+        console.log(objectKey)
+        const info = await env.r2webhooks.put(objectKey, jsonStr, putOptions)
+
+        return Response.json(info)
+    } catch (e) {
+        console.error(e)
+
+        return Response.json(e)
     }
-    const jsonStr = await ensureStrReqBody(request)
-    if (!verifySignature(env.GITHUB_WEBHOOK_SECRET, signature, jsonStr)) {
-        console.error(`missing signature signature=${signature}`)
-        return Response.json({ 'err': 'Unauthorized' })
-    }
-    let objectKey = `github/.generic/${webhook_event}/${hook_id}.json`
-    const jsonData = JSON.parse(jsonStr)
-    if (jsonData?.installation?.id) {
-        objectKey = `github/${jsonData.installation.id}/${webhook_event}/${hook_id}.json`
-    }
-    console.log(objectKey)
-    const info = await env.r2webhooks.put(objectKey, jsonStr)
-    return Response.json(info)
 }
 
 async function verifySignature(secret, header, payload) {
