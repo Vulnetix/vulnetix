@@ -70,7 +70,7 @@ export async function onRequestGet(context) {
                 const info = await env.d1db.prepare('INSERT INTO git_repos (pk, fullName, createdAt, updatedAt, pushedAt, defaultBranch, ownerId, memberEmail, licenseSpdxId, licenseName, fork, template, archived, visibility, avatarUrl) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)')
                     .bind(data.ghid, data.fullName, data.createdAt, data.updatedAt, data.pushedAt, data.defaultBranch, data.ownerId, session.memberEmail, data.licenseSpdxId, data.licenseName, data.fork, data.template, data.archived, data.visibility, data.avatarUrl)
                     .run()
-                console.log(`/github/repos git_reposfix ${data.fullName} kid=${token}`, info)
+                console.log(`/github/repos git_repos ${data.fullName} kid=${token}`, info)
 
                 const prefixBranches = `/github/${app.installationId}/branches/${repo.full_name}/`
                 data.branch = repo.default_branch

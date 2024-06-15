@@ -14,7 +14,8 @@ const initialState = {
     loading: false,
     installs: false,
     octodexImageUrl: `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`,
-    apps: [],
+    githubApps: [],
+    gitRepos: [],
 }
 
 const state = reactive({
@@ -72,11 +73,12 @@ class GitHub {
                     return setTimeout(router.push('/logout'), 2000)
                 }
                 state.installs = true
-                if (data.map(i => i.repos.length).reduce((a, b) => a + b, 0) === 0) {
+                if (data.gitRepos.length === 0) {
                     state.error = "No data retrieved from GitHub. Is this GitHub App installed?"
                     state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
                 } else {
-                    state.apps = data
+                    state.githubApps = data.githubApps
+                    state.gitRepos = data.gitRepos
                     state.success = cached ? "Loaded cached GitHub repositories" : "Refreshed GitHub repositories"
                 }
 
@@ -117,22 +119,20 @@ class GitHub {
                 }
                 state.success = "Refreshed GitHub repositories"
                 for (const branch of data.branches) {
-                    for (const app of state.apps) {
-                        let isMatch = false
-                        let matchedRepo;
-                        for (const repo of app.repos) {
-                            if (repo.fullName === branch.fullName) {
-                                matchedRepo = Object.assign(repo, branch)
-                                if (repo.branch === branch.branch) {
-                                    repo.latestCommitSHA = branch.latestCommitSHA
-                                    isMatch = true
-                                    break
-                                }
+                    let isMatch = false
+                    let matchedRepo;
+                    for (const repo of state.gitRepos) {
+                        if (repo.fullName === branch.fullName) {
+                            matchedRepo = Object.assign(repo, branch)
+                            if (repo.branch === branch.branch) {
+                                repo.latestCommitSHA = branch.latestCommitSHA
+                                isMatch = true
+                                break
                             }
                         }
-                        if (!isMatch && matchedRepo) {
-                            app.repos.push(matchedRepo)
-                        }
+                    }
+                    if (!isMatch && matchedRepo) {
+                        state.gitRepos.push(matchedRepo)
                     }
                 }
 
@@ -249,128 +249,115 @@ const gh = reactive(new GitHub())
                                 Visibility
                             </th>
                             <th>
+                                Fork
+                            </th>
+                            <th>
+                                Archived
+                            </th>
+                            <th>
+                                Template
+                            </th>
+                            <th>
                                 Latest Commit
                             </th>
                             <th>
-                                Pushed
+                                License
                             </th>
                             <th>
-                                dotfile
+                                Last Pushed
                             </th>
                             <th>
-                                Installation ID
-                            </th>
-                            <th>
-                                Installed Date
+                                Created Date
                             </th>
                         </tr>
                     </thead>
 
                     <tbody>
-                        <template
-                            v-for="item in state.apps"
-                            :key="item.installationId"
+                        <tr
+                            v-for="repo in state.gitRepos"
+                            :key="repo.pk"
                         >
-                            <tr
-                                v-for="repo in item.repos"
-                                :key="repo.latestCommitSHA"
-                            >
-                                <td>
-                                    <img
-                                        v-if="repo.avatarUrl"
-                                        width="25"
-                                        :src="repo.avatarUrl"
-                                    >
-                                </td>
-                                <td :title="new Date(repo.createdAt).toLocaleDateString()">
-                                    <VBtn
-                                        title="Refresh Branches"
-                                        icon="mdi-refresh"
-                                        variant="plain"
-                                        color="rgb(26, 187, 156)"
-                                        @click="gh.refreshBranches(repo.fullName)"
-                                    />
-                                    {{ repo.fullName }}
-                                </td>
-                                <td class="text-center">
-                                    <VBtn
-                                        title="Refresh all branch metadata"
-                                        icon="mdi-refresh"
-                                        variant="plain"
-                                        color="rgb(26, 187, 156)"
-                                        @click="gh.refreshBranch(repo.fullName)"
-                                    />
-                                    {{ repo.branch }}<span v-if="repo.branch === repo.defaultBranch"> (default)</span>
-                                </td>
-                                <td class="text-center">
-                                    {{ repo.visibility }}
-                                </td>
-                                <td class="text-center">
-                                    <VBtn
-                                        v-if="repo?.latestCommitSHA"
-                                        title="Check Latest Commit"
-                                        icon="mdi-refresh"
-                                        variant="plain"
-                                        color="rgb(26, 187, 156)"
-                                        @click="gh.refreshLatestCommit(repo.fullName, repo.branch)"
-                                    />
-                                    <span
-                                        class="ms-1"
-                                        v-if="repo?.latestCommitMessage"
-                                        :title="repo?.latestCommitSHA"
-                                    >
-                                        {{ repo.latestCommitMessage }}
-                                    </span>
-                                    <span v-else-if="repo?.latestCommitSHA">
-                                        {{ repo.latestCommitSHA }}
-                                    </span>
-                                    <span v-else>
-                                        <VBtn
-                                            text="Check"
-                                            prepend-icon="ph:git-commit-duotone"
-                                            variant="plain"
-                                            color="rgb(26, 187, 156)"
-                                            @click="gh.refreshLatestCommit(repo.fullName, repo.branch)"
-                                        />
-                                    </span>
-                                </td>
-                                <td class="text-center">
-                                    {{ new Date(repo.pushedAt).toLocaleDateString() }}
-                                </td>
-                                <td
-                                    class="text-center"
-                                    :title="repo?.dotfileContents"
+                            <td>
+                                <img
+                                    v-if="repo.avatarUrl"
+                                    width="25"
+                                    :src="repo.avatarUrl"
                                 >
-                                    <span
-                                        class="ms-1"
-                                        v-if="repo?.dotfileExists"
-                                    >
-                                        <VBtn
-                                            title="Check dotfile contents"
-                                            icon="mdi-refresh"
-                                            variant="plain"
-                                            color="rgb(26, 187, 156)"
-                                            @click="gh.refreshDotfile(repo.fullName, repo.branch)"
-                                        />
-                                        {{ repo.dotfileExists }}
-                                    </span>
+                            </td>
+                            <td :title="new Date(repo.createdAt).toLocaleDateString()">
+                                <VBtn
+                                    title="Refresh Branches"
+                                    icon="mdi-refresh"
+                                    variant="plain"
+                                    color="rgb(26, 187, 156)"
+                                    @click="gh.refreshBranches(repo.fullName)"
+                                />
+                                {{ repo.fullName }}
+                            </td>
+                            <td class="text-center">
+                                <VBtn
+                                    title="Refresh all branch metadata"
+                                    icon="mdi-refresh"
+                                    variant="plain"
+                                    color="rgb(26, 187, 156)"
+                                    @click="gh.refreshBranch(repo.fullName)"
+                                />
+                                {{ repo.branch }}<span v-if="repo.branch === repo.defaultBranch"> (default)</span>
+                            </td>
+                            <td class="text-center">
+                                {{ repo.visibility }}
+                            </td>
+                            <td class="text-center">
+                                {{ repo.fork ? "Forked" : "Source" }}
+                            </td>
+                            <td class="text-center">
+                                {{ repo.archived ? "Archived" : "Active" }}
+                            </td>
+                            <td class="text-center">
+                                {{ repo.template ? "Template" : "Code" }}
+                            </td>
+                            <td class="text-center">
+                                <VBtn
+                                    v-if="repo?.latestCommitSHA"
+                                    title="Check Latest Commit"
+                                    icon="mdi-refresh"
+                                    variant="plain"
+                                    color="rgb(26, 187, 156)"
+                                    @click="gh.refreshLatestCommit(repo.fullName, repo.branch)"
+                                />
+                                <span
+                                    class="ms-1"
+                                    v-if="repo?.latestCommitMessage"
+                                    :title="repo?.latestCommitSHA"
+                                >
+                                    {{ repo.latestCommitMessage }}
+                                </span>
+                                <span v-else-if="repo?.latestCommitSHA">
+                                    {{ repo.latestCommitSHA }}
+                                </span>
+                                <span v-else>
                                     <VBtn
-                                        v-else
                                         text="Check"
                                         prepend-icon="ph:git-commit-duotone"
                                         variant="plain"
                                         color="rgb(26, 187, 156)"
-                                        @click="gh.refreshDotfile(repo.fullName, repo.branch)"
+                                        @click="gh.refreshLatestCommit(repo.fullName, repo.branch)"
                                     />
-                                </td>
-                                <td>
-                                    {{ item.installationId }}
-                                </td>
-                                <td class="text-end">
-                                    {{ new Date(item.created).toLocaleDateString() }}
-                                </td>
-                            </tr>
-                        </template>
+                                </span>
+                            </td>
+                            <td
+                                class="text-center"
+                                :title="repo.licenseSpdxId"
+                            >
+                                {{ repo.licenseName }}
+                            </td>
+                            <td class="text-center">
+                                {{ new Date(repo.pushedAt).toLocaleDateString() }}
+                            </td>
+                            <td class="text-end">
+                                {{ new Date(repo.createdAt).toLocaleDateString() }}
+                            </td>
+                        </tr>
                     </tbody>
                 </VTable>
             </VCard>
