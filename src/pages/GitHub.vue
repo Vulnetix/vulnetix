@@ -305,12 +305,6 @@ const gh = reactive(new GitHub())
                                 <td class="text-center">
                                     {{ repo.visibility }}
                                 </td>
-                                <td
-                                    class="text-center"
-                                    :title="repo?.latestCommitSHA"
-                                >
-
-                                </td>
                                 <td class="text-center">
                                     <VBtn
                                         v-if="repo?.latestCommitSHA"

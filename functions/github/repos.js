@@ -52,13 +52,18 @@ export async function onRequestGet(context) {
                 const data = {
                     ghid: repo.id,
                     fullName: repo.full_name,
+                    ownerId: repo.owner.id,
                     createdAt: repo.created_at,
+                    updatedAt: repo.updated_at,
                     visibility: repo.visibility,
                     archived: repo.archived,
+                    fork: repo.fork,
+                    template: repo.is_template,
                     defaultBranch: repo.default_branch,
                     pushedAt: repo.pushed_at,
                     avatarUrl: repo.owner.avatar_url,
-                    license: repo.license,
+                    licenseSpdxId: repo.license.spdx_id,
+                    licenseName: repo.license.name,
                 }
                 const prefixBranches = `/github/${app.installationId}/branches/${repo.full_name}/`
                 data.branch = repo.default_branch
@@ -68,13 +73,19 @@ export async function onRequestGet(context) {
                 }
                 const branch = await branchCache.json()
                 data.latestCommitSHA = branch?.commit?.sha
-                data.latestCommitMessage = branch?.commit?.message
-                data.latestCommitVerification = branch?.commit?.verification
-                data.latestCommitter = branch?.commit?.committer
-                data.latestStats = branch?.stats
-                data.latestFilesChanged = branch?.files?.length
-                data.dotfileExists = branch?.exists
-                data.dotfileContents = branch?.content
+                // data.latestCommitMessage = branch?.commit?.message
+                // data.latestCommitVerification = branch?.commit?.verification
+                // data.latestCommitter = branch?.commit?.committer
+                // data.latestStats = branch?.stats
+                // data.latestFilesChanged = branch?.files?.length
+                // data.dotfileExists = branch?.exists
+                // data.dotfileContents = branch?.content
+                const info = await env.d1db.prepare('INSERT INTO github_apps (pk, fullName, createdAt, updatedAt, pushedAt, defaultBranch, ownerId, memberEmail, licenseSpdxId, licenseName, fork, template, archived, visibility, avatarUrl) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)')
+                    .bind(data.ghid, data.fullName, data.createdAt, data.updatedAt, data.pushedAt, data.defaultBranch, data.ownerId, session.memberEmail, data.licenseSpdxId, data.licenseName, data.fork, data.template, data.archived, data.visibility, data.avatarUrl)
+                    .run()
+
+                console.log(`/github/repos github_apps ${data.fullName} kid=${token}`, info)
+
                 repos.push(data)
             }
             installs.push({
