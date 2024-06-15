@@ -34,9 +34,11 @@ export async function onRequestGet(context) {
 
         for (const app of githubApps) {
             const prefixRepos = `github/${app.installationId}/repos/`
+            console.log(`prefixRepos = ${prefixRepos}`)
             const repoCache = await cf.r2list(env.r2icache, prefixRepos)
             const repos = []
             for (const objectKeyRepo of repoCache.map(r => r.key)) {
+                console.log(`objectKeyRepo = ${objectKeyRepo}`)
                 const repoMetadata = await cf.r2get(env.r2icache, objectKeyRepo)
                 if (repoMetadata) {
                     const repo = await repoMetadata.json()
@@ -52,8 +54,11 @@ export async function onRequestGet(context) {
                         avatarUrl: repo.owner.avatar_url,
                         license: repo.license,
                     }
-                    const branchCache = await cf.r2list(env.r2icache, `/github/${app.installationId}/branches/${repo.full_name}/`)
+                    prefixBranches = `github/${app.installationId}/branches/${repo.full_name}/`
+                    console.log(`prefixBranches = ${prefixBranches}`)
+                    const branchCache = await cf.r2list(env.r2icache, prefixBranches)
                     for (const objectKeyBranch of branchCache.map(b => b.key)) {
+                        console.log(`objectKeyBranch = ${objectKeyBranch}`)
                         const branchMetadata = await cf.r2get(env.r2icache, objectKeyBranch)
                         if (branchMetadata) {
                             const branch = await branchMetadata.json()
