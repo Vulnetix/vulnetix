@@ -65,23 +65,21 @@ class GitHub {
 
                 return
             }
-            if (Array.isArray(data) && data.length > 0) {
-                if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
-                    state.error = data.err
+            if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
+                state.error = data.err
 
-                    return setTimeout(router.push('/logout'), 2000)
-                }
-                if (data.gitRepos.length === 0) {
-                    state.error = "No data retrieved from GitHub. Is this GitHub App installed?"
-                    state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
-                } else {
-                    state.githubApps = data.githubApps
-                    state.gitRepos = data.gitRepos
-                    state.success = cached ? "Loaded cached GitHub repositories" : "Refreshed GitHub repositories"
-                }
-
-                return
+                return setTimeout(router.push('/logout'), 2000)
             }
+            if (data.gitRepos.length === 0) {
+                state.error = "No data retrieved from GitHub. Is this GitHub App installed?"
+                state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
+            } else {
+                state.githubApps = data.githubApps
+                state.gitRepos = data.gitRepos
+                state.success = cached ? "Loaded cached GitHub repositories" : "Refreshed GitHub repositories"
+            }
+
+            return
         } catch (e) {
             console.error(e)
             state.error = `${e.code} ${e.message}`
@@ -109,33 +107,31 @@ class GitHub {
 
                 return
             }
-            if (Array.isArray(data) && data.length > 0) {
-                if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
-                    state.error = data.err
+            if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
+                state.error = data.err
 
-                    return setTimeout(router.push('/logout'), 2000)
-                }
-                state.success = "Refreshed GitHub repositories"
-                for (const branch of data.branches) {
-                    let isMatch = false
-                    let matchedRepo;
-                    for (const repo of state.gitRepos) {
-                        if (repo.fullName === branch.fullName) {
-                            matchedRepo = Object.assign(repo, branch)
-                            if (repo.branch === branch.branch) {
-                                repo.latestCommitSHA = branch.latestCommitSHA
-                                isMatch = true
-                                break
-                            }
+                return setTimeout(router.push('/logout'), 2000)
+            }
+            state.success = "Refreshed GitHub repositories"
+            for (const branch of data.branches) {
+                let isMatch = false
+                let matchedRepo;
+                for (const repo of state.gitRepos) {
+                    if (repo.fullName === branch.fullName) {
+                        matchedRepo = Object.assign(repo, branch)
+                        if (repo.branch === branch.branch) {
+                            repo.latestCommitSHA = branch.latestCommitSHA
+                            isMatch = true
+                            break
                         }
                     }
-                    if (!isMatch && matchedRepo) {
-                        state.gitRepos.push(matchedRepo)
-                    }
                 }
-
-                return
+                if (!isMatch && matchedRepo) {
+                    state.gitRepos.push(matchedRepo)
+                }
             }
+
+            return
         } catch (e) {
             console.error(e)
             state.error = `${e.code} ${e.message}`
@@ -189,7 +185,7 @@ const gh = reactive(new GitHub())
         </VCol>
         <VCol cols="12">
             <VEmptyState
-                v-if="!state.githubApps.length && !state.loading"
+                v-if="!state.gitRepos.length && !state.loading"
                 :image="state.octodexImageUrl"
             >
                 <template #actions>
