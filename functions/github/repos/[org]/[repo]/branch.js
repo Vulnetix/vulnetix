@@ -28,45 +28,45 @@ export async function onRequestGet(context) {
     if (session?.expiry <= +new Date()) {
         return Response.json({ 'err': 'Expired' })
     }
-    try {
-        const githubApps = await cf.d1all(env.d1db, "SELECT * FROM github_apps WHERE memberEmail = ?", session.memberEmail)
-        let installs = []
-        for (const app of githubApps) {
-            if (!app.accessToken) {
-                console.log(`github_apps kid=${token} installationId=${app.installationId}`)
-                throw new Error('github_apps invalid')
-            }
-            const gh = new GitHub(app.accessToken)
+    // try {
+    //     const githubApps = await cf.d1all(env.d1db, "SELECT * FROM github_apps WHERE memberEmail = ?", session.memberEmail)
+    //     let installs = []
+    //     for (const app of githubApps) {
+    //         if (!app.accessToken) {
+    //             console.log(`github_apps kid=${token} installationId=${app.installationId}`)
+    //             throw new Error('github_apps invalid')
+    //         }
+    //         const gh = new GitHub(app.accessToken)
 
-            const branches = []
-            const repoFullName = `${params.org}/${params.repo}`
-            const prefixBranches = `/github/${app.installationId}/branches/${repoFullName}/`
-            for (const branch of await gh.getBranches(repoFullName)) {
-                await cf.PPPPUUUUUUTTTTTTT(env.r2icache, `${prefixBranches}/${branch.name}.json`, branch)
-                branchData.branch = branch.name
-                branchData.latestCommitSHA = branch.commit.sha
-                const latestCommit = await gh.getCommit(repo, branch)
-                branchData.latestCommitMessage = latestCommit.commit.message
-                branchData.latestCommitVerification = latestCommit.commit.verification
-                branchData.latestCommitter = latestCommit.commit.committer
-                branchData.latestStats = latestCommit.stats
-                branchData.latestFilesChanged = latestCommit.files.length
-                const fileDetails = await gh.getFileContents(repo, branch)
-                branchData.dotfileExists = fileDetails.exists
-                branchData.dotfileContents = fileDetails.content
-                repos.push(branchData)
-            }
-            installs = installs.concat({
-                repos,
-                installationId: app.installationId,
-                created: app.created,
-            })
-        }
+    //         const branches = []
+    //         const repoFullName = `${params.org}/${params.repo}`
+    //         const prefixBranches = `/github/${app.installationId}/branches/${repoFullName}/`
+    //         for (const branch of await gh.getBranches(repoFullName)) {
+    //             await cf.PPPPUUUUUUTTTTTTT(env.r2icache, `${prefixBranches}/${branch.name}.json`, branch)
+    //             branchData.branch = branch.name
+    //             branchData.latestCommitSHA = branch.commit.sha
+    //             const latestCommit = await gh.getCommit(repo, branch)
+    //             branchData.latestCommitMessage = latestCommit.commit.message
+    //             branchData.latestCommitVerification = latestCommit.commit.verification
+    //             branchData.latestCommitter = latestCommit.commit.committer
+    //             branchData.latestStats = latestCommit.stats
+    //             branchData.latestFilesChanged = latestCommit.files.length
+    //             const fileDetails = await gh.getFileContents(repo, branch)
+    //             branchData.dotfileExists = fileDetails.exists
+    //             branchData.dotfileContents = fileDetails.content
+    //             repos.push(branchData)
+    //         }
+    //         installs = installs.concat({
+    //             repos,
+    //             installationId: app.installationId,
+    //             created: app.created,
+    //         })
+    //     }
 
-        return Response.json(installs)
-    } catch (e) {
-        console.error(e)
+    //     return Response.json(installs)
+    // } catch (e) {
+    //     console.error(e)
 
-        return Response.json(e)
-    }
+    //     return Response.json(e)
+    // }
 }
