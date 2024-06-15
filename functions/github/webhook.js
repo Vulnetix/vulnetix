@@ -18,7 +18,7 @@ export async function onRequestPost(context) {
     console.log('signature', signature)
     const jsonData = await readRequestBody(request)
     console.log('jsonData', jsonData)
-    await env.r2icache.put(`/github/${installation_id}/${jsonData.action}/${hook_id}.json`, jsonData)
+    const info = await env.r2icache.put(`/github/${installation_id}/${jsonData.action}/${hook_id}.json`, jsonData)
 
     // if (signature) {
     //     const info = await env.d1db.prepare('INSERT INTO audit (installation_id, memberEmail, access_key) VALUES (?1, ?2, ?3)')
@@ -27,7 +27,7 @@ export async function onRequestPost(context) {
     //     console.log(`/github/install installation_id=${params?.installation_id} kid=${token}`, info)
     //     return Response.json(info)
     // }
-    return new Response(await readRequestBody(request))
+    return new Response(info)
 }
 
 async function verifySignature(secret, header, payload) {
