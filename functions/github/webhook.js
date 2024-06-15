@@ -26,8 +26,8 @@ export async function onRequestPost(context) {
     if (jsonData?.installation?.id) {
         objectKey = `github/${jsonData.installation.id}/${webhook_event}/${hook_id}.json`
     }
+    console.log(objectKey)
     const info = await env.r2webhooks.put(objectKey, jsonStr)
-    console.log(info)
     return Response.json(info)
 }
 
