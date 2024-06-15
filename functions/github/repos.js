@@ -29,11 +29,12 @@ export async function onRequestGet(context) {
         return Response.json({ 'err': 'Expired' })
     }
     try {
-        const githubApps = await cf.d1all(env.d1db, "SELECT * FROM github_apps WHERE memberEmail = ?", session.memberEmail)
-        const installs = []
+        const installs = await cf.d1all(env.d1db, "SELECT * FROM github_apps WHERE memberEmail = ?", session.memberEmail)
+        const githubApps = []
+        const gitRepos = []
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
         const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
-        for (const app of githubApps) {
+        for (const app of installs) {
             if (!app.accessToken) {
                 console.log(`github_apps kid=${token} installationId=${app.installationId}`)
                 throw new Error('github_apps invalid')
@@ -43,7 +44,6 @@ export async function onRequestGet(context) {
             console.log(`prefixRepos = ${prefixRepos}`)
             const repoCache = await cf.r2list(env.r2icache, prefixRepos)
 
-            const repos = []
             for (const repo of await gh.getRepos()) {
                 const pathSuffix = `${repo.full_name}.json`
                 const repoMetadata = repoCache.filter(r => r.key.endsWith(pathSuffix))
@@ -71,36 +71,16 @@ export async function onRequestGet(context) {
                     .bind(data.ghid, data.fullName, data.createdAt, data.updatedAt, data.pushedAt, data.defaultBranch, data.ownerId, session.memberEmail, data.licenseSpdxId, data.licenseName, data.fork, data.template, data.archived, data.visibility, data.avatarUrl)
                     .run()
                 console.log(`/github/repos git_repos ${data.fullName} kid=${token}`, info)
-
-                const prefixBranches = `/github/${app.installationId}/branches/${repo.full_name}/`
-                data.branch = repo.default_branch
-                console.log(`r2icache.get ${prefixBranches}${repo.default_branch}.json`)
-                const branchCache = await cf.r2get(env.r2icache, `${prefixBranches}${repo.default_branch}.json`, oneDayAgo)
-                if (!branchCache) {
-                    console.log(`Branch ${repo.default_branch} not cached`)
-                    repos.push(data)
-                    continue
-                }
-                const branch = await branchCache.json()
-                data.latestCommitSHA = branch?.commit?.sha
-                // data.latestCommitMessage = branch?.commit?.message
-                // data.latestCommitVerification = branch?.commit?.verification
-                // data.latestCommitter = branch?.commit?.committer
-                // data.latestStats = branch?.stats
-                // data.latestFilesChanged = branch?.files?.length
-                // data.dotfileExists = branch?.exists
-                // data.dotfileContents = branch?.content
-
-                repos.push(data)
+                gitRepos.push(data)
             }
-            installs.push({
-                repos,
+            githubApps.push({
                 installationId: app.installationId,
                 created: app.created,
+                expires: app.expires,
             })
         }
 
-        return Response.json(installs)
+        return Response.json({ githubApps, gitRepos })
     } catch (e) {
         console.error(e)
 
