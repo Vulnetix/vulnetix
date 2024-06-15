@@ -38,7 +38,7 @@ class GitHub {
         if (this.urlQuery?.setup_action === 'install' && this.urlQuery?.code && this.urlQuery?.installation_id) {
             this.install(this.urlQuery.code, this.urlQuery.installation_id)
         } else if (!state.cached) {
-            this.refreshRepos()
+            this.refreshRepos(true)
         }
     }
     async install(code, installation_id) {
@@ -49,11 +49,15 @@ class GitHub {
 
         return setTimeout(state.success = "GitHub App installed successfully.", 1000)
     }
-    async refreshRepos() {
+    async refreshRepos(cached = false) {
         clearAlerts()
         state.loading = true
         try {
-            const { data } = await axios.get('/github/repos')
+            let uriPath = '/github/repos'
+            if (cached === true) {
+                uriPath += '/cached'
+            }
+            const { data } = await axios.get(uriPath)
 
             state.loading = false
             if (typeof data === "string" && !isJSON(data)) {
@@ -76,7 +80,6 @@ class GitHub {
                 } else {
                     state.apps = data
                     state.success = "Refreshed GitHub repositories"
-                    localStorage.setItem('/github/installs', JSON.stringify(data))
                     state.cached = true
                 }
 
@@ -141,15 +144,6 @@ function clearAlerts() {
     state.success = ''
 }
 
-function loadCached() {
-    clearAlerts()
-    const stored = localStorage.getItem('/github/installs')
-    state.apps = isJSON(stored) ? JSON.parse(stored) : []
-    state.installs = state.apps.length > 0
-    state.cached = state.apps.map(i => i.repos.length).reduce((a, b) => a + b, 0) > 0
-}
-loadCached()
-
 const gh = reactive(new GitHub())
 </script>
 
@@ -209,7 +203,7 @@ const gh = reactive(new GitHub())
                         prepend-icon="line-md:downloading-loop"
                         variant="text"
                         :color="global.name.value === 'dark' ? '#fff' : '#272727'"
-                        @click="loadCached"
+                        @click="gh.refreshRepos(true)"
                     />
                 </template>
             </VEmptyState>
