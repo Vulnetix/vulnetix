@@ -81,7 +81,7 @@ export async function onRequestGet(context) {
                     // data.dotfileContents = branch?.content
                     repos.push(data)
                 }
-                if (branchObjectKeys === 0) {
+                if (branchObjectKeys.length === 0) {
                     data.branch = repo.default_branch
                     repos.push(data)
                 }
