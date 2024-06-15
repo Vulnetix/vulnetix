@@ -63,7 +63,7 @@ export async function onRequestGet(context) {
                     pushedAt: repo.pushed_at,
                     avatarUrl: repo.owner.avatar_url,
                     licenseSpdxId: repo.license?.spdx_id,
-                    licenseName: repo.license.name,
+                    licenseName: repo.license?.name,
                 }
                 const prefixBranches = `/github/${app.installationId}/branches/${repo.full_name}/`
                 data.branch = repo.default_branch
