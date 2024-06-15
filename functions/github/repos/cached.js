@@ -21,11 +21,12 @@ export async function onRequestGet(context) {
         .bind(token)
         .first()
 
-    console.log('session expiry', session?.expiry)
     if (!session) {
+        console.log('missing session')
         return Response.json({ 'err': 'Revoked' })
     }
     if (session?.expiry <= +new Date()) {
+        console.log('session expiry', session?.expiry)
         return Response.json({ 'err': 'Expired' })
     }
     try {
@@ -54,7 +55,7 @@ export async function onRequestGet(context) {
                         avatarUrl: repo.owner.avatar_url,
                         license: repo.license,
                     }
-                    prefixBranches = `github/${app.installationId}/branches/${repo.full_name}/`
+                    const prefixBranches = `github/${app.installationId}/branches/${repo.full_name}/`
                     console.log(`prefixBranches = ${prefixBranches}`)
                     const branchCache = await cf.r2list(env.r2icache, prefixBranches)
                     for (const objectKeyBranch of branchCache.map(b => b.key)) {
