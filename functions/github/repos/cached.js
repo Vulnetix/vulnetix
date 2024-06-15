@@ -70,10 +70,11 @@ export async function onRequestGet(context) {
                         repos.push(data)
                         continue
                     }
+                    const branchData = Object.assign({}, data)
                     const branch = await branchMetadata.json()
                     console.log(`branch`, JSON.stringify(branch))
-                    data.latestCommitSHA = branch?.commit?.sha
-                    data.branch = branch?.name
+                    branchData.latestCommitSHA = branch.commit.sha
+                    branchData.branch = branch.name
                     // data.latestCommitMessage = branch?.commit?.message
                     // data.latestCommitVerification = branch?.commit?.verification
                     // data.latestCommitter = branch?.commit?.committer
@@ -81,7 +82,7 @@ export async function onRequestGet(context) {
                     // data.latestFilesChanged = branch?.files?.length
                     // data.dotfileExists = branch?.exists
                     // data.dotfileContents = branch?.content
-                    repos.push(data)
+                    repos.push(branchData)
                 }
                 if (branchObjectKeys.length === 0) {
                     data.branch = repo.default_branch
