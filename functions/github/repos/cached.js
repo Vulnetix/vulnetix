@@ -1,4 +1,4 @@
-import { CloudFlare } from "../../src/utils"
+import { CloudFlare } from "../../../src/utils"
 
 const cf = new CloudFlare()
 
