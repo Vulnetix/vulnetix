@@ -12,7 +12,6 @@ const initialState = {
     warning: "",
     success: "",
     loading: false,
-    installs: false,
     octodexImageUrl: `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`,
     githubApps: [],
     gitRepos: [],
@@ -72,7 +71,6 @@ class GitHub {
 
                     return setTimeout(router.push('/logout'), 2000)
                 }
-                state.installs = true
                 if (data.gitRepos.length === 0) {
                     state.error = "No data retrieved from GitHub. Is this GitHub App installed?"
                     state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
@@ -191,7 +189,7 @@ const gh = reactive(new GitHub())
         </VCol>
         <VCol cols="12">
             <VEmptyState
-                v-if="!state.installs && !state.loading"
+                v-if="!state.githubApps.length && !state.loading"
                 :image="state.octodexImageUrl"
             >
                 <template #actions>
@@ -205,7 +203,7 @@ const gh = reactive(new GitHub())
                 </template>
             </VEmptyState>
             <VCard
-                v-if="state.installs || state.loading"
+                v-if="state.githubApps.length || state.loading"
                 title="Repositories"
             >
                 <VCardText>
