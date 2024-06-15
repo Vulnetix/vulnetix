@@ -13,7 +13,6 @@ const initialState = {
     success: "",
     loading: false,
     installs: false,
-    cached: false,
     octodexImageUrl: `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`,
     apps: [],
 }
@@ -37,7 +36,7 @@ class GitHub {
 
         if (this.urlQuery?.setup_action === 'install' && this.urlQuery?.code && this.urlQuery?.installation_id) {
             this.install(this.urlQuery.code, this.urlQuery.installation_id)
-        } else if (!state.cached) {
+        } else {
             this.refreshRepos(true)
         }
     }
@@ -61,7 +60,7 @@ class GitHub {
 
             state.loading = false
             if (typeof data === "string" && !isJSON(data)) {
-                state.warning = state.cached ? "No data retrieved from GitHub. Was this GitHub App uninstalled?" : "No cached data. Have you tried to install the GitHub App?"
+                state.warning = cached ? "No cached data. Have you tried to install the GitHub App?" : "No data retrieved from GitHub. Was this GitHub App uninstalled?"
                 state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
 
                 return
@@ -74,13 +73,11 @@ class GitHub {
                 }
                 state.installs = true
                 if (data.map(i => i.repos.length).reduce((a, b) => a + b, 0) === 0) {
-                    state.error = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
+                    state.error = "No data retrieved from GitHub. Is this GitHub App installed?"
                     state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
-                    state.cached = false
                 } else {
                     state.apps = data
-                    state.success = "Refreshed GitHub repositories"
-                    state.cached = true
+                    state.success = cached ? "Loaded cached GitHub repositories" : "Refreshed GitHub repositories"
                 }
 
                 return
@@ -183,27 +180,13 @@ const gh = reactive(new GitHub())
                 v-if="!state.installs && !state.loading"
                 :image="state.octodexImageUrl"
             >
-                <template #title>
-                    <div class="text-subtitle-1 mt-8">
-                        GitHub Repositories
-                    </div>
-                </template>
-
                 <template #actions>
                     <VBtn
-                        text="Install GitHub App"
+                        text="Install"
                         prepend-icon="line-md:github-loop"
                         variant="text"
                         :color="global.name.value === 'dark' ? '#fff' : '#272727'"
                         @click="installApp"
-                    />
-                    <VBtn
-                        v-if="state.cached"
-                        text="Reload Cached Repositories"
-                        prepend-icon="line-md:downloading-loop"
-                        variant="text"
-                        :color="global.name.value === 'dark' ? '#fff' : '#272727'"
-                        @click="gh.refreshRepos(true)"
                     />
                 </template>
             </VEmptyState>
