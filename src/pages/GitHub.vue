@@ -61,7 +61,7 @@ class GitHub {
 
             state.loading = false
             if (typeof data === "string" && !isJSON(data)) {
-                state.warning = cached ? "No cached data. Have you tried to install the GitHub App?" : "No data retrieved from GitHub. Was this GitHub App uninstalled?"
+                state.warning = cached === true ? "No cached data. Have you tried to install the GitHub App?" : "No data retrieved from GitHub. Was this GitHub App uninstalled?"
                 state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
 
                 return
@@ -82,7 +82,11 @@ class GitHub {
                     }
                     return r
                 })
-                state.info = cached ? "Loaded cached GitHub repositories" : "Refreshed GitHub repositories"
+                if (cached === true) {
+                    state.info = "Loaded cached GitHub repositories"
+                } else {
+                    state.success = "Refreshed GitHub repositories"
+                }
             }
 
             return
