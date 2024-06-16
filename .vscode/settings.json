@@ -13,7 +13,7 @@
     "editor.defaultFormatter": "DavidAnson.vscode-markdownlint"
   },
   "[scss]": {
-    "editor.defaultFormatter": "stylelint.vscode-stylelint"
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
   },
   "[json]": {
     "editor.defaultFormatter": "vscode.json-language-features"
@@ -24,77 +24,10 @@
   "[vue]": {
     "editor.defaultFormatter": "Vue.volar"
   },
-  "volar.preview.port": 3000,
-  "volar.completion.preferredTagNameCase": "pascal",
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit",
     "source.fixAll.stylelint": "explicit",
     "source.organizeImports": "explicit"
   },
-  "eslint.alwaysShowStatus": true,
-  "eslint.format.enable": true,
-  "eslint.packageManager": "yarn",
-  "stylelint.packageManager": "yarn",
-  "stylelint.validate": [
-    "css",
-    "scss",
-    "vue"
-  ],
-  "cSpell.words": [
-    "axios",
-    "Composables",
-    "Customizer",
-    "dotfile",
-    "flagpack",
-    "ghid",
-    "Iconify",
-    "octodex",
-    "psudo",
-    "stylelint",
-    "touchless",
-    "triggerer",
-    "trivialsec",
-    "Vuelidate",
-    "vuetify"
-  ],
-  "commentAnchors.tags.list": [
-    {
-      "tag": "ℹ️",
-      "scope": "hidden",
-      "highlightColor": "#3498DB",
-      "styleComment": true,
-      "isItalic": false
-    },
-    {
-      "tag": "👉",
-      "scope": "file",
-      "highlightColor": "#98C379",
-      "styleComment": true,
-      "isItalic": false
-    },
-    {
-      "tag": "❗",
-      "scope": "hidden",
-      "highlightColor": "#FF2D00",
-      "styleComment": true,
-      "isItalic": false
-    }
-  ],
-  "highlight.regexFlags": "gi",
-  "highlight.regexes": {
-    "(100vh|translate|margin:|padding:|margin-left|margin-right|rotate|text-align|border-top|border-right|border-bottom|border-left|float|background-position|transform|width|height|top|left|bottom|right|float|clear|(p|m)(l|r)-|border-(start|end)-(start|end)-radius)": [
-      {
-        "borderWidth": "1px",
-        "borderColor": "tomato",
-        "borderStyle": "solid"
-      }
-    ],
-    "(overflow-x:|overflow-y:)": [
-      {
-        "borderWidth": "1px",
-        "borderColor": "green",
-        "borderStyle": "solid"
-      }
-    ]
-  }
+  "eslint.format.enable": true
 }

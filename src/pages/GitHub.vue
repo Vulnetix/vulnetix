@@ -115,7 +115,7 @@ class GitHub {
             state.success = "Refreshed GitHub repositories"
             for (const branch of data.branches) {
                 let isMatch = false
-                let matchedRepo;
+                let matchedRepo
                 for (const repo of state.gitRepos) {
                     if (repo.fullName === branch.fullName) {
                         matchedRepo = Object.assign(repo, branch)
@@ -320,8 +320,8 @@ const gh = reactive(new GitHub())
                                     @click="gh.refreshLatestCommit(repo.fullName, repo.branch)"
                                 />
                                 <span
-                                    class="ms-1"
                                     v-if="repo?.latestCommitMessage"
+                                    class="ms-1"
                                     :title="repo?.latestCommitSHA"
                                 >
                                     {{ repo.latestCommitMessage }}

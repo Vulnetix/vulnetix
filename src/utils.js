@@ -76,6 +76,7 @@ export function isJSON(str) {
         return false
     }
 }
+
 // https://octodex.github.com/images/
 export const octodex = [
     "parentocats.png",
@@ -233,7 +234,7 @@ export const octodex = [
     "octobiwan.jpg",
     "class-act.png",
     "original.png",
-    "idokungfoo-avatar.jpg"
+    "idokungfoo-avatar.jpg",
 ]
 
 export class CloudFlare {
@@ -242,12 +243,13 @@ export class CloudFlare {
     }
     async d1all(db, sql, bind) {
         const { results } = await db.prepare(sql).bind(bind).all()
+
         return results
     }
     async r2get(db, objectKey, uploadedAfter) {
         const options = {
             conditional: {
-                uploadedAfter
+                uploadedAfter,
             },
         }
 
@@ -270,6 +272,7 @@ export class CloudFlare {
                 ...options,
                 cursor: cursor,
             })
+
             listed.objects.push(...next.objects)
 
             truncated = next.truncated
