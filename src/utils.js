@@ -298,7 +298,8 @@ export class GitHub {
 
         const response = await fetch(url, { headers: this.headers })
         if (!response.ok) {
-            console.error(await response.text(), response.headers.entries().map(pair => `${pair[0]}: ${pair[1]}`))
+            console.log(`req headers=${JSON.stringify(this.headers, null, 2)}`)
+            console.error(await response.text())
             throw new Error(`GitHub error! status: ${response.status} ${response.statusText}`)
         }
 
