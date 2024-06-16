@@ -304,29 +304,115 @@ export class GitHub {
 
         return response.json()
     }
+    async fetchSARIF(url) {
+        console.log(url)
+        const headers = Object.assign(this.headers, { 'Accept': 'application/sarif+json' })
+        const response = await fetch(url, { headers })
+        if (!response.ok) {
+            console.error(await response.text(), response.headers.entries().map(pair => `${pair[0]}: ${pair[1]}`))
+            throw new Error(`GitHub error! status: ${response.status} ${response.statusText}`)
+        }
+
+        return response.json()
+    }
+    async getRepoSarif(full_name) {
+        // https://docs.github.com/en/rest/code-scanning/code-scanning?apiVersion=2022-11-28#list-code-scanning-analyses-for-a-repository
+        const files = []
+        const perPage = 100
+        let page = 1
+
+        while (true) {
+            const reportList = await this.fetchJSON(`${this.baseUrl}/repos/${full_name}/code-scanning/analyses?per_page=${perPage}&page=${page}`)
+
+            for (const report of reportList) {
+                const sarif = await this.fetchSARIF(`${this.baseUrl}/repos/${full_name}/code-scanning/analyses/${report.id}`)
+                files.push({
+                    full_name,
+                    report,
+                    sarif
+                })
+            }
+
+            if (metadataList.length < perPage) {
+                break
+            }
+
+            page++
+        }
+
+        return files
+    }
     async getRepos() {
         // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repositories-for-the-authenticated-user
-        return await this.fetchJSON(`${this.baseUrl}/user/repos?per_page=100`) //TODO &page=2
+        const repos = []
+        const perPage = 100
+        let page = 1
+
+        while (true) {
+            const currentRepos = await this.fetchJSON(`${this.baseUrl}/user/repos?per_page=${perPage}&page=${page}`)
+
+            repos.push(...currentRepos)
+
+            if (currentRepos.length < perPage) {
+                break
+            }
+
+            page++
+        }
+
+        return repos
     }
     async getBranch(repo, branch) {
         // https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#get-a-branch
         return await this.fetchJSON(`${this.baseUrl}/repos/${repo.full_name}/branches/${branch}`)
     }
-    async getBranches(repo) {
+    async getBranches(full_name) {
         // https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#list-branches
-        return await this.fetchJSON(`${this.baseUrl}/repos/${repo.full_name}/branches?per_page=100`) //TODO &page=2
+        const branches = []
+        const perPage = 100
+        let page = 1
+
+        while (true) {
+            const currentBranches = await this.fetchJSON(`${this.baseUrl}/repos/${full_name}/branches?per_page=${perPage}&page=${page}`)
+
+            branches.push(...currentBranches)
+
+            if (currentBranches.length < perPage) {
+                break
+            }
+
+            page++
+        }
+
+        return branches
     }
-    async getCommit(repo, branch) {
+    async getCommit(full_name, commit_sha) {
         // https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28
-        return await this.fetchJSON(`${this.baseUrl}/repos/${repo.full_name}/commits/${branch.commit.sha}`)
+        return await this.fetchJSON(`${this.baseUrl}/repos/${full_name}/commits/${commit_sha}`)
     }
-    async getCommits(repo, branch) {
+    async getCommits(full_name, branch_name) {
         // https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28
-        return await this.fetchJSON(`${this.baseUrl}/repos/${repo.full_name}/commits?sha=${branch.name}?per_page=100`) //TODO &page=2
+        const commits = []
+        const perPage = 100
+        let page = 1
+
+        while (true) {
+            const currentCommits = await this.fetchJSON(`${this.baseUrl}/repos/${full_name}/commits?sha=${branch_name}&per_page=${perPage}&page=${page}`)
+
+            commits.push(...currentCommits)
+
+            if (currentCommits.length < perPage) {
+                break
+            }
+
+            page++
+        }
+
+        return commits
     }
-    async getFileContents(repo, branch) {
+    async getFileContents(full_name, branch_name) {
         // https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28
-        const fileUrl = `${this.baseUrl}/repos/${repo.full_name}/contents/.trivialsec?ref=${branch.name}`
+        const fileUrl = `${this.baseUrl}/repos/${full_name}/contents/.trivialsec?ref=${branch_name}`
 
         console.log(fileUrl)
         try {

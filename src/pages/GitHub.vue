@@ -96,6 +96,41 @@ class GitHub {
     state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
     state.loading = false
   }
+  async refreshSarif(full_name) {
+    clearAlerts()
+    try {
+      let uriPath = '/github/repos'
+      if (cached === true) {
+        uriPath += '/cached'
+      }
+      const { data } = await axios.get(`/github/repos/${full_name}/sarif`)
+
+      if (typeof data === "string" && !isJSON(data)) {
+        state.warning = cached === true ? "No cached data. Have you tried to install the GitHub App?" : "No data retrieved from GitHub. Was this GitHub App uninstalled?"
+        state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
+
+        return
+      }
+      if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
+        state.error = data.err
+
+        return setTimeout(router.push('/logout'), 2000)
+      }
+      if (!data) {
+        state.error = "No data retrieved from GitHub. Is this GitHub App installed?"
+        state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
+      } else {
+        state.success = "Refreshed GitHub SARIF"
+      }
+
+      return
+    } catch (e) {
+      console.error(e)
+      state.error = `${e.code} ${e.message}`
+    }
+    state.warning = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
+    state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
+  }
 }
 function installApp() {
   location.href = 'https://github.com/apps/triage-by-trivial-security/installations/new/'
@@ -199,8 +234,8 @@ const gh = reactive(new GitHub())
                 <tbody>
                   <tr v-for="(repo, i) in group.repos" :key="i">
                     <td :title="new Date(repo.createdAt).toLocaleDateString()">
-                      <VBtn title="Refresh Branches" icon="mdi-refresh" variant="plain" color="rgb(26, 187, 156)"
-                        @click="gh.refreshBranches(repo.fullName)" />
+                      <VBtn title="Refresh SARIF" icon="mdi-refresh" variant="plain" color="rgb(26, 187, 156)"
+                        @click="gh.refreshSarif(repo.fullName)" />
                       {{ repo.repoName }}
                     </td>
                     <td class="text-center">
