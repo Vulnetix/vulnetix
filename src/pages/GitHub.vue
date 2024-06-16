@@ -11,6 +11,7 @@ const initialState = {
     error: "",
     warning: "",
     success: "",
+    info: "",
     loading: false,
     octodexImageUrl: `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`,
     githubApps: [],
@@ -75,8 +76,13 @@ class GitHub {
                 state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
             } else {
                 state.githubApps = data.githubApps
-                state.gitRepos = data.gitRepos
-                state.success = cached ? "Loaded cached GitHub repositories" : "Refreshed GitHub repositories"
+                state.gitRepos = data.gitRepos.map(r => {
+                    if (!r.branch) {
+                        r.branch = r.defaultBranch
+                    }
+                    return r
+                })
+                state.info = cached ? "Loaded cached GitHub repositories" : "Refreshed GitHub repositories"
             }
 
             return
@@ -147,6 +153,7 @@ function clearAlerts() {
     state.error = ''
     state.warning = ''
     state.success = ''
+    state.info = ''
 }
 
 const gh = reactive(new GitHub())
@@ -179,6 +186,15 @@ const gh = reactive(new GitHub())
                 icon="$success"
                 title="Success"
                 :text="state.success"
+                border="start"
+                variant="tonal"
+            />
+            <VAlert
+                v-if="state.info"
+                color="info"
+                icon="$info"
+                title="Information"
+                :text="state.info"
                 border="start"
                 variant="tonal"
             />

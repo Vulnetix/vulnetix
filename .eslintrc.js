@@ -163,6 +163,7 @@ module.exports = {
         // -- Sonarlint
         'sonarjs/no-duplicate-string': 'off',
         'sonarjs/no-nested-template-literals': 'off',
+        'sonarjs/cognitive-complexity': ["info", 18],
 
         // -- Unicorn
         // 'unicorn/filename-case': 'off',
