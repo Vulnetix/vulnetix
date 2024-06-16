@@ -307,9 +307,11 @@ export class GitHub {
     async fetchSARIF(url) {
         console.log(url)
         const headers = Object.assign(this.headers, { 'Accept': 'application/sarif+json' })
+        console.log(`req headers=${JSON.stringify(headers, null, 2)}`)
         const response = await fetch(url, { headers })
         if (!response.ok) {
-            console.error(await response.text(), response.headers.entries().map(pair => `${pair[0]}: ${pair[1]}`))
+            console.log(`headers=${JSON.stringify(response.headers, null, 2)}`)
+            console.error(await response.text())
             throw new Error(`GitHub error! status: ${response.status} ${response.statusText}`)
         }
 
