@@ -99,15 +99,10 @@ class GitHub {
   async refreshSarif(full_name) {
     clearAlerts()
     try {
-      let uriPath = '/github/repos'
-      if (cached === true) {
-        uriPath += '/cached'
-      }
       const { data } = await axios.get(`/github/repos/${full_name}/sarif`)
 
       if (typeof data === "string" && !isJSON(data)) {
-        state.warning = cached === true ? "No cached data. Have you tried to install the GitHub App?" : "No data retrieved from GitHub. Was this GitHub App uninstalled?"
-        state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
+        state.warning = "No data retrieved from GitHub. Was this GitHub App uninstalled?"
 
         return
       }
@@ -129,7 +124,6 @@ class GitHub {
       state.error = `${e.code} ${e.message}`
     }
     state.warning = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
-    state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
   }
 }
 function installApp() {
