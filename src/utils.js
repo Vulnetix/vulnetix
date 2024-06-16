@@ -306,7 +306,7 @@ export class GitHub {
     }
     async getRepos() {
         // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repositories-for-the-authenticated-user
-        return await this.fetchJSON(`${this.baseUrl}/user/repos`)
+        return await this.fetchJSON(`${this.baseUrl}/user/repos?per_page=100`) //TODO &page=2
     }
     async getBranch(repo, branch) {
         // https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#get-a-branch
@@ -314,11 +314,15 @@ export class GitHub {
     }
     async getBranches(repo) {
         // https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#list-branches
-        return await this.fetchJSON(`${this.baseUrl}/repos/${repo.full_name}/branches`)
+        return await this.fetchJSON(`${this.baseUrl}/repos/${repo.full_name}/branches?per_page=100`) //TODO &page=2
     }
     async getCommit(repo, branch) {
         // https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28
         return await this.fetchJSON(`${this.baseUrl}/repos/${repo.full_name}/commits/${branch.commit.sha}`)
+    }
+    async getCommits(repo, branch) {
+        // https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28
+        return await this.fetchJSON(`${this.baseUrl}/repos/${repo.full_name}/commits?sha=${branch.name}?per_page=100`) //TODO &page=2
     }
     async getFileContents(repo, branch) {
         // https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28

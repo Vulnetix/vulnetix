@@ -30,8 +30,9 @@ export async function onRequestGet(context) {
     }
     try {
         const githubApps = await cf.d1all(env.d1db, "SELECT * FROM github_apps WHERE memberEmail = ?", session.memberEmail)
-        let installs = []
-        const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
+        const branches = []
+        const uploadedAfter = new Date(Date.now() - 24 * 60 * 60 * 1000)
+        const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' }, onlyIf: { uploadedAfter } }
         for (const app of githubApps) {
             if (!app.accessToken) {
                 console.log(`github_apps kid=${token} installationId=${app.installationId}`)
@@ -43,20 +44,22 @@ export async function onRequestGet(context) {
             const full_name = `${params.org}/${params.repo}`
             for (const branch of await gh.getBranches({ full_name })) {
                 await env.r2icache.put(`github/${app.installationId}/branches/${full_name}/${branch.name}.json`, JSON.stringify(branch), putOptions)
+
+                const info = await env.d1db.prepare('INSERT OR REPLACE INTO git_repos (pk, fullName, createdAt, updatedAt, pushedAt, defaultBranch, ownerId, memberEmail, licenseSpdxId, licenseName, fork, template, archived, visibility, avatarUrl) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)')
+                    .bind(data.ghid, data.fullName, data.createdAt, data.updatedAt, data.pushedAt, data.defaultBranch, data.ownerId, session.memberEmail, data.licenseSpdxId, data.licenseName, data.fork, data.template, data.archived, data.visibility, data.avatarUrl)
+                    .run()
+
+                console.log(`/github/branches git_repos ${data.fullName} kid=${token}`, info)
+
                 branches.push({
                     fullName: full_name,
                     branch: branch.name,
                     latestCommitSHA: branch.commit.sha,
                 })
             }
-            installs = installs.concat({
-                branches,
-                installationId: app.installationId,
-                created: app.created,
-            })
         }
 
-        return Response.json(installs)
+        return Response.json(branches)
     } catch (e) {
         console.error(e)
 

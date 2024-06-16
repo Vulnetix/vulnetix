@@ -32,8 +32,8 @@ export async function onRequestGet(context) {
         const installs = await cf.d1all(env.d1db, "SELECT * FROM github_apps WHERE memberEmail = ?", session.memberEmail)
         const githubApps = []
         const gitRepos = []
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
-        const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
+        const uploadedAfter = new Date(Date.now() - 24 * 60 * 60 * 1000)
+        const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' }, onlyIf: { uploadedAfter } }
         for (const app of installs) {
             if (!app.accessToken) {
                 console.log(`github_apps kid=${token} installationId=${app.installationId}`)
@@ -43,16 +43,10 @@ export async function onRequestGet(context) {
             const prefixRepos = `github/${app.installationId}/repos/`
 
             console.log(`prefixRepos = ${prefixRepos}`)
-
-            const repoCache = await cf.r2list(env.r2icache, prefixRepos)
-
             for (const repo of await gh.getRepos()) {
                 const pathSuffix = `${repo.full_name}.json`
-                const repoMetadata = repoCache.filter(r => r.key.endsWith(pathSuffix))
-                if (repoMetadata.length === 0) {
-                    console.log(`r2icache.put ${prefixRepos}${pathSuffix}`)
-                    await env.r2icache.put(`${prefixRepos}${pathSuffix}`, JSON.stringify(repo), putOptions)
-                }
+                console.log(`r2icache.put ${prefixRepos}${pathSuffix}`)
+                await env.r2icache.put(`${prefixRepos}${pathSuffix}`, JSON.stringify(repo), putOptions)
 
                 const data = {
                     ghid: repo.id,

@@ -5,6 +5,11 @@ import { useTheme } from 'vuetify'
 import router from "../router"
 import { isJSON, octodex } from '../utils'
 
+//TODO https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#check-if-vulnerability-alerts-are-enabled-for-a-repository
+//TODO https://docs.github.com/en/rest/dependabot/alerts?apiVersion=2022-11-28#list-dependabot-alerts-for-a-repository
+//TODO https://docs.github.com/en/rest/secret-scanning/secret-scanning?apiVersion=2022-11-28#list-secret-scanning-alerts-for-a-repository
+//TODO https://docs.github.com/en/rest/dependency-graph/sboms?apiVersion=2022-11-28#export-a-software-bill-of-materials-sbom-for-a-repository
+
 const { global } = useTheme()
 
 const initialState = {
@@ -14,7 +19,6 @@ const initialState = {
   info: "",
   loading: false,
   octodexImageUrl: `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`,
-  githubApps: [],
   gitRepos: [],
 }
 
@@ -75,13 +79,7 @@ class GitHub {
         state.error = "No data retrieved from GitHub. Is this GitHub App installed?"
         state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
       } else {
-        state.githubApps = data.githubApps
-        state.gitRepos = data.gitRepos.map(r => {
-          if (!r.branch) {
-            r.branch = r.defaultBranch
-          }
-          return r
-        })
+        state.gitRepos = data.gitRepos
         if (cached === true) {
           state.info = "Loaded cached GitHub repositories"
         } else {
@@ -97,47 +95,6 @@ class GitHub {
     state.warning = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
     state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
     state.loading = false
-  }
-  async refreshBranches(repoFullName) {
-    clearAlerts()
-    try {
-      const { data } = await axios.get(`/github/repos/${repoFullName}/branches`)
-
-      if (typeof data === "string" && !isJSON(data)) {
-        state.warning = "No data retrieved from GitHub. Was this GitHub App uninstalled?"
-
-        return
-      }
-      if (["Expired", "Revoked", "Forbidden"].includes(data?.err)) {
-        state.error = data.err
-
-        return setTimeout(router.push('/logout'), 2000)
-      }
-      state.success = "Refreshed GitHub repositories"
-      for (const branch of data.branches) {
-        let isMatch = false
-        let matchedRepo
-        for (const repo of state.gitRepos) {
-          if (repo.fullName === branch.fullName) {
-            matchedRepo = Object.assign(repo, branch)
-            if (repo.branch === branch.branch) {
-              repo.latestCommitSHA = branch.latestCommitSHA
-              isMatch = true
-              break
-            }
-          }
-        }
-        if (!isMatch && matchedRepo) {
-          state.gitRepos.push(matchedRepo)
-        }
-      }
-
-      return
-    } catch (e) {
-      console.error(e)
-      state.error = `${e.code} ${e.message}`
-    }
-    state.warning = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
   }
 }
 function installApp() {
@@ -193,7 +150,7 @@ const gh = reactive(new GitHub())
         </template>
       </VEmptyState>
 
-      <VCard v-if="state.githubApps.length || state.loading" title="Repositories">
+      <VCard v-if="state.gitRepos.length || state.loading" title="Repositories">
         <VCardText>
           <VBtn text="Install another GitHub Account" prepend-icon="line-md:github-loop" variant="text"
             :color="global.name.value === 'dark' ? '#fff' : '#272727'" @click="installApp" />
@@ -216,19 +173,16 @@ const gh = reactive(new GitHub())
                       Repository
                     </th>
                     <th>
-                      Branch
+                      Default Branch
                     </th>
                     <th>
                       Visibility
                     </th>
                     <th>
-                      Fork
+                      Type
                     </th>
                     <th>
                       Archived
-                    </th>
-                    <th>
-                      Template
                     </th>
                     <th>
                       License
@@ -250,19 +204,16 @@ const gh = reactive(new GitHub())
                       {{ repo.repoName }}
                     </td>
                     <td class="text-center">
-                      {{ repo.branch }}<span v-if="repo.branch === repo.defaultBranch"> (default)</span>
+                      {{ repo.defaultBranch }}
                     </td>
                     <td class="text-center">
                       {{ repo.visibility }}
                     </td>
-                    <td class="text-center">
-                      {{ repo.fork ? "Forked" : "Source" }}
+                    <td class="text-center" :class="{ 'text-secondary': repo.fork }">
+                      {{ repo.fork ? "Fork" : repo.template ? "Template" : "Source" }}
                     </td>
-                    <td class="text-center">
+                    <td class="text-center" :class="{ 'text-secondary': repo.archived }">
                       {{ repo.archived ? "Archived" : "Active" }}
-                    </td>
-                    <td class="text-center">
-                      {{ repo.template ? "Template" : "Code" }}
                     </td>
                     <td class="text-center" :title="repo.licenseSpdxId">
                       {{ repo.licenseName }}
