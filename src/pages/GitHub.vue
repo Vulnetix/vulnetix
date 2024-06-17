@@ -348,7 +348,7 @@ const gh = reactive(new GitHub())
                                                 activator="parent"
                                                 location="top"
                                             >{{
-                                                repo.id }}</VTooltip>
+                                                repo.pk }}</VTooltip>
                                             {{ new Date(repo.createdAt).toLocaleDateString() }}
                                         </td>
                                     </tr>
