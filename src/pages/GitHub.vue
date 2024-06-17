@@ -294,11 +294,6 @@ const gh = reactive(new GitHub())
                                         :key="i"
                                     >
                                         <td>
-                                            <VTooltip
-                                                activator="parent"
-                                                location="top"
-                                            >{{ new
-                                                Date(repo.createdAt).toLocaleDateString() }}</VTooltip>
                                             <VTooltip text="Refresh SARIF">
                                                 <template v-slot:activator="{ props }">
                                                     <VBtn
@@ -314,6 +309,11 @@ const gh = reactive(new GitHub())
                                             {{ repo.repoName }}
                                         </td>
                                         <td class="text-center">
+                                            <VTooltip
+                                                activator="parent"
+                                                location="top"
+                                            >Last Updated {{ new
+                                                Date(repo.updatedAt).toLocaleDateString() }}</VTooltip>
                                             {{ repo.defaultBranch }}
                                         </td>
                                         <td class="text-center">
@@ -333,15 +333,22 @@ const gh = reactive(new GitHub())
                                         </td>
                                         <td class="text-center">
                                             <VTooltip
+                                                v-if="repo.licenseSpdxId"
                                                 activator="parent"
                                                 location="top"
-                                            >{{ repo.licenseSpdxId }}</VTooltip>
+                                            >{{
+                                                repo.licenseSpdxId }}</VTooltip>
                                             {{ repo.licenseName }}
                                         </td>
                                         <td class="text-center">
                                             {{ new Date(repo.pushedAt).toLocaleDateString() }}
                                         </td>
                                         <td class="text-end">
+                                            <VTooltip
+                                                activator="parent"
+                                                location="top"
+                                            >{{
+                                                repo.id }}</VTooltip>
                                             {{ new Date(repo.createdAt).toLocaleDateString() }}
                                         </td>
                                     </tr>
