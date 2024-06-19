@@ -295,11 +295,11 @@ export class GitHub {
     }
     async fetchJSON(url) {
         console.log(url)
-
         const response = await fetch(url, { headers: this.headers })
         if (!response.ok) {
-            console.log(`req headers=${JSON.stringify(this.headers, null, 2)}`)
-            console.error(`GitHub error! status: ${response.status} ${response.statusText} ${respText}`)
+            console.error(`resp headers=${JSON.stringify(this.headers, null, 2)}`)
+            console.error(await response.text())
+            console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
         }
         try {
             const content = await response.json()
@@ -311,15 +311,18 @@ export class GitHub {
     async fetchSARIF(url) {
         console.log(url)
         const headers = Object.assign(this.headers, { 'Accept': 'application/sarif+json' })
-        console.log(`req headers=${JSON.stringify(headers, null, 2)}`)
         const response = await fetch(url, { headers })
         if (!response.ok) {
-            console.log(`headers=${JSON.stringify(response.headers, null, 2)}`)
+            console.error(`resp headers=${JSON.stringify(response.headers, null, 2)}`)
             console.error(await response.text())
-            throw new Error(`GitHub error! status: ${response.status} ${response.statusText}`)
+            console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
         }
-
-        return response.json()
+        try {
+            const content = await response.json()
+            return { ok: response.ok, status: response.status, statusText: response.statusText, content }
+        } catch (err) {
+            return { ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text() }
+        }
     }
     async getRepoSarif(full_name, memberEmail, db) {
         // https://docs.github.com/en/rest/code-scanning/code-scanning?apiVersion=2022-11-28#list-code-scanning-analyses-for-a-repository
@@ -349,11 +352,30 @@ export class GitHub {
                 break
             }
             for (const report of data.content) {
-                const sarif = await this.fetchSARIF(`${this.baseUrl}/repos/${full_name}/code-scanning/analyses/${report.id}`)
+                const sarifUrl = `${this.baseUrl}/repos/${full_name}/code-scanning/analyses/${report.id}`
+                const sarifData = await this.fetchSARIF(sarifUrl)
+                if (!sarifData?.ok) {
+                    sarifData.url = sarifUrl
+                    const info = await db.prepare(`
+                        INSERT OR REPLACE INTO audit (
+                        memberEmail,
+                        action,
+                        actionTime,
+                        additionalData) VALUES (?1, ?2, ?3, ?4)`)
+                        .bind(
+                            memberEmail,
+                            'github_sarif',
+                            +new Date(),
+                            JSON.stringify(sarifData)
+                        )
+                        .run()
+                    console.log(`github.getRepoSarif(${full_name}) ${sarifData.status} ${sarifData.statusText}`, sarifData.content, info)
+                    break
+                }
                 files.push({
                     full_name,
-                    report,
-                    sarif
+                    report: Object.assign({}, report),
+                    sarif: Object.assign({}, sarifData.content)
                 })
             }
 
