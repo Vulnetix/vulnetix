@@ -26,7 +26,7 @@ model sessions {
   issued      Int
   secret      String?
   authn_ip    String?
-  authn_ua    Int?
+  authn_ua    String?
 }
 
 model members {

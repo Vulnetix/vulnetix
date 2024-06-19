@@ -178,7 +178,7 @@ const gh = reactive(new GitHub())
         <template #actions>
           <VBtn text="Install" prepend-icon="line-md:github-loop" variant="text"
             :color="global.name.value === 'dark' ? '#fff' : '#272727'" @click="installApp" />
-          <VBtn v-if="!state.githubApps.length && !state.loading" text="Install" prepend-icon="line-md:github-loop"
+          <VBtn v-if="state.githubApps.length && !state.loading" text="Refresh Repositories" prepend-icon="mdi-refresh"
             variant="text" :color="global.name.value === 'dark' ? '#fff' : '#272727'" @click="gh.refreshRepos" />
         </template>
       </VEmptyState>

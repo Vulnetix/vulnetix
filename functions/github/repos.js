@@ -16,7 +16,6 @@ export async function onRequestGet(context) {
     const adapter = new PrismaD1(env.d1db)
     const prisma = new PrismaClient({
         adapter,
-        rejectOnNotFound: true,
         transactionOptions: {
             maxWait: 1500, // default: 2000
             timeout: 2000, // default: 5000
@@ -27,7 +26,7 @@ export async function onRequestGet(context) {
     if (!token) {
         return Response.json({ 'err': 'Forbidden' })
     }
-    const session = await prisma.sessions.findFirst({
+    const session = await prisma.sessions.findFirstOrThrow({
         where: {
             kid: token,
         },
