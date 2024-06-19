@@ -299,11 +299,14 @@ export class GitHub {
         const response = await fetch(url, { headers: this.headers })
         if (!response.ok) {
             console.log(`req headers=${JSON.stringify(this.headers, null, 2)}`)
-            console.error(await response.text())
-            throw new Error(`GitHub error! status: ${response.status} ${response.statusText}`)
+            console.error(`GitHub error! status: ${response.status} ${response.statusText} ${respText}`)
         }
-
-        return response.json()
+        try {
+            const content = await response.json()
+            return { ok: response.ok, status: response.status, statusText: response.statusText, content }
+        } catch (err) {
+            return { ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text() }
+        }
     }
     async fetchSARIF(url) {
         console.log(url)
@@ -318,16 +321,34 @@ export class GitHub {
 
         return response.json()
     }
-    async getRepoSarif(full_name) {
+    async getRepoSarif(full_name, memberEmail, db) {
         // https://docs.github.com/en/rest/code-scanning/code-scanning?apiVersion=2022-11-28#list-code-scanning-analyses-for-a-repository
         const files = []
         const perPage = 100
         let page = 1
 
         while (true) {
-            const reportList = await this.fetchJSON(`${this.baseUrl}/repos/${full_name}/code-scanning/analyses?per_page=${perPage}&page=${page}`)
-
-            for (const report of reportList) {
+            const url = `${this.baseUrl}/repos/${full_name}/code-scanning/analyses?per_page=${perPage}&page=${page}`
+            const data = await this.fetchJSON(url)
+            if (!data?.ok) {
+                data.url = url
+                const info = await db.prepare(`
+                    INSERT OR REPLACE INTO audit (
+                    memberEmail,
+                    action,
+                    actionTime,
+                    additionalData) VALUES (?1, ?2, ?3, ?4)`)
+                    .bind(
+                        memberEmail,
+                        'github_sarif',
+                        +new Date(),
+                        JSON.stringify(data)
+                    )
+                    .run()
+                console.log(`github.getRepoSarif(${full_name}) ${data.status} ${data.statusText}`, data.content, info)
+                break
+            }
+            for (const report of data.content) {
                 const sarif = await this.fetchSARIF(`${this.baseUrl}/repos/${full_name}/code-scanning/analyses/${report.id}`)
                 files.push({
                     full_name,
@@ -345,16 +366,34 @@ export class GitHub {
 
         return files
     }
-    async getRepos() {
+    async getRepos(memberEmail, db) {
         // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repositories-for-the-authenticated-user
         const repos = []
         const perPage = 100
         let page = 1
 
         while (true) {
-            const currentRepos = await this.fetchJSON(`${this.baseUrl}/user/repos?per_page=${perPage}&page=${page}`)
-
-            repos.push(...currentRepos)
+            const url = `${this.baseUrl}/user/repos?per_page=${perPage}&page=${page}`
+            const data = await this.fetchJSON(url)
+            if (!data?.ok) {
+                data.url = url
+                const info = await db.prepare(`
+                    INSERT OR REPLACE INTO audit (
+                    memberEmail,
+                    action,
+                    actionTime,
+                    additionalData) VALUES (?1, ?2, ?3, ?4)`)
+                    .bind(
+                        memberEmail,
+                        'github_repos',
+                        +new Date(),
+                        JSON.stringify(data)
+                    )
+                    .run()
+                console.log(`github.getRepos() ${data.status} ${data.statusText}`, data.content, info)
+                break
+            }
+            repos.push(...data.content)
 
             if (currentRepos.length < perPage) {
                 break

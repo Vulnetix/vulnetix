@@ -43,7 +43,7 @@ export async function onRequestGet(context) {
             const prefixRepos = `github/${app.installationId}/repos/`
 
             console.log(`prefixRepos = ${prefixRepos}`)
-            for (const repo of await gh.getRepos()) {
+            for (const repo of await gh.getRepos(session.memberEmail, env.d1db)) {
                 const pathSuffix = `${repo.full_name}.json`
                 console.log(`r2icache.put ${prefixRepos}${pathSuffix}`)
                 await env.r2icache.put(`${prefixRepos}${pathSuffix}`, JSON.stringify(repo), putOptions)

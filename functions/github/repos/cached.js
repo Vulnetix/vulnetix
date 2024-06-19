@@ -145,7 +145,7 @@ export async function onRequestGet(context) {
 //             let repoCache = await cf.r2list(env.r2icache, prefixRepos)
 
 //             const repos = []
-//             for (const repo of await gh.getRepos()) {
+//             for (const repo of await gh.getRepos(session.memberEmail, env.d1db)) {
 //                 const pathSuffix = `${repo.full_name}/${repo.id}.json`
 //                 const repoMetadata = repoCache.filter(r => r.key.endsWith(pathSuffix))
 //                 if (repoMetadata.length === 0) {

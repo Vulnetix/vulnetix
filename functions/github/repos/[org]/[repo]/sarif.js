@@ -41,7 +41,7 @@ export async function onRequestGet(context) {
             const gh = new GitHub(app.accessToken)
 
             const full_name = `${params.org}/${params.repo}`
-            for (const data of await gh.getRepoSarif(full_name)) {
+            for (const data of await gh.getRepoSarif(full_name, session.memberEmail, env.d1db)) {
                 const objectPrefix = `github/${app.installationId}/repos/${full_name}/code-scanning/`
                 await env.r2icache.put(`${objectPrefix}${data.report.id}.json`, JSON.stringify(data.report), putOptions)
                 await env.r2icache.put(`${objectPrefix}${data.report.id}_${data.report.sarif_id}.json`, JSON.stringify(data.sarif), putOptions)
