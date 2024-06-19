@@ -29,81 +29,74 @@ export async function onRequestGet(context) {
         console.log('session expiry', session?.expiry)
         return Response.json({ 'err': 'Expired' })
     }
-    try {
-        const githubApps = await cf.d1all(env.d1db, "SELECT installationId, created, expires FROM github_apps WHERE memberEmail = ?", session.memberEmail)
 
-        const gitRepos = await cf.d1all(env.d1db, "SELECT * FROM git_repos WHERE memberEmail = ?", session.memberEmail)
-        // for (const app of githubApps) {
-        //     const prefixRepos = `github/${app.installationId}/repos/`
-        //     console.log(`prefixRepos = ${prefixRepos}`)
-        //     const repoCache = await cf.r2list(env.r2icache, prefixRepos)
-        //     const repos = []
-        //     for (const objectKeyRepo of repoCache.map(r => r.key)) {
-        //         console.log(`objectKeyRepo = ${objectKeyRepo}`)
-        //         const repoMetadata = await cf.r2get(env.r2icache, objectKeyRepo)
-        //         if (!repoMetadata) {
-        //             continue
-        //         }
-        //         const repo = await repoMetadata.json()
-        //         const data = {
-        //             ghid: repo.id,
-        //             fullName: repo.full_name,
-        //             createdAt: repo.created_at,
-        //             visibility: repo.visibility,
-        //             archived: repo.archived,
-        //             defaultBranch: repo.default_branch,
-        //             pushedAt: repo.pushed_at,
-        //             avatarUrl: repo.owner.avatar_url,
-        //             license: repo.license,
-        //         }
+    const githubApps = await cf.d1all(env.d1db, "SELECT installationId, created, expires FROM github_apps WHERE memberEmail = ?", session.memberEmail)
 
-        //         const prefixBranches = `github/${app.installationId}/branches/${repo.full_name}/`
-        //         console.log(`prefixBranches = ${prefixBranches}`)
-        //         const branchCache = await cf.r2list(env.r2icache, prefixBranches)
-        //         const branchObjectKeys = branchCache.map(b => b.key)
-        //         for (const objectKeyBranch of branchObjectKeys) {
-        //             console.log(`objectKeyBranch = ${objectKeyBranch}`)
-        //             const branchMetadata = await cf.r2get(env.r2icache, objectKeyBranch)
-        //             if (!branchMetadata) {
-        //                 console.log(`branchMetadata = null --- objectKeyBranch = ${objectKeyBranch}`)
-        //                 data.branch = repo.default_branch
-        //                 repos.push(data)
-        //                 continue
-        //             }
-        //             const branchData = Object.assign({}, data)
-        //             const branch = await branchMetadata.json()
-        //             console.log(`branch`, JSON.stringify(branch))
-        //             branchData.latestCommitSHA = branch.commit.sha
-        //             branchData.branch = branch.name
-        //             // data.latestCommitMessage = branch?.commit?.message
-        //             // data.latestCommitVerification = branch?.commit?.verification
-        //             // data.latestCommitter = branch?.commit?.committer
-        //             // data.latestStats = branch?.stats
-        //             // data.latestFilesChanged = branch?.files?.length
-        //             // data.dotfileExists = branch?.exists
-        //             // data.dotfileContents = branch?.content
-        //             repos.push(branchData)
-        //         }
-        //         if (branchObjectKeys.length === 0) {
-        //             data.branch = repo.default_branch
-        //             repos.push(data)
-        //         }
-        //     }
-        //     installs.push({
-        //         repos,
-        //         installationId: app.installationId,
-        //         created: app.created,
-        //     })
-        // }
+    const gitRepos = await cf.d1all(env.d1db, "SELECT * FROM git_repos WHERE memberEmail = ?", session.memberEmail)
+    // for (const app of githubApps) {
+    //     const prefixRepos = `github/${app.installationId}/repos/`
+    //     console.log(`prefixRepos = ${prefixRepos}`)
+    //     const repoCache = await cf.r2list(env.r2icache, prefixRepos)
+    //     const repos = []
+    //     for (const objectKeyRepo of repoCache.map(r => r.key)) {
+    //         console.log(`objectKeyRepo = ${objectKeyRepo}`)
+    //         const repoMetadata = await cf.r2get(env.r2icache, objectKeyRepo)
+    //         if (!repoMetadata) {
+    //             continue
+    //         }
+    //         const repo = await repoMetadata.json()
+    //         const data = {
+    //             ghid: repo.id,
+    //             fullName: repo.full_name,
+    //             createdAt: repo.created_at,
+    //             visibility: repo.visibility,
+    //             archived: repo.archived,
+    //             defaultBranch: repo.default_branch,
+    //             pushedAt: repo.pushed_at,
+    //             avatarUrl: repo.owner.avatar_url,
+    //             license: repo.license,
+    //         }
 
-        return Response.json({ githubApps, gitRepos })
+    //         const prefixBranches = `github/${app.installationId}/branches/${repo.full_name}/`
+    //         console.log(`prefixBranches = ${prefixBranches}`)
+    //         const branchCache = await cf.r2list(env.r2icache, prefixBranches)
+    //         const branchObjectKeys = branchCache.map(b => b.key)
+    //         for (const objectKeyBranch of branchObjectKeys) {
+    //             console.log(`objectKeyBranch = ${objectKeyBranch}`)
+    //             const branchMetadata = await cf.r2get(env.r2icache, objectKeyBranch)
+    //             if (!branchMetadata) {
+    //                 console.log(`branchMetadata = null --- objectKeyBranch = ${objectKeyBranch}`)
+    //                 data.branch = repo.default_branch
+    //                 repos.push(data)
+    //                 continue
+    //             }
+    //             const branchData = Object.assign({}, data)
+    //             const branch = await branchMetadata.json()
+    //             console.log(`branch`, JSON.stringify(branch))
+    //             branchData.latestCommitSHA = branch.commit.sha
+    //             branchData.branch = branch.name
+    //             // data.latestCommitMessage = branch?.commit?.message
+    //             // data.latestCommitVerification = branch?.commit?.verification
+    //             // data.latestCommitter = branch?.commit?.committer
+    //             // data.latestStats = branch?.stats
+    //             // data.latestFilesChanged = branch?.files?.length
+    //             // data.dotfileExists = branch?.exists
+    //             // data.dotfileContents = branch?.content
+    //             repos.push(branchData)
+    //         }
+    //         if (branchObjectKeys.length === 0) {
+    //             data.branch = repo.default_branch
+    //             repos.push(data)
+    //         }
+    //     }
+    //     installs.push({
+    //         repos,
+    //         installationId: app.installationId,
+    //         created: app.created,
+    //     })
+    // }
 
-    } catch (e) {
-        const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
-        console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
-
-        return Response.json({ message: e.message, lineno, colno })
-    }
+    return Response.json({ githubApps, gitRepos })
 }
 
 // async function _onRequestGet(context) {
