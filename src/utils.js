@@ -306,7 +306,7 @@ export class GitHub {
             return { ok: response.ok, status: response.status, statusText: response.statusText, content }
         } catch (e) {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
-            console.error(`line ${lineno}, col ${colno} ${e.message}`)
+            console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
             return { ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text(), error: { message: e.message, lineno, colno } }
         }
@@ -325,7 +325,7 @@ export class GitHub {
             return { ok: response.ok, status: response.status, statusText: response.statusText, content }
         } catch (e) {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
-            console.error(`line ${lineno}, col ${colno} ${e.message}`)
+            console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
             return { ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text(), error: { message: e.message, lineno, colno } }
         }
@@ -500,7 +500,7 @@ export class GitHub {
             return { exists: true, content }
         } catch (e) {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
-            console.error(`line ${lineno}, col ${colno} ${e.message}`)
+            console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
             return { exists: false, ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text(), error: { message: e.message, lineno, colno } }
         }
