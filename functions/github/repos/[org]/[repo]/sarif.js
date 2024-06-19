@@ -42,7 +42,6 @@ export async function onRequestGet(context) {
 
         const full_name = `${params.org}/${params.repo}`
         for (const data of await gh.getRepoSarif(full_name, session.memberEmail, env.d1db)) {
-            console.log(`>> gh.getRepoSarif(${full_name})`, data)
             const objectPrefix = `github/${app.installationId}/repos/${full_name}/code-scanning/`
             await env.r2icache.put(`${objectPrefix}${data.report.id}.json`, JSON.stringify(data.report), putOptions)
             await env.r2icache.put(`${objectPrefix}${data.report.id}_${data.report.sarif_id}.json`, JSON.stringify(data.sarif), putOptions)
@@ -70,7 +69,7 @@ export async function onRequestGet(context) {
                     full_name,
                     session.memberEmail,
                     data.report.commit_sha,
-                    data.report.data.report.commit_sha,
+                    data.report.ref,
                     (new Date(data.report.created_at)).getTime(),
                     data.report.results_count,
                     data.report.rules_count,
