@@ -357,7 +357,7 @@ export class GitHub {
                 })
             }
 
-            if (metadataList.length < perPage) {
+            if (data.content.length < perPage) {
                 break
             }
 
@@ -395,7 +395,7 @@ export class GitHub {
             }
             repos.push(...data.content)
 
-            if (currentRepos.length < perPage) {
+            if (data.content.length < perPage) {
                 break
             }
 
