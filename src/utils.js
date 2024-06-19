@@ -304,8 +304,11 @@ export class GitHub {
         try {
             const content = await response.json()
             return { ok: response.ok, status: response.status, statusText: response.statusText, content }
-        } catch (err) {
-            return { ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text() }
+        } catch (e) {
+            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
+            console.error(`line ${lineno}, col ${colno} ${e.message}`)
+
+            return { ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text(), error: { message: e.message, lineno, colno } }
         }
     }
     async fetchSARIF(url) {
@@ -320,8 +323,11 @@ export class GitHub {
         try {
             const content = await response.json()
             return { ok: response.ok, status: response.status, statusText: response.statusText, content }
-        } catch (err) {
-            return { ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text() }
+        } catch (e) {
+            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
+            console.error(`line ${lineno}, col ${colno} ${e.message}`)
+
+            return { ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text(), error: { message: e.message, lineno, colno } }
         }
     }
     async getRepoSarif(full_name, memberEmail, db) {
@@ -492,10 +498,11 @@ export class GitHub {
             const content = Buffer.from(file.content, file.encoding).toString('utf-8')
 
             return { exists: true, content }
-        } catch (error) {
-            console.error(error)
+        } catch (e) {
+            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
+            console.error(`line ${lineno}, col ${colno} ${e.message}`)
 
-            return { exists: false, content: null }
+            return { exists: false, ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text(), error: { message: e.message, lineno, colno } }
         }
     }
 }

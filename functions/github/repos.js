@@ -114,8 +114,9 @@ export async function onRequestGet(context) {
 
         return Response.json({ githubApps, gitRepos })
     } catch (e) {
-        console.error(e)
+        const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
+        console.error(`line ${lineno}, col ${colno} ${e.message}`)
 
-        return Response.json(e)
+        return Response.json({ message: e.message, lineno, colno })
     }
 }
