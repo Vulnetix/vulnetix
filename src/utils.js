@@ -357,7 +357,6 @@ export class GitHub {
                 console.log(`github.getRepoSarif(${full_name}) ${data.status} ${data.statusText}`, data.content, info)
                 break
             }
-            console.log(`>> github.getRepoSarif(${full_name})`, data.content)
             for (const report of data.content) {
                 const sarifUrl = `${this.baseUrl}/repos/${full_name}/code-scanning/analyses/${report.id}`
                 const sarifData = await this.fetchSARIF(sarifUrl)
