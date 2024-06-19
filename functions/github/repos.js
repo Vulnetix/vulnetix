@@ -1,4 +1,6 @@
-import { CloudFlare, GitHub } from "../../src/utils"
+import { PrismaD1 } from '@prisma/adapter-d1';
+import { PrismaClient } from '@prisma/client';
+import { CloudFlare, GitHub } from "../../src/utils";
 
 const cf = new CloudFlare()
 
@@ -11,15 +13,25 @@ export async function onRequestGet(context) {
         next, // used for middleware or to fetch assets
         data, // arbitrary space for passing data between middlewares
     } = context
+    const adapter = new PrismaD1(env.d1db)
+    const prisma = new PrismaClient({
+        adapter,
+        rejectOnNotFound: true,
+        transactionOptions: {
+            maxWait: 1500, // default: 2000
+            timeout: 2000, // default: 5000
+        },
+    })
 
     const token = request.headers.get('x-trivialsec')
     if (!token) {
         return Response.json({ 'err': 'Forbidden' })
     }
-
-    const session = await env.d1db.prepare("SELECT memberEmail, expiry FROM sessions WHERE kid = ?")
-        .bind(token)
-        .first()
+    const session = await prisma.sessions.findFirst({
+        where: {
+            kid: token,
+        },
+    })
 
     console.log('session expiry', session?.expiry)
     if (!session) {
@@ -29,7 +41,11 @@ export async function onRequestGet(context) {
         return Response.json({ 'err': 'Expired' })
     }
 
-    const installs = await cf.d1all(env.d1db, "SELECT * FROM github_apps WHERE memberEmail = ?", session.memberEmail)
+    const installs = await prisma.github_apps.findMany({
+        where: {
+            memberEmail: session.memberEmail,
+        },
+    })
     const githubApps = []
     const gitRepos = []
     const uploadedAfter = new Date(Date.now() - 24 * 60 * 60 * 1000)

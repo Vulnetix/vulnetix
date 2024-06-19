@@ -36,3 +36,4 @@ src/@iconify/icons-bundle.js
 # CloudFlare
 .wrangler/
 .dev.vars
+.env
