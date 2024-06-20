@@ -18,6 +18,8 @@ setup: ## FOR DOCO ONLY - Run these one at a time, do not call this target direc
 
 install: ## poetry install and create poetry.lock
 	npm i
+	npx wrangler d1 migrations apply trivial_triage --local
+	npx prisma generate
 
 update: ## poetry update poetry.lock
 	git submodule update
@@ -32,3 +34,10 @@ sbom: clean ## generate CycloneDX from NPM for this project
 
 deployments: ## FOR DOCO ONLY
 	npx wrangler pages deployment list --project-name triage-by-trivial-security
+
+run: ## FOR DOCO ONLY - Run these one at a time, do not call this target directly
+	lsof -i tcp:8788
+	npm run preview
+
+sql: ## FOR DOCO ONLY
+	npx wrangler d1 execute trivial_triage --local --command "select * from sarif;"
