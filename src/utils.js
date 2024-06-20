@@ -294,15 +294,16 @@ export class GitHub {
         this.baseUrl = "https://api.github.com"
     }
     async fetchJSON(url) {
-        console.log(url)
-        const response = await fetch(url, { headers: this.headers })
-        if (!response.ok) {
-            console.error(`resp headers=${JSON.stringify(this.headers, null, 2)}`)
-            console.error(await response.text())
-            console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
-        }
         try {
-            const content = await response.json()
+            console.log(url)
+            const response = await fetch(url, { headers: this.headers })
+            const respText = await response.text()
+            if (!response.ok) {
+                console.error(`resp headers=${JSON.stringify(this.headers, null, 2)}`)
+                console.error(respText)
+                console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
+            }
+            const content = JSON.parse(respText)
             return { ok: response.ok, status: response.status, statusText: response.statusText, content }
         } catch (e) {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
@@ -312,16 +313,17 @@ export class GitHub {
         }
     }
     async fetchSARIF(url) {
-        console.log(url)
-        const headers = Object.assign(this.headers, { 'Accept': 'application/sarif+json' })
-        const response = await fetch(url, { headers })
-        if (!response.ok) {
-            console.error(`resp headers=${JSON.stringify(response.headers, null, 2)}`)
-            console.error(await response.text())
-            console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
-        }
         try {
-            const content = await response.json()
+            console.log(url)
+            const headers = Object.assign(this.headers, { 'Accept': 'application/sarif+json' })
+            const response = await fetch(url, { headers })
+            const respText = await response.text()
+            if (!response.ok) {
+                console.error(`resp headers=${JSON.stringify(response.headers, null, 2)}`)
+                console.error(respText)
+                console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
+            }
+            const content = JSON.parse(respText)
             return { ok: response.ok, status: response.status, statusText: response.statusText, content }
         } catch (e) {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);

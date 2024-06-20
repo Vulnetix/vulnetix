@@ -31,8 +31,7 @@ export async function onRequestGet(context) {
 
     const githubApps = await cf.d1all(env.d1db, "SELECT * FROM github_apps WHERE memberEmail = ?", session.memberEmail)
     const files = []
-    const uploadedAfter = new Date(Date.now() - 24 * 60 * 60 * 1000)
-    const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' }, onlyIf: { uploadedAfter } }
+    const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
     for (const app of githubApps) {
         if (!app.accessToken) {
             console.log(`github_apps kid=${token} installationId=${app.installationId}`)
@@ -62,7 +61,7 @@ export async function onRequestGet(context) {
                 analysisKey,
                 warning
                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
-                `)
+            `)
                 .bind(
                     data.report.sarif_id,
                     data.report.id,
@@ -82,6 +81,85 @@ export async function onRequestGet(context) {
 
             console.log(`/github/repos/sarif ${full_name} kid=${token}`, info)
 
+            const results = []
+            for (const run of data.sarif.runs) {
+                for (const result of run.results) {
+                    const resultData = {
+                        guid: result.guid,
+                        reportId: data.report.id,
+                        messageText: result.message.text,
+                        ruleId: result.ruleId,
+                        locations: JSON.stringify(result.locations),
+                        automationDetailsId: run.automationDetails.id,
+                    }
+                    for (const extension of run.tool.extensions) {
+                        resultData.rulesetName = extension.name
+                        for (const rule of extension.rules) {
+                            if (rule.id === result.ruleId) {
+                                resultData.level = rule.defaultConfiguration.level
+                                resultData.description = rule.fullDescription.text
+                                resultData.helpMarkdown = rule.help?.markdown || rule.help?.text
+                                resultData.securitySeverity = rule.properties['security-severity']
+                                resultData.precision = rule.properties.precision
+                                resultData.tags = JSON.stringify(rule.properties.tags)
+                                break
+                            }
+                        }
+                    }
+                    results.push(resultData)
+                    console.log(
+                        resultData.guid,
+                        resultData.reportId,
+                        resultData.messageText,
+                        resultData.ruleId,
+                        resultData.locations,
+                        resultData.automationDetailsId,
+                        resultData.rulesetName,
+                        resultData.level,
+                        resultData.description,
+                        resultData.helpMarkdown,
+                        resultData.securitySeverity,
+                        resultData.precision,
+                        resultData.tags
+                    )
+                    const reportInfo = await env.d1db.prepare(`
+                        INSERT OR REPLACE INTO sarif_results (
+                        guid,
+                        reportId,
+                        messageText,
+                        ruleId,
+                        locations,
+                        automationDetailsId,
+                        rulesetName,
+                        level,
+                        description,
+                        helpMarkdown,
+                        securitySeverity,
+                        precision,
+                        tags
+                        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+                    `)
+                        .bind(
+                            resultData.guid,
+                            resultData.reportId,
+                            resultData.messageText,
+                            resultData.ruleId,
+                            resultData.locations,
+                            resultData.automationDetailsId,
+                            resultData.rulesetName,
+                            resultData.level || '',
+                            resultData.description || '',
+                            resultData.helpMarkdown || '',
+                            resultData.securitySeverity || '',
+                            resultData.precision || '',
+                            resultData.tags || ''
+                        )
+                        .run()
+
+                    console.log(`/github/repos/sarif_results ${full_name} kid=${token}`, reportInfo)
+                }
+            }
+
             files.push({
                 sarifId: data.report.sarif_id,
                 reportId: data.report.id,
@@ -95,7 +173,8 @@ export async function onRequestGet(context) {
                 toolName: data.report.tool.name,
                 toolVersion: data.report.tool?.version,
                 analysisKey: data.report.analysis_key,
-                warning: data.report.warning
+                warning: data.report.warning,
+                results
             })
         }
     }

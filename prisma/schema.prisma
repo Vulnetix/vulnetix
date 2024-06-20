@@ -91,3 +91,19 @@ model sarif {
   analysisKey  String
   warning      String?
 }
+
+model sarif_results {
+  guid                String @unique
+  reportId            String
+  messageText         String
+  ruleId              String
+  locations           String
+  automationDetailsId String
+  rulesetName         String
+  level               String
+  description         String
+  helpMarkdown        String
+  securitySeverity    String
+  precision           String
+  tags                String
+}

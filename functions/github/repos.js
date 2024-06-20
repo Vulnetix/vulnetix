@@ -47,8 +47,7 @@ export async function onRequestGet(context) {
     })
     const githubApps = []
     const gitRepos = []
-    const uploadedAfter = new Date(Date.now() - 24 * 60 * 60 * 1000)
-    const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' }, onlyIf: { uploadedAfter } }
+    const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
     for (const app of installs) {
         if (!app.accessToken) {
             console.log(`github_apps kid=${token} installationId=${app.installationId}`)

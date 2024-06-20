@@ -29,3 +29,6 @@ sarif: clean ## generate SARIF from Semgrep for this project
 
 sbom: clean ## generate CycloneDX from NPM for this project
 	npm sbom --omit dev --package-lock-only --sbom-format cyclonedx | jq >npm.cdx.json
+
+deployments: ## FOR DOCO ONLY
+	npx wrangler pages deployment list --project-name triage-by-trivial-security
