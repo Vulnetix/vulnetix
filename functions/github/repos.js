@@ -1,6 +1,6 @@
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
-import { AuthResult, GitHub, PrivateRequest } from "../../src/utils";
+import { App, AuthResult, GitHub } from "../../src/utils";
 
 export async function onRequestGet(context) {
     const {
@@ -19,7 +19,7 @@ export async function onRequestGet(context) {
             timeout: 2000, // default: 5000
         },
     })
-    const { err, result, session } = await (new PrivateRequest(request, prisma)).authenticate()
+    const { err, result, session } = await (new App(request, prisma)).authenticate()
     if (result !== AuthResult.AUTHENTICATED) {
         return Response.json({ err, result })
     }

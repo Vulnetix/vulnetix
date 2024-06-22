@@ -1,46 +1,57 @@
+/**
+ * Class representing the possible results of an authentication attempt.
+ */
 export class AuthResult {
-    static get FORBIDDEN() {
-        return "Forbidden"
-    }
-    static get REVOKED() {
-        return "Revoked"
-    }
-    static get EXPIRED() {
-        return "Expired"
-    }
-    static get AUTHENTICATED() {
-        return "Authenticated"
-    }
+    static get FORBIDDEN() { return "Forbidden"; }
+    static get REVOKED() { return "Revoked"; }
+    static get EXPIRED() { return "Expired"; }
+    static get AUTHENTICATED() { return "Authenticated"; }
 }
-export class PrivateRequest {
+
+/**
+ * Class representing an application with authentication logic.
+ */
+export class App {
+    /**
+     * Create an App instance.
+     * @param {Object} request - The request object, typically containing headers.
+     * @param {Object} prisma - The Prisma client instance for database interaction.
+     */
     constructor(request, prisma) {
-        this.request = request
-        this.prisma = prisma
+        this.request = request;
+        this.prisma = prisma;
     }
+
+    /**
+     * Authenticate the request based on a token in the headers.
+     * @return {Promise<Object>} The authentication result.
+     */
     async authenticate() {
-        const res = { err: null, result: null, session: null }
         try {
-            const token = this.request.headers.get('x-trivialsec')
+            const token = this.request.headers.get('x-trivialsec');
+
             if (!token) {
-                return { err: null, result: AuthResult.FORBIDDEN, session: null }
+                return { err: null, result: AuthResult.FORBIDDEN, session: null };
             }
+
             const session = await this.prisma.sessions.findFirstOrThrow({
-                where: {
-                    kid: token,
-                },
-            })
-            if (!session) {
-                return { err: null, result: AuthResult.REVOKED, session: null }
+                where: { kid: token },
+            });
+
+            if (!session.expiry || session.expiry <= Date.now()) {
+                return { err: null, result: AuthResult.EXPIRED, session: null };
             }
-            if (!session?.expiry || session.expiry <= +new Date()) {
-                return { err: null, result: AuthResult.EXPIRED, session: null }
-            }
-            return { err: null, result: AuthResult.AUTHENTICATED, session }
+
+            return { err: null, result: AuthResult.AUTHENTICATED, session };
         } catch (err) {
-            return { err, result: null, session: null }
+            if (err.name === 'NotFoundError') {
+                return { err: null, result: AuthResult.REVOKED, session: null };
+            }
+            return { err, result: null, session: null };
         }
     }
 }
+
 export class GitHub {
     constructor(accessToken) {
         this.headers = {
