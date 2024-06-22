@@ -24,16 +24,14 @@ export async function onRequestGet(context) {
         return Response.json({ err, result })
     }
 
-    const githubApps = await prisma.github_apps.findMany({
+    const sarif = await prisma.sarif.findMany({
         where: {
             memberEmail: session.memberEmail,
         },
-    })
-    const gitRepos = await prisma.git_repos.findMany({
-        where: {
-            memberEmail: session.memberEmail,
-        },
+        include: {
+            results: true
+        }
     })
 
-    return Response.json({ githubApps, gitRepos })
+    return Response.json({ sarif })
 }
