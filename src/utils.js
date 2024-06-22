@@ -1,3 +1,271 @@
+export class AuthResult {
+    static get FORBIDDEN() {
+        return "Forbidden"
+    }
+    static get REVOKED() {
+        return "Revoked"
+    }
+    static get EXPIRED() {
+        return "Expired"
+    }
+    static get AUTHENTICATED() {
+        return "Authenticated"
+    }
+}
+export class PrivateRequest {
+    constructor(request, prisma) {
+        this.request = request
+        this.prisma = prisma
+    }
+    async authenticate() {
+        const res = { err: null, result: null, session: null }
+        try {
+            const token = this.request.headers.get('x-trivialsec')
+            if (!token) {
+                return { err: null, result: AuthResult.FORBIDDEN, session: null }
+            }
+            const session = await this.prisma.sessions.findFirstOrThrow({
+                where: {
+                    kid: token,
+                },
+            })
+            if (!session) {
+                return { err: null, result: AuthResult.REVOKED, session: null }
+            }
+            if (!session?.expiry || session.expiry <= +new Date()) {
+                return { err: null, result: AuthResult.EXPIRED, session: null }
+            }
+            return { err: null, result: AuthResult.AUTHENTICATED, session }
+        } catch (err) {
+            return { err, result: null, session: null }
+        }
+    }
+}
+export class GitHub {
+    constructor(accessToken) {
+        this.headers = {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': `token ${accessToken}`,
+            'X-GitHub-Api-Version': '2022-11-28',
+            'User-Agent': 'Triage-by-Trivial-Security',
+        }
+        this.baseUrl = "https://api.github.com"
+    }
+    async fetchJSON(url) {
+        try {
+            console.log(url)
+            const response = await fetch(url, { headers: this.headers })
+            const respText = await response.text()
+            if (!response.ok) {
+                console.error(`resp headers=${JSON.stringify(this.headers, null, 2)}`)
+                console.error(respText)
+                console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
+            }
+            const content = JSON.parse(respText)
+            return { ok: response.ok, status: response.status, statusText: response.statusText, content }
+        } catch (e) {
+            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
+            console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
+
+            return { ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text(), error: { message: e.message, lineno, colno } }
+        }
+    }
+    async fetchSARIF(url) {
+        try {
+            console.log(url)
+            const headers = Object.assign(this.headers, { 'Accept': 'application/sarif+json' })
+            const response = await fetch(url, { headers })
+            const respText = await response.text()
+            if (!response.ok) {
+                console.error(`resp headers=${JSON.stringify(response.headers, null, 2)}`)
+                console.error(respText)
+                console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
+            }
+            const content = JSON.parse(respText)
+            return { ok: response.ok, status: response.status, statusText: response.statusText, content }
+        } catch (e) {
+            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
+            console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
+
+            return { ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text(), error: { message: e.message, lineno, colno } }
+        }
+    }
+    async getRepoSarif(full_name, memberEmail, db) {
+        // https://docs.github.com/en/rest/code-scanning/code-scanning?apiVersion=2022-11-28#list-code-scanning-analyses-for-a-repository
+        const files = []
+        const perPage = 100
+        let page = 1
+
+        while (true) {
+            const url = `${this.baseUrl}/repos/${full_name}/code-scanning/analyses?per_page=${perPage}&page=${page}`
+            const data = await this.fetchJSON(url)
+            if (!data?.ok) {
+                data.url = url
+                const info = await db.prepare(`
+                    INSERT OR REPLACE INTO audit (
+                    memberEmail,
+                    action,
+                    actionTime,
+                    additionalData) VALUES (?1, ?2, ?3, ?4)`)
+                    .bind(
+                        memberEmail,
+                        'github_sarif',
+                        +new Date(),
+                        JSON.stringify(data)
+                    )
+                    .run()
+                console.log(`github.getRepoSarif(${full_name}) ${data.status} ${data.statusText}`, data.content, info)
+                break
+            }
+            for (const report of data.content) {
+                const sarifUrl = `${this.baseUrl}/repos/${full_name}/code-scanning/analyses/${report.id}`
+                const sarifData = await this.fetchSARIF(sarifUrl)
+                if (!sarifData?.ok) {
+                    sarifData.url = sarifUrl
+                    const info = await db.prepare(`
+                        INSERT OR REPLACE INTO audit (
+                        memberEmail,
+                        action,
+                        actionTime,
+                        additionalData) VALUES (?1, ?2, ?3, ?4)`)
+                        .bind(
+                            memberEmail,
+                            'github_sarif',
+                            +new Date(),
+                            JSON.stringify(sarifData)
+                        )
+                        .run()
+                    console.log(`github.getRepoSarif(${full_name}) ${sarifData.status} ${sarifData.statusText}`, sarifData.content, info)
+                    break
+                }
+                files.push({
+                    full_name,
+                    report: Object.assign({}, report),
+                    sarif: Object.assign({}, sarifData.content)
+                })
+            }
+
+            if (data.content.length < perPage) {
+                break
+            }
+
+            page++
+        }
+
+        return files
+    }
+    async getRepos(memberEmail, db) {
+        // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repositories-for-the-authenticated-user
+        const repos = []
+        const perPage = 100
+        let page = 1
+
+        while (true) {
+            const url = `${this.baseUrl}/user/repos?per_page=${perPage}&page=${page}`
+            const data = await this.fetchJSON(url)
+            if (!data?.ok) {
+                data.url = url
+                const info = await db.prepare(`
+                    INSERT OR REPLACE INTO audit (
+                    memberEmail,
+                    action,
+                    actionTime,
+                    additionalData) VALUES (?1, ?2, ?3, ?4)`)
+                    .bind(
+                        memberEmail,
+                        'github_repos',
+                        +new Date(),
+                        JSON.stringify(data)
+                    )
+                    .run()
+                console.log(`github.getRepos() ${data.status} ${data.statusText}`, data.content, info)
+                break
+            }
+            repos.push(...data.content)
+
+            if (data.content.length < perPage) {
+                break
+            }
+
+            page++
+        }
+
+        return repos
+    }
+    async getBranch(repo, branch) {
+        // https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#get-a-branch
+        return await this.fetchJSON(`${this.baseUrl}/repos/${repo.full_name}/branches/${branch}`)
+    }
+    async getBranches(full_name) {
+        // https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#list-branches
+        const branches = []
+        const perPage = 100
+        let page = 1
+
+        while (true) {
+            const currentBranches = await this.fetchJSON(`${this.baseUrl}/repos/${full_name}/branches?per_page=${perPage}&page=${page}`)
+
+            branches.push(...currentBranches)
+
+            if (currentBranches.length < perPage) {
+                break
+            }
+
+            page++
+        }
+
+        return branches
+    }
+    async getCommit(full_name, commit_sha) {
+        // https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28
+        return await this.fetchJSON(`${this.baseUrl}/repos/${full_name}/commits/${commit_sha}`)
+    }
+    async getCommits(full_name, branch_name) {
+        // https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28
+        const commits = []
+        const perPage = 100
+        let page = 1
+
+        while (true) {
+            const currentCommits = await this.fetchJSON(`${this.baseUrl}/repos/${full_name}/commits?sha=${branch_name}&per_page=${perPage}&page=${page}`)
+
+            commits.push(...currentCommits)
+
+            if (currentCommits.length < perPage) {
+                break
+            }
+
+            page++
+        }
+
+        return commits
+    }
+    async getFileContents(full_name, branch_name) {
+        // https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28
+        const fileUrl = `${this.baseUrl}/repos/${full_name}/contents/.trivialsec?ref=${branch_name}`
+
+        console.log(fileUrl)
+        try {
+            const fileResponse = await fetch(fileUrl, { headers: this.headers })
+            if (!fileResponse.ok) {
+                if (fileResponse.status === 404) {
+                    return { exists: false, content: null }
+                }
+                console.error(await response.text(), response.headers.entries().map(pair => `${pair[0]}: ${pair[1]}`))
+                throw new Error(`getFileContents error! status: ${response.status} ${response.statusText}`)
+            }
+            const file = await fileResponse.json()
+            const content = Buffer.from(file.content, file.encoding).toString('utf-8')
+
+            return { exists: true, content }
+        } catch (e) {
+            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
+            console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
+
+            return { exists: false, ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text(), error: { message: e.message, lineno, colno } }
+        }
+    }
+}
 /**
  * ensureStrReqBody reads in the incoming request body
  * Use await ensureStrReqBody(..) in an async function to get the string
@@ -236,275 +504,3 @@ export const octodex = [
     "original.png",
     "idokungfoo-avatar.jpg",
 ]
-
-export class CloudFlare {
-    constructor() {
-
-    }
-    async d1all(db, sql, bind) {
-        const { results } = await db.prepare(sql).bind(bind).all()
-
-        return results
-    }
-    async r2get(db, objectKey, uploadedAfter) {
-        const options = {
-            conditional: {
-                uploadedAfter,
-            },
-        }
-
-        return await db.get(objectKey, options)
-    }
-    async r2list(db, prefix = '/', limit = 1000) {
-        const options = {
-            limit,
-            prefix,
-            include: ['customMetadata'],
-        }
-
-        const listed = await db.list(options)
-
-        let { truncated } = listed
-        let cursor = truncated ? listed.cursor : undefined
-
-        while (truncated) {
-            const next = await db.list({
-                ...options,
-                cursor: cursor,
-            })
-
-            listed.objects.push(...next.objects)
-
-            truncated = next.truncated
-            cursor = next.cursor
-        }
-
-        return listed.objects
-    }
-}
-
-export class GitHub {
-    constructor(accessToken) {
-        this.headers = {
-            'Accept': 'application/vnd.github+json',
-            'Authorization': `token ${accessToken}`,
-            'X-GitHub-Api-Version': '2022-11-28',
-            'User-Agent': 'Triage-by-Trivial-Security',
-        }
-        this.baseUrl = "https://api.github.com"
-    }
-    async fetchJSON(url) {
-        try {
-            console.log(url)
-            const response = await fetch(url, { headers: this.headers })
-            const respText = await response.text()
-            if (!response.ok) {
-                console.error(`resp headers=${JSON.stringify(this.headers, null, 2)}`)
-                console.error(respText)
-                console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
-            }
-            const content = JSON.parse(respText)
-            return { ok: response.ok, status: response.status, statusText: response.statusText, content }
-        } catch (e) {
-            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
-            console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
-
-            return { ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text(), error: { message: e.message, lineno, colno } }
-        }
-    }
-    async fetchSARIF(url) {
-        try {
-            console.log(url)
-            const headers = Object.assign(this.headers, { 'Accept': 'application/sarif+json' })
-            const response = await fetch(url, { headers })
-            const respText = await response.text()
-            if (!response.ok) {
-                console.error(`resp headers=${JSON.stringify(response.headers, null, 2)}`)
-                console.error(respText)
-                console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
-            }
-            const content = JSON.parse(respText)
-            return { ok: response.ok, status: response.status, statusText: response.statusText, content }
-        } catch (e) {
-            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
-            console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
-
-            return { ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text(), error: { message: e.message, lineno, colno } }
-        }
-    }
-    async getRepoSarif(full_name, memberEmail, db) {
-        // https://docs.github.com/en/rest/code-scanning/code-scanning?apiVersion=2022-11-28#list-code-scanning-analyses-for-a-repository
-        const files = []
-        const perPage = 100
-        let page = 1
-
-        while (true) {
-            const url = `${this.baseUrl}/repos/${full_name}/code-scanning/analyses?per_page=${perPage}&page=${page}`
-            const data = await this.fetchJSON(url)
-            if (!data?.ok) {
-                data.url = url
-                const info = await db.prepare(`
-                    INSERT OR REPLACE INTO audit (
-                    memberEmail,
-                    action,
-                    actionTime,
-                    additionalData) VALUES (?1, ?2, ?3, ?4)`)
-                    .bind(
-                        memberEmail,
-                        'github_sarif',
-                        +new Date(),
-                        JSON.stringify(data)
-                    )
-                    .run()
-                console.log(`github.getRepoSarif(${full_name}) ${data.status} ${data.statusText}`, data.content, info)
-                break
-            }
-            for (const report of data.content) {
-                const sarifUrl = `${this.baseUrl}/repos/${full_name}/code-scanning/analyses/${report.id}`
-                const sarifData = await this.fetchSARIF(sarifUrl)
-                if (!sarifData?.ok) {
-                    sarifData.url = sarifUrl
-                    const info = await db.prepare(`
-                        INSERT OR REPLACE INTO audit (
-                        memberEmail,
-                        action,
-                        actionTime,
-                        additionalData) VALUES (?1, ?2, ?3, ?4)`)
-                        .bind(
-                            memberEmail,
-                            'github_sarif',
-                            +new Date(),
-                            JSON.stringify(sarifData)
-                        )
-                        .run()
-                    console.log(`github.getRepoSarif(${full_name}) ${sarifData.status} ${sarifData.statusText}`, sarifData.content, info)
-                    break
-                }
-                files.push({
-                    full_name,
-                    report: Object.assign({}, report),
-                    sarif: Object.assign({}, sarifData.content)
-                })
-            }
-
-            if (data.content.length < perPage) {
-                break
-            }
-
-            page++
-        }
-
-        return files
-    }
-    async getRepos(memberEmail, db) {
-        // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repositories-for-the-authenticated-user
-        const repos = []
-        const perPage = 100
-        let page = 1
-
-        while (true) {
-            const url = `${this.baseUrl}/user/repos?per_page=${perPage}&page=${page}`
-            const data = await this.fetchJSON(url)
-            if (!data?.ok) {
-                data.url = url
-                const info = await db.prepare(`
-                    INSERT OR REPLACE INTO audit (
-                    memberEmail,
-                    action,
-                    actionTime,
-                    additionalData) VALUES (?1, ?2, ?3, ?4)`)
-                    .bind(
-                        memberEmail,
-                        'github_repos',
-                        +new Date(),
-                        JSON.stringify(data)
-                    )
-                    .run()
-                console.log(`github.getRepos() ${data.status} ${data.statusText}`, data.content, info)
-                break
-            }
-            repos.push(...data.content)
-
-            if (data.content.length < perPage) {
-                break
-            }
-
-            page++
-        }
-
-        return repos
-    }
-    async getBranch(repo, branch) {
-        // https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#get-a-branch
-        return await this.fetchJSON(`${this.baseUrl}/repos/${repo.full_name}/branches/${branch}`)
-    }
-    async getBranches(full_name) {
-        // https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#list-branches
-        const branches = []
-        const perPage = 100
-        let page = 1
-
-        while (true) {
-            const currentBranches = await this.fetchJSON(`${this.baseUrl}/repos/${full_name}/branches?per_page=${perPage}&page=${page}`)
-
-            branches.push(...currentBranches)
-
-            if (currentBranches.length < perPage) {
-                break
-            }
-
-            page++
-        }
-
-        return branches
-    }
-    async getCommit(full_name, commit_sha) {
-        // https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28
-        return await this.fetchJSON(`${this.baseUrl}/repos/${full_name}/commits/${commit_sha}`)
-    }
-    async getCommits(full_name, branch_name) {
-        // https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28
-        const commits = []
-        const perPage = 100
-        let page = 1
-
-        while (true) {
-            const currentCommits = await this.fetchJSON(`${this.baseUrl}/repos/${full_name}/commits?sha=${branch_name}&per_page=${perPage}&page=${page}`)
-
-            commits.push(...currentCommits)
-
-            if (currentCommits.length < perPage) {
-                break
-            }
-
-            page++
-        }
-
-        return commits
-    }
-    async getFileContents(full_name, branch_name) {
-        // https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28
-        const fileUrl = `${this.baseUrl}/repos/${full_name}/contents/.trivialsec?ref=${branch_name}`
-
-        console.log(fileUrl)
-        try {
-            const fileResponse = await fetch(fileUrl, { headers: this.headers })
-            if (!fileResponse.ok) {
-                if (fileResponse.status === 404) {
-                    return { exists: false, content: null }
-                }
-                console.error(await response.text(), response.headers.entries().map(pair => `${pair[0]}: ${pair[1]}`))
-                throw new Error(`getFileContents error! status: ${response.status} ${response.statusText}`)
-            }
-            const file = await fileResponse.json()
-            const content = Buffer.from(file.content, file.encoding).toString('utf-8')
-
-            return { exists: true, content }
-        } catch (e) {
-            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
-            console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
-
-            return { exists: false, ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text(), error: { message: e.message, lineno, colno } }
-        }
-    }
-}

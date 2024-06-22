@@ -1,8 +1,6 @@
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
-import { CloudFlare, GitHub } from "../../src/utils";
-
-const cf = new CloudFlare()
+import { AuthResult, GitHub, PrivateRequest } from "../../src/utils";
 
 export async function onRequestGet(context) {
     const {
@@ -21,23 +19,9 @@ export async function onRequestGet(context) {
             timeout: 2000, // default: 5000
         },
     })
-
-    const token = request.headers.get('x-trivialsec')
-    if (!token) {
-        return Response.json({ 'err': 'Forbidden' })
-    }
-    const session = await prisma.sessions.findFirstOrThrow({
-        where: {
-            kid: token,
-        },
-    })
-
-    console.log('session expiry', session?.expiry)
-    if (!session) {
-        return Response.json({ 'err': 'Revoked' })
-    }
-    if (session?.expiry <= +new Date()) {
-        return Response.json({ 'err': 'Expired' })
+    const { err, result, session } = await (new PrivateRequest(request, prisma)).authenticate()
+    if (result !== AuthResult.AUTHENTICATED) {
+        return Response.json({ err, result })
     }
 
     const installs = await prisma.github_apps.findMany({
@@ -50,7 +34,7 @@ export async function onRequestGet(context) {
     const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
     for (const app of installs) {
         if (!app.accessToken) {
-            console.log(`github_apps kid=${token} installationId=${app.installationId}`)
+            console.log(`github_apps kid=${session.kid} installationId=${app.installationId}`)
             throw new Error('github_apps invalid')
         }
         const gh = new GitHub(app.accessToken)
@@ -116,7 +100,7 @@ export async function onRequestGet(context) {
                 )
                 .run()
 
-            console.log(`/github/repos git_repos ${data.fullName} kid=${token}`, info)
+            console.log(`/github/repos git_repos ${data.fullName} kid=${session.kid}`, info)
             gitRepos.push(data)
         }
         githubApps.push({

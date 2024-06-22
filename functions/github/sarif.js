@@ -1,6 +1,6 @@
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
-import { AuthResult, PrivateRequest } from "../../../src/utils";
+import { AuthResult, PrivateRequest } from "../../src/utils";
 
 export async function onRequestGet(context) {
     const {
@@ -23,6 +23,7 @@ export async function onRequestGet(context) {
     if (result !== AuthResult.AUTHENTICATED) {
         return Response.json({ err, result })
     }
+
     const githubApps = await prisma.github_apps.findMany({
         where: {
             memberEmail: session.memberEmail,

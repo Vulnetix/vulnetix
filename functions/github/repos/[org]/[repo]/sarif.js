@@ -1,6 +1,6 @@
-import { CloudFlare, GitHub } from "../../../../../src/utils"
-
-const cf = new CloudFlare()
+import { PrismaD1 } from '@prisma/adapter-d1';
+import { PrismaClient } from '@prisma/client';
+import { GitHub, PrivateRequest, AuthResult } from "../../../../../src/utils";
 
 export async function onRequestGet(context) {
     const {
@@ -11,30 +11,28 @@ export async function onRequestGet(context) {
         next, // used for middleware or to fetch assets
         data, // arbitrary space for passing data between middlewares
     } = context
-
-    const token = request.headers.get('x-trivialsec')
-    if (!token) {
-        return Response.json({ 'err': 'Forbidden' })
+    const adapter = new PrismaD1(env.d1db)
+    const prisma = new PrismaClient({
+        adapter,
+        transactionOptions: {
+            maxWait: 1500, // default: 2000
+            timeout: 2000, // default: 5000
+        },
+    })
+    const { err, result, session } = await (new PrivateRequest(request, prisma)).authenticate()
+    if (result !== AuthResult.AUTHENTICATED) {
+        return Response.json({ err, result })
     }
-
-    const session = await env.d1db.prepare("SELECT memberEmail, expiry FROM sessions WHERE kid = ?")
-        .bind(token)
-        .first()
-
-    console.log('session expiry', session?.expiry)
-    if (!session) {
-        return Response.json({ 'err': 'Revoked' })
-    }
-    if (session?.expiry <= +new Date()) {
-        return Response.json({ 'err': 'Expired' })
-    }
-
-    const githubApps = await cf.d1all(env.d1db, "SELECT * FROM github_apps WHERE memberEmail = ?", session.memberEmail)
+    const githubApps = await prisma.github_apps.findMany({
+        where: {
+            memberEmail: session.memberEmail,
+        },
+    })
     const files = []
     const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
     for (const app of githubApps) {
         if (!app.accessToken) {
-            console.log(`github_apps kid=${token} installationId=${app.installationId}`)
+            console.log(`github_apps kid=${session.kid} installationId=${app.installationId}`)
             throw new Error('github_apps invalid')
         }
         const gh = new GitHub(app.accessToken)
@@ -79,7 +77,7 @@ export async function onRequestGet(context) {
                 )
                 .run()
 
-            console.log(`/github/repos/sarif ${full_name} kid=${token}`, info)
+            console.log(`/github/repos/sarif ${full_name} kid=${session.kid}`, info)
 
             const results = []
             for (const run of data.sarif.runs) {
@@ -156,7 +154,7 @@ export async function onRequestGet(context) {
                         )
                         .run()
 
-                    console.log(`/github/repos/sarif_results ${full_name} kid=${token}`, reportInfo)
+                    console.log(`/github/repos/sarif_results ${full_name} kid=${session.kid}`, reportInfo)
                 }
             }
 
