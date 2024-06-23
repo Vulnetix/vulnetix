@@ -48,6 +48,7 @@ export async function onRequestGet(context) {
                 sarifId,
                 reportId,
                 fullName,
+                source,
                 memberEmail,
                 commitSha,
                 ref,
@@ -58,12 +59,13 @@ export async function onRequestGet(context) {
                 toolVersion,
                 analysisKey,
                 warning
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
             `)
                 .bind(
                     data.report.sarif_id,
                     data.report.id,
                     full_name,
+                    'GitHub',
                     session.memberEmail,
                     data.report.commit_sha,
                     data.report.ref,

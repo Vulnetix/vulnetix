@@ -348,6 +348,74 @@ export async function pbkdf2(password, iterations = 1e5, hashBits = 512) {
     return btoa('v01' + compositeStr)
 }
 
+export function isSARIF(input) {
+    const supportedVersions = ["2.1.0"]
+    let sarif
+    if (typeof input === "string" && isJSON(input)) {
+        sarif = JSON.parse(input)
+    }
+    if (!input?.$schema || !input?.version) {
+        return false
+    }
+    sarif = Object.assign({}, input)
+    if (!supportedVersions.includes(sarif.version)) {
+        throw `Provided SARIF version ${sarif.version} is not supported. Must be one of: ${supportedVersions}`
+    }
+    if (!sarif?.runs || !sarif.runs.length) {
+        throw `Provided SARIF was empty`
+    }
+    for (const run in sarif.runs) {
+        if (!run?.results || !run.results.length) {
+            continue
+        }
+        if (!run?.tool?.driver?.name) {
+            return false
+        }
+        if (!run?.tool?.driver?.rules ||
+            !run.tool.driver.rules.length
+        ) {
+            return false
+        }
+        for (const rule in run.tool.driver.rules) {
+            if (!rule?.defaultConfiguration?.level ||
+                !rule?.fullDescription?.text ||
+                !rule?.help?.text ||
+                !rule?.properties?.precision ||
+                !rule?.shortDescription?.text ||
+                !rule?.name
+            ) {
+                return false
+            }
+        }
+        for (const extension in run.extensions) {
+            if (!extension?.name ||
+                !extension?.rules ||
+                !extension.rules.length
+            ) {
+                return false
+            }
+            for (const rule in extension.rules) {
+                if (!rule?.defaultConfiguration?.level ||
+                    !rule?.fullDescription?.text ||
+                    !rule?.help?.text ||
+                    !rule?.properties?.precision ||
+                    !rule?.shortDescription?.text ||
+                    !rule?.name
+                ) {
+                    return false
+                }
+            }
+        }
+    }
+    return true
+}
+
+export function UUID() {
+    return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+        (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
+    )
+}
+
 export function isJSON(str) {
     try {
         return (JSON.parse(str) && !!str)

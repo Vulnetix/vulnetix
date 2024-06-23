@@ -29,7 +29,8 @@ export async function onRequestGet(context) {
             memberEmail: session.memberEmail,
         },
         include: {
-            results: true
+            results: true,
+            repo: true
         }
     })
 

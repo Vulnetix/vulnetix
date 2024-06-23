@@ -91,35 +91,36 @@ model git_repos {
 model sarif {
   sarifId      String          @unique
   reportId     String          @id
-  fullName     String
-  repo         git_repos       @relation(fields: [fullName], references: [fullName])
+  fullName     String?
+  repo         git_repos?      @relation(fields: [fullName], references: [fullName])
+  source       String
   memberEmail  String
   member       members         @relation(fields: [memberEmail], references: [email])
-  commitSha    String
-  ref          String
+  commitSha    String?
+  ref          String?
   createdAt    Int
   resultsCount Int
   rulesCount   Int
   toolName     String?
   toolVersion  String?
-  analysisKey  String
+  analysisKey  String?
   warning      String?
   results      sarif_results[]
 }
 
 model sarif_results {
-  guid                String @unique
+  guid                String  @unique
   reportId            String
-  sarif               sarif  @relation(fields: [reportId], references: [reportId])
+  sarif               sarif   @relation(fields: [reportId], references: [reportId])
   messageText         String
   ruleId              String
-  locations           String
-  automationDetailsId String
-  rulesetName         String
-  level               String
-  description         String
-  helpMarkdown        String
-  securitySeverity    String
-  precision           String
-  tags                String
+  locations           String?
+  automationDetailsId String?
+  rulesetName         String?
+  level               String?
+  description         String?
+  helpMarkdown        String?
+  securitySeverity    String?
+  precision           String?
+  tags                String?
 }
