@@ -279,7 +279,7 @@ const sarif = reactive(new Sarif())
       cols="12"
       v-if="state.github.length || state.loading"
     >
-      <VCard title="Github">
+      <VCard title="Github" prepend-icon="mdi-github">
         <v-expansion-panels accordion>
           <v-expansion-panel
             v-for="(group, k) in groupedByOrg()"
@@ -372,7 +372,7 @@ const sarif = reactive(new Sarif())
       cols="12"
       v-if="state.uploads.length || state.loading"
     >
-      <VCard title="Uploads">
+      <VCard title="Uploads" prepend-icon="uil-file-upload">
         <v-expansion-panels accordion>
           <v-expansion-panel
             v-for="(sarif, k) in state.uploads"
@@ -382,7 +382,8 @@ const sarif = reactive(new Sarif())
               class="text-subtitle-1"
               v-if="sarif.results.length"
             >
-              {{ sarif.sarifId }} ({{ sarif.results.length }} results)
+              <img src="/sarif-logo.png" width="25" height="25" class="mr-2">
+              {{ sarif.sarifId }}.json ({{ sarif.results.length }} results)
             </v-expansion-panel-title>
             <v-expansion-panel-text v-if="sarif.results.length">
               <VSkeletonLoader
