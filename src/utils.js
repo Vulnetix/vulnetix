@@ -64,7 +64,6 @@ export class GitHub {
     }
     async fetchJSON(url) {
         try {
-            console.log(url)
             const response = await fetch(url, { headers: this.headers })
             const respText = await response.text()
             if (!response.ok) {
@@ -83,7 +82,6 @@ export class GitHub {
     }
     async fetchSARIF(url) {
         try {
-            console.log(url)
             const headers = Object.assign(this.headers, { 'Accept': 'application/sarif+json' })
             const response = await fetch(url, { headers })
             const respText = await response.text()
@@ -101,7 +99,7 @@ export class GitHub {
             return { ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text(), error: { message: e.message, lineno, colno } }
         }
     }
-    async getRepoSarif(full_name, memberEmail, db) {
+    async getRepoSarif(full_name) {
         // https://docs.github.com/en/rest/code-scanning/code-scanning?apiVersion=2022-11-28#list-code-scanning-analyses-for-a-repository
         const files = []
         const perPage = 100
@@ -109,45 +107,17 @@ export class GitHub {
 
         while (true) {
             const url = `${this.baseUrl}/repos/${full_name}/code-scanning/analyses?per_page=${perPage}&page=${page}`
+            console.log(`github.getRepoSarif(${full_name}) ${url}`)
             const data = await this.fetchJSON(url)
             if (!data?.ok) {
-                data.url = url
-                const info = await db.prepare(`
-                    INSERT OR REPLACE INTO audit (
-                    memberEmail,
-                    action,
-                    actionTime,
-                    additionalData) VALUES (?1, ?2, ?3, ?4)`)
-                    .bind(
-                        memberEmail,
-                        'github_sarif',
-                        +new Date(),
-                        JSON.stringify(data)
-                    )
-                    .run()
-                console.log(`github.getRepoSarif(${full_name}) ${data.status} ${data.statusText}`, data.content, info)
                 break
             }
             for (const report of data.content) {
                 const sarifUrl = `${this.baseUrl}/repos/${full_name}/code-scanning/analyses/${report.id}`
+                console.log(`github.getRepoSarif(${full_name}) ${sarifUrl}`)
                 const sarifData = await this.fetchSARIF(sarifUrl)
                 if (!sarifData?.ok) {
-                    sarifData.url = sarifUrl
-                    const info = await db.prepare(`
-                        INSERT OR REPLACE INTO audit (
-                        memberEmail,
-                        action,
-                        actionTime,
-                        additionalData) VALUES (?1, ?2, ?3, ?4)`)
-                        .bind(
-                            memberEmail,
-                            'github_sarif',
-                            +new Date(),
-                            JSON.stringify(sarifData)
-                        )
-                        .run()
-                    console.log(`github.getRepoSarif(${full_name}) ${sarifData.status} ${sarifData.statusText}`, sarifData.content, info)
-                    break
+                    continue
                 }
                 files.push({
                     full_name,
@@ -165,7 +135,17 @@ export class GitHub {
 
         return files
     }
-    async getRepos(memberEmail, db) {
+    async getRepoSpdx(full_name) {
+        // https://docs.github.com/en/rest/dependency-graph/sboms?apiVersion=2022-11-28#export-a-software-bill-of-materials-sbom-for-a-repository
+        const url = `${this.baseUrl}/repos/${full_name}/dependency-graph/sbom`
+        console.log(`github.getRepoSpdx(${full_name}) ${url}`)
+        const data = await this.fetchJSON(url)
+        if (!data?.ok) {
+            return null
+        }
+        return data.content
+    }
+    async getRepos() {
         // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repositories-for-the-authenticated-user
         const repos = []
         const perPage = 100
@@ -173,23 +153,9 @@ export class GitHub {
 
         while (true) {
             const url = `${this.baseUrl}/user/repos?per_page=${perPage}&page=${page}`
+            console.log(`github.getRepos() ${url}`)
             const data = await this.fetchJSON(url)
             if (!data?.ok) {
-                data.url = url
-                const info = await db.prepare(`
-                    INSERT OR REPLACE INTO audit (
-                    memberEmail,
-                    action,
-                    actionTime,
-                    additionalData) VALUES (?1, ?2, ?3, ?4)`)
-                    .bind(
-                        memberEmail,
-                        'github_repos',
-                        +new Date(),
-                        JSON.stringify(data)
-                    )
-                    .run()
-                console.log(`github.getRepos() ${data.status} ${data.statusText}`, data.content, info)
                 break
             }
             repos.push(...data.content)
@@ -408,6 +374,10 @@ export function isSARIF(input) {
         }
     }
     return true
+}
+
+export async function hex(text, name = "SHA-1") {
+    return [...new Uint8Array(await crypto.subtle.digest({ name }, new TextEncoder().encode(text)))].map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
 export function UUID() {

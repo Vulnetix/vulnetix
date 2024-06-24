@@ -279,20 +279,23 @@ const sarif = reactive(new Sarif())
       cols="12"
       v-if="state.github.length || state.loading"
     >
-      <VCard title="Github" prepend-icon="mdi-github">
-        <v-expansion-panels accordion>
-          <v-expansion-panel
+      <VCard
+        title="Github"
+        prepend-icon="line-md:github-loop"
+      >
+        <VExpansionPanels accordion>
+          <VExpansionPanel
             v-for="(group, k) in groupedByOrg()"
             :key="k"
           >
-            <v-expansion-panel-title class="text-subtitle-1">
+            <VExpansionPanelTitle class="text-subtitle-1">
               <img
                 :src="group.avatarUrl"
                 width="25"
                 class="me-3"
               >{{ group.orgName }} ({{ group.sarif.length }} results)
-            </v-expansion-panel-title>
-            <v-expansion-panel-text>
+            </VExpansionPanelTitle>
+            <VExpansionPanelText>
               <VSkeletonLoader
                 v-if="state.loading"
                 type="table"
@@ -363,29 +366,37 @@ const sarif = reactive(new Sarif())
                   </tr>
                 </tbody>
               </VTable>
-            </v-expansion-panel-text>
-          </v-expansion-panel>
-        </v-expansion-panels>
+            </VExpansionPanelText>
+          </VExpansionPanel>
+        </VExpansionPanels>
       </VCard>
     </VCol>
     <VCol
       cols="12"
       v-if="state.uploads.length || state.loading"
     >
-      <VCard title="Uploads" prepend-icon="uil-file-upload">
-        <v-expansion-panels accordion>
-          <v-expansion-panel
+      <VCard
+        title="Uploads"
+        prepend-icon="uil-file-upload"
+      >
+        <VExpansionPanels accordion>
+          <VExpansionPanel
             v-for="(sarif, k) in state.uploads"
             :key="k"
           >
-            <v-expansion-panel-title
+            <VExpansionPanelTitle
               class="text-subtitle-1"
               v-if="sarif.results.length"
             >
-              <img src="/sarif-logo.png" width="25" height="25" class="mr-2">
+              <img
+                src="/sarif-logo.png"
+                width="25"
+                height="25"
+                class="mr-2"
+              >
               {{ sarif.sarifId }}.json ({{ sarif.results.length }} results)
-            </v-expansion-panel-title>
-            <v-expansion-panel-text v-if="sarif.results.length">
+            </VExpansionPanelTitle>
+            <VExpansionPanelText v-if="sarif.results.length">
               <VSkeletonLoader
                 v-if="state.loading"
                 type="table"
@@ -450,9 +461,9 @@ const sarif = reactive(new Sarif())
                   </tr>
                 </tbody>
               </VTable>
-            </v-expansion-panel-text>
-          </v-expansion-panel>
-        </v-expansion-panels>
+            </VExpansionPanelText>
+          </VExpansionPanel>
+        </VExpansionPanels>
       </VCard>
 
     </VCol>
