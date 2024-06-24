@@ -37,12 +37,8 @@ const routes = [
                 component: () => import('../pages/VEXManager.vue'),
             },
             {
-                path: 'activity-history',
-                component: () => import('../pages/ActivityHistory.vue'),
-            },
-            {
-                path: 'user-audit',
-                component: () => import('../pages/UserAudit.vue'),
+                path: 'triage-history',
+                component: () => import('../pages/TriageHistory.vue'),
             },
             {
                 path: 'vulncheck-integration',

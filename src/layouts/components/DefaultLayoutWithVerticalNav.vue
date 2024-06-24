@@ -76,10 +76,15 @@ import UserProfile from '@/layouts/components/UserProfile.vue'
         icon: 'carbon:incomplete-warning',
         to: '/triage-overdue',
       }" />
+      <VerticalNavLink :item="{
+        title: 'History',
+        icon: 'mdi-clipboard-text-history',
+        to: '/triage-history',
+      }" />
 
       <!-- 👉 File Management -->
       <VerticalNavSectionTitle :item="{
-        heading: 'Import / Export',
+        heading: 'Import Sources',
       }" />
       <VerticalNavLink :item="{
         title: 'SARIF',
@@ -100,21 +105,6 @@ import UserProfile from '@/layouts/components/UserProfile.vue'
         title: 'VEX',
         icon_url: '/csaf-logo.png',
         to: '/vex-manager',
-      }" />
-
-      <!-- 👉 Audit -->
-      <VerticalNavSectionTitle :item="{
-        heading: 'Audit',
-      }" />
-      <VerticalNavLink :item="{
-        title: 'Activity History',
-        icon: 'mdi-clipboard-text-history',
-        to: '/activity-history',
-      }" />
-      <VerticalNavLink :item="{
-        title: 'User Audit',
-        icon: 'hugeicons:audit-01',
-        to: '/user-audit',
       }" />
 
       <!-- 👉 Integrations -->
