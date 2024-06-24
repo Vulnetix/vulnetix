@@ -91,7 +91,11 @@ class GitHub {
                     } else {
                         state.success = "Refreshed GitHub repositories"
                     }
-                }
+                } else if (cached === false) {
+for (const repo of state.gitRepos) {
+refreshSecurity(repo.fullName)
+}
+}
             }
 
             return
