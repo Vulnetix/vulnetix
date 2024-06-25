@@ -28,7 +28,6 @@ model members {
   passwordHash  String
   firstName     String?
   lastName      String?
-  phoneNumber   String?
   alertNews     Int           @default(0)
   alertOverdue  Int           @default(0)
   alertFindings Int           @default(0)

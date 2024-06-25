@@ -56,11 +56,6 @@ import UserProfile from '@/layouts/components/UserProfile.vue'
         icon: 'bx-home',
         to: '/dashboard',
       }" />
-      <VerticalNavLink :item="{
-        title: 'Account Settings',
-        icon: 'mdi-account-cog-outline',
-        to: '/account-settings',
-      }" />
 
       <!-- 👉 Activities -->
       <VerticalNavSectionTitle :item="{
