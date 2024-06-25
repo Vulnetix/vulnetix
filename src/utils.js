@@ -119,11 +119,13 @@ export class GitHub {
                 if (!sarifData?.ok) {
                     continue
                 }
-                files.push({
-                    full_name,
-                    report: Object.assign({}, report),
-                    sarif: Object.assign({}, sarifData.content)
-                })
+                if (report?.id && isSARIF(sarifData.content)) {
+                    files.push({
+                        full_name,
+                        report: Object.assign({}, report),
+                        sarif: Object.assign({}, sarifData.content)
+                    })
+                }
             }
 
             if (data.content.length < perPage) {
@@ -314,59 +316,84 @@ export async function pbkdf2(password, iterations = 1e5, hashBits = 512) {
     return btoa('v01' + compositeStr)
 }
 
+export function isSPDX(input) {
+    const supportedVersions = ["SPDX-2.3"]
+    let spdx
+    if (typeof input === "string" && isJSON(input)) {
+        spdx = JSON.parse(input)
+    }
+    if (typeof input?.spdxVersion === 'undefined' || typeof input?.SPDXID === 'undefined') {
+        return false
+    }
+    spdx = Object.assign({}, input)
+    if (!supportedVersions.includes(spdx.spdxVersion)) {
+        throw `Provided SPDX version ${spdx.spdxVersion} is not supported. Must be one of: ${supportedVersions}`
+    }
+    if (typeof spdx?.name === 'undefined' ||
+        typeof spdx?.fullDescription?.text === 'undefined' ||
+        typeof spdx?.dataLicense === 'undefined' ||
+        typeof spdx?.documentNamespace === 'undefined' ||
+        typeof spdx?.creationInfo?.creators === 'undefined' ||
+        !spdx?.creationInfo?.creators.length
+    ) {
+        return false
+    }
+    return true
+}
+
 export function isSARIF(input) {
     const supportedVersions = ["2.1.0"]
     let sarif
     if (typeof input === "string" && isJSON(input)) {
         sarif = JSON.parse(input)
     }
-    if (!input?.$schema || !input?.version) {
+    if (typeof input?.$schema === 'undefined' || typeof input?.version === 'undefined') {
         return false
     }
     sarif = Object.assign({}, input)
     if (!supportedVersions.includes(sarif.version)) {
         throw `Provided SARIF version ${sarif.version} is not supported. Must be one of: ${supportedVersions}`
     }
-    if (!sarif?.runs || !sarif.runs.length) {
+    if (typeof sarif?.runs === 'undefined' || !sarif.runs.length) {
         throw `Provided SARIF was empty`
     }
     for (const run in sarif.runs) {
-        if (!run?.results || !run.results.length) {
+        if (typeof run?.results === 'undefined' || !run.results.length) {
             continue
         }
-        if (!run?.tool?.driver?.name) {
+        if (typeof run?.tool?.driver?.name === 'undefined') {
             return false
         }
-        if (!run?.tool?.driver?.rules ||
+        if (typeof run?.tool?.driver?.rules === 'undefined' ||
             !run.tool.driver.rules.length
         ) {
             return false
         }
         for (const rule in run.tool.driver.rules) {
-            if (!rule?.defaultConfiguration?.level ||
-                !rule?.fullDescription?.text ||
-                !rule?.help?.text ||
-                !rule?.properties?.precision ||
-                !rule?.shortDescription?.text ||
-                !rule?.name
+            if (typeof rule?.defaultConfiguration?.level === 'undefined' ||
+                typeof rule?.fullDescription?.text === 'undefined' ||
+                typeof rule?.help?.text === 'undefined' ||
+                typeof rule?.properties?.precision === 'undefined' ||
+                typeof rule?.shortDescription?.text === 'undefined' ||
+                typeof rule?.name === 'undefined'
             ) {
                 return false
             }
         }
         for (const extension in run.extensions) {
-            if (!extension?.name ||
-                !extension?.rules ||
+            if (typeof extension?.name === 'undefined' ||
+                typeof extension?.rules === 'undefined' ||
                 !extension.rules.length
             ) {
                 return false
             }
             for (const rule in extension.rules) {
-                if (!rule?.defaultConfiguration?.level ||
-                    !rule?.fullDescription?.text ||
-                    !rule?.help?.text ||
-                    !rule?.properties?.precision ||
-                    !rule?.shortDescription?.text ||
-                    !rule?.name
+                if (typeof rule?.defaultConfiguration?.level === 'undefined' ||
+                    typeof rule?.fullDescription?.text === 'undefined' ||
+                    typeof rule?.help?.text === 'undefined' ||
+                    typeof rule?.properties?.precision === 'undefined' ||
+                    typeof rule?.shortDescription?.text === 'undefined' ||
+                    typeof rule?.name === 'undefined'
                 ) {
                     return false
                 }

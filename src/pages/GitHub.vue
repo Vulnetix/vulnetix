@@ -46,7 +46,7 @@ class GitHub {
             this.refreshRepos(true, true)
         }
     }
-    async install(code, installation_id) {
+    install = async (code, installation_id) => {
         const { data } = await axios.get(`/github/install/${installation_id}/${code}`)
 
         console.log(data)
@@ -54,7 +54,7 @@ class GitHub {
 
         return setTimeout(state.success = "GitHub App installed successfully.", 1000)
     }
-    async refreshRepos(cached = false, initial = false) {
+    refreshRepos = async (cached = false, initial = false) => {
         clearAlerts()
         state.loading = true
         try {
@@ -91,11 +91,7 @@ class GitHub {
                     } else {
                         state.success = "Refreshed GitHub repositories"
                     }
-                } else if (cached === false) {
-for (const repo of state.gitRepos) {
-refreshSecurity(repo.fullName)
-}
-}
+                }
             }
 
             return
@@ -107,15 +103,21 @@ refreshSecurity(repo.fullName)
         state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
         state.loading = false
     }
-    async refreshSecurity(full_name) {
+    refreshSecurity = async (full_name, alerts = true) => {
         state.refreshLoaders[full_name] = true
         await Promise.allSettled([
-            this.refreshSpdx(full_name),
-            this.refreshSarif(full_name)
+            this.refreshSpdx(full_name, alerts),
+            this.refreshSarif(full_name, alerts)
         ])
         state.refreshLoaders[full_name] = false
     }
-    async refreshSpdx(full_name) {
+    refreshGithub = async () => {
+        await this.refreshRepos(false, false)
+        for (const repo of state.gitRepos) {
+            this.refreshSecurity(repo.fullName, false)
+        }
+    }
+    refreshSpdx = async (full_name, alerts = true) => {
         clearAlerts()
         try {
             const { data } = await axios.get(`/github/repos/${full_name}/spdx`)
@@ -133,11 +135,13 @@ refreshSecurity(repo.fullName)
 
                 return setTimeout(router.push('/logout'), 2000)
             }
-            if (!data) {
-                state.error = "No data retrieved from GitHub. Is this GitHub App installed?"
-                state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
-            } else {
-                state.success = "Refreshed GitHub SPDX"
+            if (alerts === true) {
+                if (!data) {
+                    state.error = "No data retrieved from GitHub. Is this GitHub App installed?"
+                    state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
+                } else {
+                    state.success = "Refreshed GitHub SPDX"
+                }
             }
 
             return
@@ -147,7 +151,7 @@ refreshSecurity(repo.fullName)
         }
         state.warning = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
     }
-    async refreshSarif(full_name) {
+    refreshSarif = async (full_name, alerts = true) => {
         clearAlerts()
         try {
             const { data } = await axios.get(`/github/repos/${full_name}/sarif`)
@@ -165,11 +169,13 @@ refreshSecurity(repo.fullName)
 
                 return setTimeout(router.push('/logout'), 2000)
             }
-            if (!data) {
-                state.error = "No data retrieved from GitHub. Is this GitHub App installed?"
-                state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
-            } else {
-                state.success = "Refreshed GitHub SARIF"
+            if (alerts === true) {
+                if (!data) {
+                    state.error = "No data retrieved from GitHub. Is this GitHub App installed?"
+                    state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
+                } else {
+                    state.success = "Refreshed GitHub SARIF"
+                }
             }
 
             return
@@ -290,12 +296,12 @@ const gh = reactive(new GitHub())
                         @click="installApp"
                     />
                     <VBtn
-                        text="Refresh Repositories"
+                        text="Refresh Github Data"
                         prepend-icon="mdi-refresh"
                         variant="text"
                         :color="global.name.value === 'dark' ? '#fff' : '#272727'"
                         :disabled="state.loading"
-                        @click="gh.refreshRepos"
+                        @click="gh.refreshGithub"
                     />
                 </VCardText>
                 <VExpansionPanels accordion>
@@ -356,7 +362,7 @@ const gh = reactive(new GitHub())
                                         :key="i"
                                     >
                                         <td>
-                                            <VTooltip text="Refresh Security">
+                                            <VTooltip text="Refresh Data">
                                                 <template v-slot:activator="{ props }">
                                                     <VProgressCircular
                                                         class="ml-4 mr-2"

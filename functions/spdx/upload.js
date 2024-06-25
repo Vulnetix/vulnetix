@@ -1,6 +1,6 @@
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
-import { App, AuthResult, hex } from "../../src/utils";
+import { App, AuthResult, hex, isSPDX } from "../../src/utils";
 
 
 export async function onRequestPost(context) {
@@ -29,8 +29,10 @@ export async function onRequestPost(context) {
         const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
         const inputs = await request.json()
         for (const spdx of inputs) {
-            if (!spdx?.SPDXID) {
-                return Response.json({ ok: false, err: 'SPDX is invalid JSON.' })
+            if (!isSPDX(spdx)) {
+                return Response.json({
+                    ok: false, err: 'SPDX is missing necessary fields.'
+                })
             }
             const spdxStr = JSON.stringify(spdx)
             const spdxId = await hex(spdxStr)

@@ -1,6 +1,6 @@
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
-import { App, AuthResult, GitHub, hex } from "../../../../../src/utils";
+import { App, AuthResult, GitHub, hex, isSPDX } from "../../../../../src/utils";
 
 export async function onRequestGet(context) {
     const {
@@ -39,10 +39,11 @@ export async function onRequestGet(context) {
 
         const repoName = `${params.org}/${params.repo}`
         const data = await gh.getRepoSpdx(repoName)
-        if (!data?.sbom?.SPDXID) {
+        if (typeof data?.sbom === 'undefined' || typeof data?.sbom?.SPDXID === 'undefined' || !isSPDX(data?.sbom)) {
             continue
         }
-        const spdxStr = JSON.stringify(data)
+        const spdx = data.sbom
+        const spdxStr = JSON.stringify(spdx)
         const spdxId = await hex(spdxStr)
         const objectPrefix = `github/${app.installationId}/repos/${repoName}/sbom/`
         console.log(`${repoName}/sbom/${spdxId}.json`, await env.r2icache.put(`${objectPrefix}${spdxId}.json`, spdxStr, putOptions))
@@ -65,17 +66,17 @@ export async function onRequestGet(context) {
         `)
             .bind(
                 spdxId,
-                data.sbom.spdxVersion,
+                spdx.spdxVersion,
                 'GitHub',
                 repoName,
-                data.sbom.name,
-                data.sbom.dataLicense,
-                data.sbom.documentNamespace,
-                data.sbom.creationInfo.creators.join(', '),
-                data.sbom.packages.length,
-                (new Date(data.sbom.creationInfo.created)).getTime(),
+                spdx.name,
+                spdx.dataLicense,
+                spdx.documentNamespace,
+                spdx.creationInfo.creators.join(', '),
+                spdx.packages.length,
+                (new Date(spdx.creationInfo.created)).getTime(),
                 session.memberEmail,
-                data.sbom.creationInfo.comment
+                spdx.creationInfo.comment
             )
             .run()
 
