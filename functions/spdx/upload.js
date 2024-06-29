@@ -1,6 +1,6 @@
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
-import { App, AuthResult, hex, isSPDX } from "../../src/utils";
+import { App, AuthResult, OSV, VulnCheck, hex, isSPDX } from "../../src/utils";
 
 
 export async function onRequestPost(context) {
@@ -24,7 +24,20 @@ export async function onRequestPost(context) {
     if (result !== AuthResult.AUTHENTICATED) {
         return Response.json({ err, result })
     }
+
+    const keyData = await prisma.member_keys.findFirst({
+        where: {
+            memberEmail: session.memberEmail,
+            keyType: 'vulncheck',
+        }
+    })
+    let vulncheck
+    if (typeof keyData?.secret !== 'undefined') {
+        vulncheck = new VulnCheck(keyData.secret)
+    }
+
     const files = []
+    let errors = new Set()
     try {
         const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
         const inputs = await request.json()
@@ -88,11 +101,89 @@ export async function onRequestPost(context) {
                 memberEmail: session.memberEmail,
                 comment: spdx.creationInfo?.comment || ''
             })
+            const osvQueries = []
+
+            vulncheckPackages:
+            for (const pkg of spdx.packages) {
+                for (const ref of pkg.externalRefs) {
+                    if (ref?.referenceType === 'purl') {
+                        osvQueries.push({ purl: ref.referenceLocator, name: pkg.name, version: pkg.versionInfo, licenseDeclared: pkg.licenseDeclared })
+                        // if (!vulncheck) {
+                        //     continue
+                        // }
+                        // const vc = await vulncheck.getPurl(ref.referenceLocator)
+                        // if (vc?.content && vc.content?.errors) {
+                        //     vc.content.errors.map(e => errors.add(`VulnCheck error [${vc.url}] ${e}`))
+                        // }
+                        // if (vc?.status === 402) {
+                        //     break vulncheckPackages
+                        // }
+                        // if (vc?.ok === true) {
+                        //     const createLog = await prisma.integration_usage_log.create({
+                        //         data: {
+                        //             memberEmail: session.memberEmail,
+                        //             source: 'vulncheck',
+                        //             request: JSON.stringify({ url: vc.url, purl: ref.referenceLocator }),
+                        //             response: JSON.stringify(vc.content),
+                        //             statusCode: vc?.status ? parseInt(vc.status, 10) : 0,
+                        //             createdAt: (new Date()).getTime(),
+                        //         }
+                        //     })
+                        //     console.log(`vulncheck.getPurl(${ref.referenceLocator})`, createLog)
+                        //     for (const vulnerability of vc.content?.data?.vulnerabilities) {
+                        //         const createFinding = await prisma.findings_sca.create({
+                        //             data: {
+                        //                 findingId: hex(`${session.memberEmail}${vulnerability.detection}${pkg.name}${pkg.versionInfo}`),
+                        //                 memberEmail: session.memberEmail,
+                        //                 source: 'vulncheck',
+                        //                 createdAt: (new Date()).getTime(),
+                        //                 detectionTitle: vulnerability.detection,
+                        //                 purl: ref.referenceLocator,
+                        //                 packageName: pkg.name,
+                        //                 packageVersion: pkg.versionInfo,
+                        //                 licenseDeclared: pkg.licenseDeclared,
+                        //                 fixedVersion: vulnerability?.fixed_version,
+                        //                 maliciousSource: research_attributes.malicious_source,
+                        //                 abandoned: research_attributes.abandoned,
+                        //                 squattedPackage: research_attributes.squatted_package,
+                        //             }
+                        //         })
+                        //         console.log(`findings_sca`, createFinding)
+                        //     }
+                        // }
+                    }
+                }
+            }
+            const osv = new OSV()
+            const queries = osvQueries.map(q => ({ package: { purl: q.purl } }))
+            console.log(`osv queries`, queries)
+            const vulns = await osv.queryBatch(queries)
+            for (const [i, vuln] of vulns) {
+                const finding = await prisma.findings_sca.create({
+                    data: {
+                        findingId: hex(`${session.memberEmail}${vuln.id}${osvQueries[i].name}${osvQueries[i].version}`),
+                        memberEmail: session.memberEmail,
+                        source: 'osv.dev',
+                        createdAt: (new Date()).getTime(),
+                        modifiedAt: (new Date(vuln.modified)).getTime(),
+                        detectionTitle: vuln.id,
+                        purl: osvQueries[i].purl,
+                        packageName: osvQueries[i].name,
+                        packageVersion: osvQueries[i].version,
+                        licenseDeclared: osvQueries[i].licenseDeclared
+                    }
+                })
+                console.log(`findings_sca`, finding)
+            }
         }
     } catch (err) {
         console.error(err)
-        return Response.json({ ok: false, err })
+
+        return Response.json({ ok: false, err, files })
+    }
+    if (errors.size) {
+        errors = [...errors].join(' ')
     }
 
-    return Response.json(files)
+    return Response.json({ ok: true, files, err: errors })
 }

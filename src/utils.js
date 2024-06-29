@@ -52,6 +52,84 @@ export class App {
     }
 }
 
+export class OSV {
+    constructor() {
+        this.headers = {
+            'Accept': 'application/json',
+            'User-Agent': 'Triage-by-Trivial-Security',
+        }
+        this.baseUrl = "https://api.osv.dev/v1"
+    }
+    async fetchJSON(url, body) {
+        try {
+            const response = await fetch(url, { headers: this.headers, method: 'POST', body: JSON.stringify(body) })
+            const respText = await response.text()
+            if (!response.ok) {
+                console.error(`resp headers=${JSON.stringify(this.headers, null, 2)}`)
+                console.error(respText)
+                console.error(`OSV error! status: ${response.status} ${response.statusText}`)
+            }
+            const content = JSON.parse(respText)
+            return { ok: response.ok, status: response.status, statusText: response.statusText, content, url }
+        } catch (e) {
+            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
+            console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
+
+            return { ok: response.ok, status: response.status, statusText: response.statusText, error: { message: e.message, lineno, colno } }
+        }
+    }
+    async queryBatch(queries) {
+        // https://google.github.io/osv.dev/post-v1-querybatch/
+        const url = `${this.baseUrl}/querybatch`
+        const resp = this.fetchJSON(url, { queries })
+        if (resp?.content?.results) {
+            return resp.content.results.map(r => r.vulns).flat(1)
+        }
+        return []
+    }
+}
+
+export class VulnCheck {
+    constructor(BearerToken) {
+        this.headers = {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${BearerToken}`,
+            'User-Agent': 'Triage-by-Trivial-Security',
+        }
+        this.baseUrl = "https://api.vulncheck.com/v3"
+    }
+    async fetchJSON(url) {
+        try {
+            const response = await fetch(url, { headers: this.headers })
+            const respText = await response.text()
+            if (!response.ok) {
+                console.error(`resp headers=${JSON.stringify(this.headers, null, 2)}`)
+                console.error(respText)
+                console.error(`VulnCheck error! status: ${response.status} ${response.statusText}`)
+            }
+            const content = JSON.parse(respText)
+            return { ok: response.ok, status: response.status, statusText: response.statusText, content, url }
+        } catch (e) {
+            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
+            console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
+
+            return { ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text(), error: { message: e.message, lineno, colno } }
+        }
+    }
+    async getPurl(purl) {
+        // https://docs.vulncheck.com/api/purl
+        const url = `${this.baseUrl}/purl?purl=${purl}`
+        console.log(`VulnCheck.getPurl(${purl})`)
+        return this.fetchJSON(url)
+    }
+    async getCPE(cpe) {
+        // https://docs.vulncheck.com/api/cpe
+        const url = `${this.baseUrl}/cpe?cpe=${cpe}`
+        console.log(`VulnCheck.getCPE(${cpe})`)
+        return await this.fetchJSON(url)
+    }
+}
+
 export class GitHub {
     constructor(accessToken) {
         this.headers = {
@@ -321,16 +399,16 @@ export function isSPDX(input) {
     let spdx
     if (typeof input === "string" && isJSON(input)) {
         spdx = JSON.parse(input)
+    } else {
+        spdx = Object.assign({}, input)
     }
-    if (typeof input?.spdxVersion === 'undefined' || typeof input?.SPDXID === 'undefined') {
+    if (typeof spdx?.spdxVersion === 'undefined' || typeof spdx?.SPDXID === 'undefined') {
         return false
     }
-    spdx = Object.assign({}, input)
     if (!supportedVersions.includes(spdx.spdxVersion)) {
         throw `Provided SPDX version ${spdx.spdxVersion} is not supported. Must be one of: ${supportedVersions}`
     }
     if (typeof spdx?.name === 'undefined' ||
-        typeof spdx?.fullDescription?.text === 'undefined' ||
         typeof spdx?.dataLicense === 'undefined' ||
         typeof spdx?.documentNamespace === 'undefined' ||
         typeof spdx?.creationInfo?.creators === 'undefined' ||

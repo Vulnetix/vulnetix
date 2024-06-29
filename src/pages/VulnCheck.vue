@@ -1,8 +1,9 @@
 <script setup>
-import { default as axios } from 'axios';
-import { reactive } from 'vue';
-import { useTheme } from 'vuetify';
-import router from "../router";
+import { isJSON } from '@/utils'
+import { default as axios } from 'axios'
+import { reactive } from 'vue'
+import { useTheme } from 'vuetify'
+import router from "../router"
 
 const { global } = useTheme()
 
@@ -32,22 +33,41 @@ class VulnCheck {
         this.refresh()
     }
     refresh = async () => {
-
-    }
-    save = async device => {
         clearAlerts()
         state.loading = true
         try {
-            const member = {}
-            member[device.key] = (device.email ? 1 << 2 : 0) |
-                (device.browser ? 1 << 1 : 0) |
-                (device.webhook ? 1 << 0 : 0)
+            const { data } = await axios.get(`/vulncheck/log`)
+            state.loading = false
+            if (typeof data === "string" && !isJSON(data)) {
+                state.error = "Data could not be retrieved, please try again later."
 
-            const { data } = await axios.post(`/me`, member, { headers: { 'Content-Type': 'application/json' } })
+                return
+            }
+            if (data?.err) {
+                state.error = data.err
+            }
+            if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
+                state.info = data.result
+
+                return setTimeout(router.push('/logout'), 2000)
+            }
+            state.apiKey = data?._meta?.apiKey
+            state.log = data.log
+        } catch (e) {
+            console.error(e)
+            state.error = `${e.code} ${e.message}`
+            state.loading = false
+        }
+    }
+    save = async () => {
+        clearAlerts()
+        state.loading = true
+        try {
+            const { data } = await axios.post(`/vulncheck/integrate`, { apiKey: state.apiKey }, { headers: { 'Content-Type': 'application/json' } })
             state.loading = false
 
             if (typeof data === "string" && !isJSON(data)) {
-                state.error = "Profile data could not be saved, please try again later."
+                state.error = "Data could not be saved, please try again later."
 
                 return
             }
@@ -60,8 +80,7 @@ class VulnCheck {
                 return setTimeout(router.push('/logout'), 2000)
             }
             if (data.ok === true) {
-                state.member[device.key] = member[device.key]
-                localStorage.setItem(`/member/${device.key}`, member[device.key])
+                state.success = "Saved successfully."
             } else {
                 state.info = data?.result || 'No change'
             }
@@ -121,7 +140,7 @@ const vulncheck = reactive(new VulnCheck())
     </Vrow>
     <VCard title="VulnCheck Integration">
         <VAlert
-            v-if="!state.apiKey"
+            v-if="!state.loading && !state.apiKey"
             color="info"
             icon="$info"
             title="Information"
@@ -155,11 +174,34 @@ const vulncheck = reactive(new VulnCheck())
                             label="VulnCheck API Token"
                         />
                     </VCol>
+                    <VCol
+                        md="6"
+                        cols="12"
+                        class="d-flex flex-wrap gap-4"
+                    >
+                    </VCol>
+                </VRow>
+                <VRow>
+                    <VCol
+                        md="6"
+                        cols="12"
+                        class="d-flex flex-wrap gap-4"
+                    >
+                        <VBtn @click="vulncheck.save">Save</VBtn>
+
+                    </VCol>
                 </VRow>
             </VForm>
         </VCardText>
 
-        <VTable class="text-no-wrap">
+        <VSkeletonLoader
+            v-if="state.loading"
+            type="table"
+        />
+        <VTable
+            class="text-no-wrap"
+            v-if="!state.loading && state.log.length"
+        >
             <thead>
                 <tr>
                     <th scope="col">
@@ -178,7 +220,7 @@ const vulncheck = reactive(new VulnCheck())
             </thead>
             <tbody>
                 <tr
-                    v-for="(device, i) in recentDevices"
+                    v-for="(device, i) in state.log"
                     :key="i"
                 >
                     <td>
@@ -187,24 +229,31 @@ const vulncheck = reactive(new VulnCheck())
                     <td>
                         <VCheckbox
                             v-model="device.email"
-                            @change="profile.save(device)"
+                            @change="vulncheck.save(device)"
                         />
                     </td>
                     <td>
                         <VCheckbox
                             v-model="device.browser"
-                            @change="profile.save(device)"
+                            @change="vulncheck.save(device)"
                         />
                     </td>
                     <td>
                         <VCheckbox
                             v-model="device.webhook"
-                            @change="profile.save(device)"
+                            @change="vulncheck.save(device)"
                         />
                     </td>
                 </tr>
             </tbody>
         </VTable>
+        <VAlert
+            v-else
+            color="primary"
+            icon="pixelarticons-mood-sad"
+            text="No log data to display"
+            variant="tonal"
+        />
         <VDivider />
     </VCard>
 </template>
