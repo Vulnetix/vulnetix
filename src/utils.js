@@ -81,15 +81,58 @@ export class OSV {
     async queryBatch(queries) {
         // https://google.github.io/osv.dev/post-v1-querybatch/
         const url = `${this.baseUrl}/querybatch`
-        const resp = this.fetchJSON(url, { queries })
+        const resp = await this.fetchJSON(url, { queries })
         if (resp?.content?.results) {
-            return resp.content.results.map(r => r.vulns).flat(1)
+            return resp.content.results.map(r => r?.vulns || [{}]).flat(1)
         }
         return []
     }
 }
 
 export class VulnCheck {
+    // if (!vulncheck) {
+    //     continue
+    // }
+    // const vc = await vulncheck.getPurl(ref.referenceLocator)
+    // if (vc?.content && vc.content?.errors) {
+    //     vc.content.errors.map(e => errors.add(`VulnCheck error [${vc.url}] ${e}`))
+    // }
+    // if (vc?.status === 402) {
+    //     break vulncheckPackages
+    // }
+    // if (vc?.ok === true) {
+    //     const createLog = await prisma.integration_usage_log.create({
+    //         data: {
+    //             memberEmail: session.memberEmail,
+    //             source: 'vulncheck',
+    //             request: JSON.stringify({ url: vc.url, purl: ref.referenceLocator }),
+    //             response: JSON.stringify(vc.content),
+    //             statusCode: vc?.status ? parseInt(vc.status, 10) : 0,
+    //             createdAt: (new Date()).getTime(),
+    //         }
+    //     })
+    //     console.log(`vulncheck.getPurl(${ref.referenceLocator})`, createLog)
+    //     for (const vulnerability of vc.content?.data?.vulnerabilities) {
+    //         const createFinding = await prisma.findings_sca.create({
+    //             data: {
+    //                 findingId: hex(`${session.memberEmail}${vulnerability.detection}${pkg.name}${pkg.versionInfo}`),
+    //                 memberEmail: session.memberEmail,
+    //                 source: 'vulncheck',
+    //                 createdAt: (new Date()).getTime(),
+    //                 detectionTitle: vulnerability.detection,
+    //                 purl: ref.referenceLocator,
+    //                 packageName: pkg.name,
+    //                 packageVersion: pkg.versionInfo,
+    //                 licenseDeclared: pkg.licenseDeclared,
+    //                 fixedVersion: vulnerability?.fixed_version,
+    //                 maliciousSource: research_attributes.malicious_source,
+    //                 abandoned: research_attributes.abandoned,
+    //                 squattedPackage: research_attributes.squatted_package,
+    //             }
+    //         })
+    //         console.log(`findings_sca`, createFinding)
+    //     }
+    // }
     constructor(BearerToken) {
         this.headers = {
             'Accept': 'application/json',

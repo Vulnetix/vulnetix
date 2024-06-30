@@ -159,9 +159,11 @@ model findings_sca {
   packageName     String
   packageVersion  String?
   licenseDeclared String?
-  fixedVersion    String?
+  fixVersion      String?
   remediation     String?
   maliciousSource String?
   abandoned       Int?
   squattedPackage String?
+  spdxId          String?
+  cdxId           String?
 }
