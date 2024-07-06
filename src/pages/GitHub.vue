@@ -155,7 +155,7 @@ class GitHub {
 
                 return
             }
-            if (data?.err) {
+            if (data?.err && alerts === true) {
                 state.error = data.err
             }
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
@@ -175,9 +175,13 @@ class GitHub {
             return
         } catch (e) {
             console.error(e)
-            state.error = `${e.code} ${e.message}`
+            if (alerts === true) {
+                state.error = `${e.code} ${e.message}`
+            }
         }
-        state.warning = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
+        if (alerts === true) {
+            state.warning = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
+        }
     }
     refreshSarif = async (full_name, alerts = true) => {
         clearAlerts()
@@ -189,7 +193,7 @@ class GitHub {
 
                 return
             }
-            if (data?.err) {
+            if (data?.err && alerts === true) {
                 state.error = data.err
             }
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
@@ -209,9 +213,13 @@ class GitHub {
             return
         } catch (e) {
             console.error(e)
-            state.error = `${e.code} ${e.message}`
+            if (alerts === true) {
+                state.error = `${e.code} ${e.message}`
+            }
         }
-        state.warning = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
+        if (alerts === true) {
+            state.warning = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
+        }
     }
 }
 function installApp() {
