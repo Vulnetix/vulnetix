@@ -31,6 +31,7 @@ export async function onRequestGet(context) {
         }
     }
     try {
+        let gdData
         if (params?.code && params?.installation_id) {
             const method = "POST"
             const url = new URL("https://github.com/login/oauth/access_token")
@@ -43,12 +44,11 @@ export async function onRequestGet(context) {
 
             const resp = await fetch(url, { method })
             const text = await resp.text()
-            const data = Object.fromEntries(text.split('&').map(item => item.split('=').map(decodeURIComponent)))
-            console.log(`installationId=${params.installation_id} data=${JSON.stringify(data)}`)
-            if (data?.error) {
-                throw new Error(data.error)
+            gdData = Object.fromEntries(text.split('&').map(item => item.split('=').map(decodeURIComponent)))
+            if (gdData?.error) {
+                throw new Error(gdData.error)
             }
-            if (!data?.access_token) {
+            if (!gdData?.access_token) {
                 throw new Error('OAuth response invalid')
             }
         } else {
@@ -59,8 +59,11 @@ export async function onRequestGet(context) {
         const expires = appExpiryPeriod + created
         const response = { installationId: params.installation_id, session: {}, member: {} }
         const memberExists = await app.memberExists()
+        if (!gdData?.access_token) {
+            return Response.json({ 'err': 'OAuth authorization failed' })
+        }
         if (!memberExists) {
-            const gh = new GitHub(data.access_token)
+            const gh = new GitHub(gdData.access_token)
             const ghUserData = await gh.getUser()
             const words = ghUserData.email.split(' ')
             const firstName = words.shift()
@@ -68,7 +71,7 @@ export async function onRequestGet(context) {
             const memberInfo = await prisma.members.create({
                 orgName: ghUserData.company,
                 email: ghUserData.email,
-                passwordHash: await pbkdf2(data.access_token),
+                passwordHash: await pbkdf2(gdData.access_token),
                 firstName,
                 lastName
             })
@@ -100,7 +103,7 @@ export async function onRequestGet(context) {
         const GHAppInfo = await prisma.sessions.create({
             installationId: params.installation_id,
             memberEmail: session.memberEmail,
-            accessToken: data.access_token,
+            accessToken: gdData.access_token,
             created,
             expires
         })
