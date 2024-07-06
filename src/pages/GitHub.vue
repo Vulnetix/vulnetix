@@ -48,8 +48,32 @@ class GitHub {
     }
     install = async (code, installation_id) => {
         const { data } = await axios.get(`/github/install/${installation_id}/${code}`)
+        if (data?.err) {
+            state.error = data.err
+        }
+        if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
+            state.info = data.result
 
-        console.log(data)
+            return setTimeout(router.push('/logout'), 2000)
+        }
+        if (data?.member?.email) {
+            localStorage.setItem('/member/email', data.member.email)
+        }
+        if (data?.member?.orgName) {
+            localStorage.setItem('/member/orgName', data.orgName)
+        }
+        if (data?.member?.firstName) {
+            localStorage.setItem('/member/firstName', data.firstName)
+        }
+        if (data?.member?.lastName) {
+            localStorage.setItem('/member/lastName', data.lastName)
+        }
+        if (data?.session?.token) {
+            localStorage.setItem('/session/token', data.session.token)
+        }
+        if (data?.session?.expiry) {
+            localStorage.setItem('/session/expiry', data.session.expiry)
+        }
         this.refreshRepos(false, true)
 
         return setTimeout(state.success = "GitHub App installed successfully.", 1000)
