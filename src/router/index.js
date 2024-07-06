@@ -23,6 +23,11 @@ const router = createRouter({
 })
 
 router.beforeEach(async to => {
+    const urlQuery = Object.fromEntries(location.search.substring(1).split('&').map(item => item.split('=').map(decodeURIComponent)))
+    let exclude = false
+    if (urlQuery?.setup_action === 'install') {
+        exclude = true
+    }
     const publicPages = ["/", '/register', '/logout']
 
     const publicPrefixes = [
@@ -30,6 +35,7 @@ router.beforeEach(async to => {
     ]
 
     const authRequired =
+        !exclude &&
         !publicPages.includes(to.path) &&
         !publicPrefixes.map(i => to.path.startsWith(i)).includes(true)
 
