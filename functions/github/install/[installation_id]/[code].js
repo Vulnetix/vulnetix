@@ -115,7 +115,7 @@ export async function onRequestGet(context) {
             response.member.firstName = firstName
             response.member.lastName = lastName
         }
-        const GHAppInfo = await prisma.sessions.create({
+        const GHAppInfo = await prisma.github_apps.create({
             data: {
                 installationId: params.installation_id,
                 memberEmail: session.memberEmail,
