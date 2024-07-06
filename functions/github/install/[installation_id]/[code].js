@@ -64,15 +64,16 @@ export async function onRequestGet(context) {
         }
         if (!memberExists) {
             const gh = new GitHub(gdData.access_token)
-            const ghUserData = await gh.getUser()
             let ghEmail
-            if (!ghUserData?.email) {
-                for (const ghUserEmails of await gh.getUserEmails()) {
-                    if (ghUserEmails?.verified === true && !!ghUserEmails?.email) {
-                        ghEmail = ghUserEmails.email
-                        break
-                    }
+            for (const ghUserEmails of await gh.getUserEmails()) {
+                if (ghUserEmails?.verified === true && !!ghUserEmails?.email) {
+                    ghEmail = ghUserEmails.email
+                    break
                 }
+            }
+            const ghUserData = await gh.getUser()
+            if (ghUserData?.email && !ghEmail) {
+                ghEmail = ghUserData.email
             }
             let firstName = ''
             let lastName = ''

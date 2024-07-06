@@ -35,11 +35,6 @@ class GitHub {
     constructor() {
         this.urlQuery = Object.fromEntries(location.search.substring(1).split('&').map(item => item.split('=').map(decodeURIComponent)))
 
-        const url = new URL(location)
-
-        url.search = ""
-        history.pushState({}, "", url)
-
         if (this.urlQuery?.setup_action === 'install' && this.urlQuery?.code && this.urlQuery?.installation_id) {
             this.install(this.urlQuery.code, this.urlQuery.installation_id)
         } else {
@@ -119,6 +114,11 @@ class GitHub {
                         state.success = "Refreshed GitHub repositories"
                     }
                 }
+            }
+            if (initial === true) {
+                const url = new URL(location)
+                url.search = ""
+                history.pushState({}, "", url)
             }
 
             return
