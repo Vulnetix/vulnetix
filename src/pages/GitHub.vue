@@ -72,9 +72,8 @@ class GitHub {
         if (data?.session?.expiry) {
             localStorage.setItem('/session/expiry', data.session.expiry)
         }
-        this.refreshRepos(false, true)
 
-        return setTimeout(state.success = "GitHub App installed successfully.", 1000)
+        return await this.refreshRepos(false, true)
     }
     refreshRepos = async (cached = false, initial = false) => {
         clearAlerts()
@@ -119,6 +118,7 @@ class GitHub {
                 const url = new URL(location)
                 url.search = ""
                 history.pushState({}, "", url)
+                state.success = "GitHub App installed successfully."
             }
 
             return
@@ -295,6 +295,7 @@ const gh = reactive(new GitHub())
                     <VBtn
                         text="Install"
                         prepend-icon="line-md:github-loop"
+                        :disabled="state.loading"
                         variant="text"
                         :color="global.name.value === 'dark' ? '#fff' : '#272727'"
                         @click="installApp"
@@ -303,6 +304,7 @@ const gh = reactive(new GitHub())
                         v-if="state.githubApps.length && !state.loading"
                         text="Refresh Repositories"
                         prepend-icon="mdi-refresh"
+                        :disabled="state.loading"
                         variant="text"
                         :color="global.name.value === 'dark' ? '#fff' : '#272727'"
                         @click="gh.refreshRepos"
@@ -319,6 +321,7 @@ const gh = reactive(new GitHub())
                         text="Install another GitHub Account"
                         prepend-icon="line-md:github-loop"
                         variant="text"
+                        :disabled="state.loading"
                         :color="global.name.value === 'dark' ? '#fff' : '#272727'"
                         @click="installApp"
                     />
