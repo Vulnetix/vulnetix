@@ -44,6 +44,7 @@ class GitHub {
         }
     }
     install = async (code, installation_id) => {
+        state.loading = true
         const { data } = await axios.get(`/github/install/${installation_id}/${code}`)
         if (data?.err) {
             state.error = data.err
@@ -290,7 +291,7 @@ const gh = reactive(new GitHub())
         <VCol cols="12">
 
             <VEmptyState
-                v-if="!state.gitRepos.length && !state.loading"
+                v-if="!state.gitRepos.length"
                 :image="state.octodexImageUrl"
             >
                 <template #actions>
@@ -311,9 +312,13 @@ const gh = reactive(new GitHub())
                         :color="global.name.value === 'dark' ? '#fff' : '#272727'"
                         @click="gh.refreshRepos"
                     />
+                    <VSkeletonLoader
+                        v-if="state.loading"
+                        :elevation="4"
+                        type="card"
+                    />
                 </template>
             </VEmptyState>
-
             <VCard
                 v-if="state.gitRepos.length || state.loading"
                 title="Repositories"
