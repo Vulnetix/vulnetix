@@ -59,7 +59,8 @@ export async function onRequestGet(context) {
         const created = (new Date()).getTime()
         const expires = appExpiryPeriod + created
         const response = { installationId: params.installation_id, session: {}, member: {} }
-        if (!app.memberExists()) {
+        const memberExists = await app.memberExists()
+        if (!memberExists) {
             const gh = new GitHub(data.access_token)
             const ghUserData = await gh.getUser()
             const words = ghUserData.email.split(' ')
