@@ -36,9 +36,7 @@ class GitHub {
         this.urlQuery = Object.fromEntries(location.search.substring(1).split('&').map(item => item.split('=').map(decodeURIComponent)))
 
         if (this.urlQuery?.setup_action === 'install' && this.urlQuery?.code && this.urlQuery?.installation_id) {
-            setTimeout(() => {
-                this.install(this.urlQuery.code, this.urlQuery.installation_id)
-            }, 10000)
+            this.install(this.urlQuery.code, this.urlQuery.installation_id)
         } else {
             this.refreshRepos(true, true)
         }
@@ -52,7 +50,7 @@ class GitHub {
         if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
             state.info = data.result
 
-            return setTimeout(() => router.push('/logout'), 22000)
+            return setTimeout(() => router.push('/logout'), 2000)
         }
         if (data?.member?.email) {
             localStorage.setItem('/member/email', data.member.email)
@@ -312,13 +310,13 @@ const gh = reactive(new GitHub())
                         :color="global.name.value === 'dark' ? '#fff' : '#272727'"
                         @click="gh.refreshRepos"
                     />
-                    <VSkeletonLoader
-                        v-if="state.loading"
-                        :elevation="4"
-                        type="card"
-                    />
                 </template>
             </VEmptyState>
+            <VSkeletonLoader
+                v-if="state.loading"
+                :elevation="4"
+                type="card"
+            />
             <VCard
                 v-if="state.gitRepos.length || state.loading"
                 title="Repositories"
