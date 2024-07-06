@@ -65,6 +65,7 @@ export async function onRequestGet(context) {
         if (!memberExists) {
             const gh = new GitHub(gdData.access_token)
             const ghUserData = await gh.getUser()
+            console.log(`ghUserData`, ghUserData)
             const words = ghUserData.email.split(' ')
             const firstName = words.shift()
             const lastName = words.join(' ') || ''
