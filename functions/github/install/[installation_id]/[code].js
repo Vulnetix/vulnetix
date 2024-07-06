@@ -82,8 +82,8 @@ export async function onRequestGet(context) {
                 lastName = words.join(' ') || ''
             }
             const memberInfo = await prisma.members.create({
-                orgName: ghUserData.company || '',
                 email: ghEmail,
+                orgName: ghUserData?.company || '',
                 passwordHash: await pbkdf2(gdData.access_token),
                 firstName,
                 lastName
