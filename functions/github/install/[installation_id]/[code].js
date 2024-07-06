@@ -44,12 +44,11 @@ export async function onRequestGet(context) {
             const resp = await fetch(url, { method })
             const text = await resp.text()
             const data = Object.fromEntries(text.split('&').map(item => item.split('=').map(decodeURIComponent)))
+            console.error(`installationId=${params.installation_id} kid=${session.kid} data=${data}`)
             if (data?.error) {
-                console.log(data)
                 throw new Error(data.error)
             }
             if (!data?.access_token) {
-                console.log('installationId', params.installation_id, 'kid', session.kid, 'data', data)
                 throw new Error('OAuth response invalid')
             }
         } else {

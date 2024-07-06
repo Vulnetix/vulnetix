@@ -185,7 +185,7 @@ export class VulnCheck {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
-            return { ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text(), error: { message: e.message, lineno, colno } }
+            return { ok: response.ok, status: response.status, statusText: response.statusText, error: { message: e.message, lineno, colno } }
         }
     }
     async getPurl(purl) {
@@ -227,7 +227,7 @@ export class GitHub {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
-            return { ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text(), error: { message: e.message, lineno, colno } }
+            return { ok: response.ok, status: response.status, statusText: response.statusText, error: { message: e.message, lineno, colno } }
         }
     }
     async fetchSARIF(url) {
@@ -246,7 +246,7 @@ export class GitHub {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
-            return { ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text(), error: { message: e.message, lineno, colno } }
+            return { ok: response.ok, status: response.status, statusText: response.statusText, error: { message: e.message, lineno, colno } }
         }
     }
     async getRepoSarif(full_name) {
@@ -411,7 +411,7 @@ export class GitHub {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
-            return { exists: false, ok: response.ok, status: response.status, statusText: response.statusText, content: await response.text(), error: { message: e.message, lineno, colno } }
+            return { exists: false, ok: response.ok, status: response.status, statusText: response.statusText, error: { message: e.message, lineno, colno } }
         }
     }
 }
