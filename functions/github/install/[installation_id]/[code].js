@@ -82,11 +82,13 @@ export async function onRequestGet(context) {
                 lastName = words.join(' ') || ''
             }
             const memberInfo = await prisma.members.create({
-                email: ghEmail,
-                orgName: ghUserData?.company || '',
-                passwordHash: await pbkdf2(gdData.access_token),
-                firstName,
-                lastName
+                data: {
+                    email: ghEmail,
+                    orgName: ghUserData?.company || '',
+                    passwordHash: await pbkdf2(gdData.access_token),
+                    firstName,
+                    lastName
+                }
             })
             console.log(`/github/install register email=${ghEmail}`, memberInfo)
 
@@ -104,7 +106,7 @@ export async function onRequestGet(context) {
                 authn_ip,
                 authn_ua
             }
-            const sessionInfo = await prisma.sessions.create(session)
+            const sessionInfo = await prisma.sessions.create({ data: session })
             console.log(`/github/install session kid=${token}`, sessionInfo)
             response.session.token = token
             response.session.expiry = expiry
@@ -114,11 +116,13 @@ export async function onRequestGet(context) {
             response.member.lastName = lastName
         }
         const GHAppInfo = await prisma.sessions.create({
-            installationId: params.installation_id,
-            memberEmail: session.memberEmail,
-            accessToken: gdData.access_token,
-            created,
-            expires
+            data: {
+                installationId: params.installation_id,
+                memberEmail: session.memberEmail,
+                accessToken: gdData.access_token,
+                created,
+                expires
+            }
         })
         console.log(`/github/install installationId=${params.installation_id}`, GHAppInfo)
 
