@@ -73,9 +73,9 @@ class GitHub {
             localStorage.setItem('/session/expiry', data.session.expiry)
         }
 
-        return await this.refreshRepos(false, true)
+        return this.refreshRepos(false, true, true)
     }
-    refreshRepos = async (cached = false, initial = false) => {
+    refreshRepos = async (cached = false, initial = false, install = false) => {
         clearAlerts()
         state.loading = true
         try {
@@ -114,7 +114,7 @@ class GitHub {
                     }
                 }
             }
-            if (initial === true) {
+            if (install === true) {
                 const url = new URL(location)
                 url.search = ""
                 history.pushState({}, "", url)
