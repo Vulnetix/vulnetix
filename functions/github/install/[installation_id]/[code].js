@@ -65,18 +65,30 @@ export async function onRequestGet(context) {
         if (!memberExists) {
             const gh = new GitHub(gdData.access_token)
             const ghUserData = await gh.getUser()
-            console.log(`ghUserData`, ghUserData)
-            const words = ghUserData.email.split(' ')
-            const firstName = words.shift()
-            const lastName = words.join(' ') || ''
+            let ghEmail
+            if (!ghUserData?.email) {
+                for (const ghUserEmails of await gh.getUserEmails()) {
+                    if (ghUserEmails?.verified === true && !!ghUserEmails?.email) {
+                        ghEmail = ghUserEmails.email
+                        break
+                    }
+                }
+            }
+            let firstName = ''
+            let lastName = ''
+            if (!!ghUserData?.name) {
+                const words = ghUserData.name.split(' ')
+                firstName = words.shift() || ''
+                lastName = words.join(' ') || ''
+            }
             const memberInfo = await prisma.members.create({
                 orgName: ghUserData.company,
-                email: ghUserData.email,
+                email: ghEmail,
                 passwordHash: await pbkdf2(gdData.access_token),
                 firstName,
                 lastName
             })
-            console.log(`/github/install register email=${ghUserData.email}`, memberInfo)
+            console.log(`/github/install register email=${ghEmail}`, memberInfo)
 
             const token = crypto.randomUUID()
             const authn_ip = request.headers.get('cf-connecting-ip')
@@ -85,7 +97,7 @@ export async function onRequestGet(context) {
             const secret = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-1", crypto.getRandomValues(new Uint32Array(26))))).map(b => b.toString(16).padStart(2, "0")).join("")
             session = {
                 kid: token,
-                memberEmail: ghUserData.email,
+                memberEmail: ghEmail,
                 expiry,
                 issued: created,
                 secret,
@@ -96,7 +108,7 @@ export async function onRequestGet(context) {
             console.log(`/github/install session kid=${token}`, sessionInfo)
             response.session.token = token
             response.session.expiry = expiry
-            response.member.email = ghUserData.email
+            response.member.email = ghEmail
             response.member.orgName = ghUserData.company
             response.member.firstName = firstName
             response.member.lastName = lastName
