@@ -23,14 +23,6 @@ export class App {
     }
 
     /**
-     * Checks the request for an authentication token in the headers.
-     * @return {Promise<Object>} The authentication result.
-     */
-    anonymous() {
-        return !this.request.headers.get('x-trivialsec')
-    }
-
-    /**
      * Checks if an email has been registered or not.
      * @return {Promise<Object>} The authentication result.
      */

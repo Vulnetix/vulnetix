@@ -23,7 +23,8 @@ export async function onRequestGet(context) {
     })
     const app = new App(request, prisma)
     let err, result, session;
-    if (!app.anonymous()) {
+    const authToken = request.headers.get('x-trivialsec')
+    if (!!authToken.trim()) {
         ({ err, result, session } = await app.authenticate())
         if (result !== AuthResult.AUTHENTICATED) {
             return Response.json({ err, result })
@@ -58,7 +59,7 @@ export async function onRequestGet(context) {
         const created = (new Date()).getTime()
         const expires = appExpiryPeriod + created
         const response = { installationId: params.installation_id, session: {}, member: {} }
-        if (app.anonymous() && !app.memberExists()) {
+        if (!app.memberExists()) {
             const gh = new GitHub(data.access_token)
             const ghUserData = await gh.getUser()
             const words = ghUserData.email.split(' ')
