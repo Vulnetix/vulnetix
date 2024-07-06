@@ -23,6 +23,33 @@ export class App {
     }
 
     /**
+     * Checks the request for an authentication token in the headers.
+     * @return {Promise<Object>} The authentication result.
+     */
+    anonymous() {
+        return !this.request.headers.get('x-trivialsec')
+    }
+
+    /**
+     * Checks if an email has been registered or not.
+     * @return {Promise<Object>} The authentication result.
+     */
+    async memberExists(memberEmail) {
+        try {
+            const member = await this.prisma.members.findFirstOrThrow({
+                where: { email: memberEmail },
+            });
+
+            return memberEmail === member.email;
+        } catch (err) {
+            if (err.name === 'NotFoundError') {
+                return false;
+            }
+            throw err;
+        }
+    }
+
+    /**
      * Authenticate the request based on a token in the headers.
      * @return {Promise<Object>} The authentication result.
      */
@@ -272,6 +299,26 @@ export class GitHub {
         // https://docs.github.com/en/rest/dependency-graph/sboms?apiVersion=2022-11-28#export-a-software-bill-of-materials-sbom-for-a-repository
         const url = `${this.baseUrl}/repos/${full_name}/dependency-graph/sbom`
         console.log(`github.getRepoSpdx(${full_name}) ${url}`)
+        const data = await this.fetchJSON(url)
+        if (!data?.ok) {
+            return null
+        }
+        return data.content
+    }
+    async getUserEmails() {
+        // https://docs.github.com/en/rest/users/emails?apiVersion=2022-11-28#list-email-addresses-for-the-authenticated-user
+        const url = `${this.baseUrl}/user/emails`
+        console.log(`github.getUserEmails() ${url}`)
+        const data = await this.fetchJSON(url)
+        if (!data?.ok) {
+            return null
+        }
+        return data.content
+    }
+    async getUser() {
+        // https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-the-authenticated-user
+        const url = `${this.baseUrl}/user`
+        console.log(`github.getUser() ${url}`)
         const data = await this.fetchJSON(url)
         if (!data?.ok) {
             return null
