@@ -125,7 +125,7 @@ export async function onRequestGet(context) {
             }
         })
         console.log(`/github/install installationId=${params.installation_id}`, GHAppInfo)
-
+        response.result = AuthResult.AUTHENTICATED
         return Response.json(response)
     } catch (err) {
         console.error(err)
