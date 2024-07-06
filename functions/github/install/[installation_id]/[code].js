@@ -44,7 +44,7 @@ export async function onRequestGet(context) {
             const resp = await fetch(url, { method })
             const text = await resp.text()
             const data = Object.fromEntries(text.split('&').map(item => item.split('=').map(decodeURIComponent)))
-            console.error(`installationId=${params.installation_id} kid=${session.kid} data=${data}`)
+            console.error(`installationId=${params.installation_id} data=${data}`)
             if (data?.error) {
                 throw new Error(data.error)
             }
@@ -104,7 +104,7 @@ export async function onRequestGet(context) {
             created,
             expires
         })
-        console.log(`/github/install installationId=${params.installation_id} kid=${session.kid}`, GHAppInfo)
+        console.log(`/github/install installationId=${params.installation_id}`, GHAppInfo)
 
         return Response.json(response)
     } catch (err) {
