@@ -70,6 +70,9 @@ class GitHub {
         }
         if (data?.session?.token) {
             localStorage.setItem('/session/token', data.session.token)
+            axios.defaults.headers.common = {
+                'x-trivialsec': data.session.token,
+            }
         }
         if (data?.session?.expiry) {
             localStorage.setItem('/session/expiry', data.session.expiry)
