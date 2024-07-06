@@ -65,9 +65,9 @@ export async function onRequestGet(context) {
         if (!memberExists) {
             const gh = new GitHub(gdData.access_token)
             let ghEmail
-            for (const ghUserEmails of await gh.getUserEmails()) {
-                if (ghUserEmails?.verified === true && !!ghUserEmails?.email) {
-                    ghEmail = ghUserEmails.email
+            for (const ghUserEmail of await gh.getUserEmails()) {
+                if (ghUserEmail?.verified === true && !!ghUserEmail?.email && !ghUserEmail.email.endsWith('@users.noreply.github.com')) {
+                    ghEmail = ghUserEmail.email
                     break
                 }
             }

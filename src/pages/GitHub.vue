@@ -36,7 +36,9 @@ class GitHub {
         this.urlQuery = Object.fromEntries(location.search.substring(1).split('&').map(item => item.split('=').map(decodeURIComponent)))
 
         if (this.urlQuery?.setup_action === 'install' && this.urlQuery?.code && this.urlQuery?.installation_id) {
-            this.install(this.urlQuery.code, this.urlQuery.installation_id)
+            setTimeout(() => {
+                this.install(this.urlQuery.code, this.urlQuery.installation_id)
+            }, 10000)
         } else {
             this.refreshRepos(true, true)
         }
@@ -49,7 +51,7 @@ class GitHub {
         if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
             state.info = data.result
 
-            return setTimeout(router.push('/logout'), 2000)
+            return setTimeout(() => router.push('/logout'), 22000)
         }
         if (data?.member?.email) {
             localStorage.setItem('/member/email', data.member.email)
@@ -98,7 +100,7 @@ class GitHub {
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
                 state.info = data.result
 
-                return setTimeout(router.push('/logout'), 2000)
+                return setTimeout(() => router.push('/logout'), 2000)
             }
             state.githubApps = data?.githubApps || []
             if (data.gitRepos.length === 0) {
@@ -160,7 +162,7 @@ class GitHub {
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
                 state.info = data.result
 
-                return setTimeout(router.push('/logout'), 2000)
+                return setTimeout(() => router.push('/logout'), 2000)
             }
             if (alerts === true) {
                 if (!data) {
@@ -194,7 +196,7 @@ class GitHub {
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
                 state.info = data.result
 
-                return setTimeout(router.push('/logout'), 2000)
+                return setTimeout(() => router.push('/logout'), 2000)
             }
             if (alerts === true) {
                 if (!data) {
