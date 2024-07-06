@@ -44,7 +44,7 @@ export async function onRequestGet(context) {
             const resp = await fetch(url, { method })
             const text = await resp.text()
             const data = Object.fromEntries(text.split('&').map(item => item.split('=').map(decodeURIComponent)))
-            console.error(`installationId=${params.installation_id} data=${data}`)
+            console.log(`installationId=${params.installation_id} data=${JSON.stringify(data)}`)
             if (data?.error) {
                 throw new Error(data.error)
             }
@@ -109,6 +109,7 @@ export async function onRequestGet(context) {
         return Response.json(response)
     } catch (err) {
         console.error(err)
-        return Response.json({ err })
+
+        return Response.json({ ok: false, result: AuthResult.REVOKED })
     }
 }
