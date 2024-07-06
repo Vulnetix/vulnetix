@@ -28,8 +28,7 @@ router.beforeEach(async to => {
     const publicPrefixes = [
         '/login',
     ]
-
-    const authRequired =
+    let authRequired =
         !publicPages.includes(to.path) &&
         !publicPrefixes.map(i => to.path.startsWith(i)).includes(true)
 
