@@ -60,13 +60,13 @@ class GitHub {
             localStorage.setItem('/member/email', data.member.email)
         }
         if (data?.member?.orgName) {
-            localStorage.setItem('/member/orgName', data.orgName)
+            localStorage.setItem('/member/orgName', data.member.orgName)
         }
         if (data?.member?.firstName) {
-            localStorage.setItem('/member/firstName', data.firstName)
+            localStorage.setItem('/member/firstName', data.member.firstName)
         }
         if (data?.member?.lastName) {
-            localStorage.setItem('/member/lastName', data.lastName)
+            localStorage.setItem('/member/lastName', data.member.lastName)
         }
         if (data?.session?.token) {
             localStorage.setItem('/session/token', data.session.token)
