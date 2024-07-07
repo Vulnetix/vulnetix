@@ -129,12 +129,14 @@ export async function onRequestGet(context) {
             },
             update: {
                 accessToken: oauthData.access_token,
+                login: ghUserData.login,
                 expires
             },
             create: {
                 installationId,
                 memberEmail: session.memberEmail,
                 accessToken: oauthData.access_token,
+                login: ghUserData.login,
                 created,
                 expires
             }

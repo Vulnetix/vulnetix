@@ -56,8 +56,9 @@ export async function onRequestGet(context) {
         const created = (new Date()).getTime()
         const expires = appExpiryPeriod + created
         const response = { installationId: params.installation_id, session: {}, member: {} }
+        const gh = new GitHub(oauthData.access_token)
+        const ghUserData = await gh.getUser()
         if (!session?.kid) {
-            const gh = new GitHub(oauthData.access_token)
             let ghEmail
             for (const ghUserEmail of await gh.getUserEmails()) {
                 if (ghUserEmail?.verified === true && !!ghUserEmail?.email && !ghUserEmail.email.endsWith('@users.noreply.github.com')) {
@@ -65,7 +66,6 @@ export async function onRequestGet(context) {
                     break
                 }
             }
-            const ghUserData = await gh.getUser()
             if (ghUserData?.email && !ghEmail) {
                 ghEmail = ghUserData.email
             }
@@ -118,6 +118,7 @@ export async function onRequestGet(context) {
                 installationId: params.installation_id,
                 memberEmail: session.memberEmail,
                 accessToken: oauthData.access_token,
+                login: ghUserData.login,
                 created,
                 expires
             }

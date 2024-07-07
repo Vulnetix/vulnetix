@@ -57,7 +57,7 @@ model github_apps {
   memberEmail    String
   member         members @relation(fields: [memberEmail], references: [email])
   accessToken    String
-  login          String
+  login          String?
   created        Int
   expires        Int?
 }
