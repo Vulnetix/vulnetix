@@ -222,9 +222,6 @@ class GitHub {
         }
     }
 }
-function installApp() {
-    location.href = 'https://github.com/apps/triage-by-trivial-security/installations/new/'
-}
 
 function clearAlerts() {
     state.error = ''
@@ -302,12 +299,12 @@ const gh = reactive(new GitHub())
             >
                 <template #actions>
                     <VBtn
+                        href="https://github.com/apps/triage-by-trivial-security/installations/new/"
                         text="Install"
                         prepend-icon="line-md:github-loop"
                         :disabled="state.loading"
                         variant="text"
                         :color="global.name.value === 'dark' ? '#fff' : '#272727'"
-                        @click="installApp"
                     />
                     <VBtn
                         v-if="state.githubApps.length && !state.loading"
@@ -331,12 +328,12 @@ const gh = reactive(new GitHub())
             >
                 <VCardText>
                     <VBtn
+                        href="https://github.com/apps/triage-by-trivial-security/installations/new/"
                         text="Install another GitHub Account"
                         prepend-icon="line-md:github-loop"
                         variant="text"
                         :disabled="state.loading"
                         :color="global.name.value === 'dark' ? '#fff' : '#272727'"
-                        @click="installApp"
                     />
                     <VBtn
                         text="Refresh Github Data"

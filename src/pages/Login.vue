@@ -1,11 +1,14 @@
 <script setup>
+import router from "@/router"
 import IconTrivialSecurity from '@images/IconTrivialSecurity.vue'
 import { useVuelidate } from '@vuelidate/core'
 import { email, minLength, required } from '@vuelidate/validators'
 import { default as axios } from 'axios'
 import { SHA1 } from 'crypto-es/lib/sha1'
 import { reactive } from 'vue'
-import router from "../router"
+import { useTheme } from 'vuetify'
+
+const { global } = useTheme()
 
 const initialState = {
     email: localStorage.getItem('/member/email') || '',
@@ -164,6 +167,27 @@ const login = async () => {
                             >
                                 Create an account
                             </RouterLink>
+                        </VCol>
+                        <VCol
+                            cols="12"
+                            class="d-flex align-center"
+                        >
+                            <VDivider />
+                            <span class="mx-4 text-high-emphasis">or</span>
+                            <VDivider />
+                        </VCol>
+                        <VCol
+                            cols="12"
+                            class="text-center "
+                        >
+                            <VBtn
+                                href="https://github.com/login/oauth/authorize?client_id=Iv23liW5R5lkjMRgFrWI&scope=user&redirect_uri=/login"
+                                prepend-icon="line-md:github-loop"
+                                :variant="global.name.value === 'dark' ? 'tonal' : 'outlined'"
+                                size="x-large"
+                                text="Login with GitHub"
+                                :color="global.name.value === 'dark' ? '#fff' : '#272727'"
+                            />
                         </VCol>
                     </VRow>
                 </VForm>
