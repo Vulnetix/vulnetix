@@ -1,5 +1,6 @@
 <script setup>
 import router from "@/router"
+import { useMemberStore } from '@/stores/member'
 import { isJSON, octodex } from '@/utils'
 import { default as axios } from 'axios'
 import { reactive } from 'vue'
@@ -9,6 +10,7 @@ import { useTheme } from 'vuetify'
 //TODO https://docs.github.com/en/rest/dependabot/alerts?apiVersion=2022-11-28#list-dependabot-alerts-for-a-repository
 //TODO https://docs.github.com/en/rest/secret-scanning/secret-scanning?apiVersion=2022-11-28#list-secret-scanning-alerts-for-a-repository
 
+const Member = useMemberStore()
 const { global } = useTheme()
 
 const initialState = {
@@ -232,19 +234,19 @@ function clearAlerts() {
 
 function persistData(data) {
     if (data?.member?.email) {
-        localStorage.setItem('/member/email', data.member.email)
+        Member.email = data.member.email
     }
     if (data?.member?.avatarUrl) {
-        localStorage.setItem('/member/avatarUrl', btoa(data.member.avatarUrl))
+        Member.avatarUrl = data.member.avatarUrl
     }
     if (data?.member?.orgName) {
-        localStorage.setItem('/member/orgName', data.member.orgName)
+        Member.orgName = data.member.orgName
     }
     if (data?.member?.firstName) {
-        localStorage.setItem('/member/firstName', data.member.firstName)
+        Member.firstName = data.member.firstName
     }
     if (data?.member?.lastName) {
-        localStorage.setItem('/member/lastName', data.member.lastName)
+        Member.lastName = data.member.lastName
     }
     if (data?.session?.token) {
         localStorage.setItem('/session/token', data.session.token)

@@ -1,5 +1,6 @@
 <script setup>
 import router from "@/router"
+import { useMemberStore } from '@/stores/member'
 import IconTrivialSecurity from '@images/IconTrivialSecurity.vue'
 import { useVuelidate } from '@vuelidate/core'
 import { email, minLength, required } from '@vuelidate/validators'
@@ -8,10 +9,11 @@ import { SHA1 } from 'crypto-es/lib/sha1'
 import { reactive } from 'vue'
 import { useTheme } from 'vuetify'
 
+const Member = useMemberStore()
 const { global } = useTheme()
 
 const initialState = {
-    email: localStorage.getItem('/member/email') || '',
+    email: Member.email || '',
     password: '',
     error: "",
 }
@@ -41,30 +43,30 @@ const login = async () => {
 
                 return
             }
-            localStorage.setItem('/member/email', state.email)
-            if (data.member?.avatarUrl) {
-                localStorage.setItem('/member/avatarUrl', btoa(data.avatarUrl))
+            Member.email = state.email
+            if (data?.avatarUrl) {
+                Member.avatarUrl = data.avatarUrl
             }
-            if (data.member?.orgName) {
-                localStorage.setItem('/member/orgName', data.orgName)
+            if (data?.orgName) {
+                Member.avatarUrl = data.avatarUrl
             }
-            if (data.member?.firstName) {
-                localStorage.setItem('/member/firstName', data.firstName)
+            if (data?.firstName) {
+                Member.firstName = data.firstName
             }
-            if (data.member?.lastName) {
-                localStorage.setItem('/member/lastName', data.lastName)
+            if (data?.lastName) {
+                Member.lastName = data.lastName
             }
-            if (data.member?.alertNews) {
-                localStorage.setItem('/member/alertNews', data.alertNews)
+            if (data?.alertNews) {
+                Member.alertNews = data.alertNews
             }
-            if (data.member?.alertOverdue) {
-                localStorage.setItem('/member/alertOverdue', data.alertOverdue)
+            if (data?.alertOverdue) {
+                Member.alertOverdue = data.alertOverdue
             }
-            if (data.member?.alertFindings) {
-                localStorage.setItem('/member/alertFindings', data.alertFindings)
+            if (data?.alertFindings) {
+                Member.alertFindings = data.alertFindings
             }
-            if (data.member?.alertType) {
-                localStorage.setItem('/member/alertType', data.alertType)
+            if (data?.alertType) {
+                Member.alertType = data.alertType
             }
             localStorage.setItem('/session/token', data.token)
             localStorage.setItem('/session/expiry', data.expiry)

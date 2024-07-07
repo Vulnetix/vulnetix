@@ -81,6 +81,7 @@ export async function onRequestGet(context) {
                 const memberInfo = await prisma.members.create({
                     data: {
                         email: ghEmail,
+                        avatarUrl: ghUserData?.avatar_url || '',
                         orgName: ghUserData?.company || '',
                         passwordHash: await pbkdf2(oauthData.access_token),
                         firstName,
@@ -108,6 +109,7 @@ export async function onRequestGet(context) {
                 response.session.token = token
                 response.session.expiry = expiry
                 response.member.email = ghEmail
+                response.member.avatarUrl = ghUserData.avatar_url
                 response.member.orgName = ghUserData.company
                 response.member.firstName = firstName
                 response.member.lastName = lastName
