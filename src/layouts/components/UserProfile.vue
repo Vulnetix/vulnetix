@@ -10,7 +10,7 @@ const email = localStorage.getItem('/member/email') || ''
 const orgName = localStorage.getItem('/member/orgName') || 'Individual'
 const firstName = localStorage.getItem('/member/firstName') || 'Demo'
 const lastName = localStorage.getItem('/member/lastName') || 'User'
-let storedAvatar = localStorage.getItem('/member/avatar')
+let storedAvatar = localStorage.getItem('/member/avatarUrl')
 const defaultAvatar = firstName || lastName ?
     `https://avatar.iran.liara.run/username?color=${global.name.value === 'dark' ? '272727' : 'fff'}&background=${global.name.value === 'dark' ? 'E2C878' : '1ABB9C'}&username=${firstName}+${lastName}` :
     `https://avatar.iran.liara.run/public?background=${global.name.value === 'dark' ? 'E2C878' : '1ABB9C'}`
@@ -38,7 +38,7 @@ class Profile {
         const token = localStorage.getItem('/session/token')
         if (!token && location.pathname.startsWith('/github-integration')) {
             const urlQuery = Object.fromEntries(location.search.substring(1).split('&').map(item => item.split('=').map(decodeURIComponent)))
-            if (urlQuery?.setup_action === 'install') {
+            if (!!urlQuery?.code) {
                 return
             }
         }

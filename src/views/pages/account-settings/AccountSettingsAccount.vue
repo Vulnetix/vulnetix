@@ -10,7 +10,7 @@ const email = localStorage.getItem('/member/email') || ''
 const orgName = localStorage.getItem('/member/orgName') || 'Individual'
 const firstName = localStorage.getItem('/member/firstName') || 'Demo'
 const lastName = localStorage.getItem('/member/lastName') || 'User'
-let storedAvatar = localStorage.getItem('/member/avatar')
+let storedAvatar = localStorage.getItem('/member/avatarUrl')
 const defaultAvatar = firstName || lastName ?
     `https://avatar.iran.liara.run/username?color=${global.name.value === 'dark' ? '272727' : 'fff'}&background=${global.name.value === 'dark' ? 'E2C878' : '1ABB9C'}&username=${firstName}+${lastName}` :
     `https://avatar.iran.liara.run/public?background=${global.name.value === 'dark' ? 'E2C878' : '1ABB9C'}`
@@ -92,7 +92,7 @@ const changeAvatar = file => {
         fileReader.onload = () => {
             if (typeof fileReader.result === 'string') {
                 state.avatarImg = fileReader.result
-                localStorage.setItem('/member/avatar', btoa(fileReader.result))
+                localStorage.setItem('/member/avatarUrl', btoa(fileReader.result))
             }
         }
     }
@@ -100,7 +100,7 @@ const changeAvatar = file => {
 
 const resetAvatar = () => {
     state.avatarImg = defaultAvatar
-    localStorage.setItem('/member/avatar', btoa(defaultAvatar))
+    localStorage.setItem('/member/avatarUrl', btoa(defaultAvatar))
 }
 const profile = reactive(new Profile())
 </script>

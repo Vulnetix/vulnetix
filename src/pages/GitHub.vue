@@ -35,8 +35,12 @@ class GitHub {
     constructor() {
         this.urlQuery = Object.fromEntries(location.search.substring(1).split('&').map(item => item.split('=').map(decodeURIComponent)))
 
-        if (this.urlQuery?.setup_action === 'install' && this.urlQuery?.code && this.urlQuery?.installation_id) {
-            this.install(this.urlQuery.code, this.urlQuery.installation_id)
+        if (this.urlQuery?.code) {
+            if (this.urlQuery?.setup_action === 'install' && this.urlQuery?.installation_id) {
+                this.install(this.urlQuery.code, this.urlQuery.installation_id)
+            } else {
+                this.login(this.urlQuery.code)
+            }
         } else {
             this.refreshRepos(true, true)
         }
@@ -52,29 +56,28 @@ class GitHub {
 
             return setTimeout(() => router.push('/logout'), 2000)
         }
-        if (data?.member?.email) {
-            localStorage.setItem('/member/email', data.member.email)
-        }
-        if (data?.member?.orgName) {
-            localStorage.setItem('/member/orgName', data.member.orgName)
-        }
-        if (data?.member?.firstName) {
-            localStorage.setItem('/member/firstName', data.member.firstName)
-        }
-        if (data?.member?.lastName) {
-            localStorage.setItem('/member/lastName', data.member.lastName)
-        }
-        if (data?.session?.token) {
-            localStorage.setItem('/session/token', data.session.token)
-            axios.defaults.headers.common = {
-                'x-trivialsec': data.session.token,
-            }
-        }
-        if (data?.session?.expiry) {
-            localStorage.setItem('/session/expiry', data.session.expiry)
-        }
+        persistData(data)
 
         return this.refreshRepos(false, true, true)
+    }
+    login = async code => {
+        state.loading = true
+        const url = new URL(location)
+        url.search = ""
+        history.pushState({}, "", url)
+        const { data } = await axios.get(`/login/github/${code}`)
+        state.loading = false
+        if (data?.err) {
+            state.error = data.err
+        }
+        if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
+            state.info = data.result
+
+            return setTimeout(() => router.push('/logout'), 2000)
+        }
+        persistData(data)
+
+        return router.push('/dashboard')
     }
     refreshRepos = async (cached = false, initial = false, install = false) => {
         clearAlerts()
@@ -228,6 +231,33 @@ function clearAlerts() {
     state.warning = ''
     state.success = ''
     state.info = ''
+}
+
+function persistData(data) {
+    if (data?.member?.email) {
+        localStorage.setItem('/member/email', data.member.email)
+    }
+    if (data?.member?.avatarUrl) {
+        localStorage.setItem('/member/avatarUrl', data.member.avatarUrl)
+    }
+    if (data?.member?.orgName) {
+        localStorage.setItem('/member/orgName', data.member.orgName)
+    }
+    if (data?.member?.firstName) {
+        localStorage.setItem('/member/firstName', data.member.firstName)
+    }
+    if (data?.member?.lastName) {
+        localStorage.setItem('/member/lastName', data.member.lastName)
+    }
+    if (data?.session?.token) {
+        localStorage.setItem('/session/token', data.session.token)
+        axios.defaults.headers.common = {
+            'x-trivialsec': data.session.token,
+        }
+    }
+    if (data?.session?.expiry) {
+        localStorage.setItem('/session/expiry', data.session.expiry)
+    }
 }
 
 function groupedRepos() {
