@@ -1,8 +1,6 @@
-import { App, AuthResult, GitHub, pbkdf2 } from "@/utils";
+import { App, appExpiryPeriod, AuthResult, GitHub, pbkdf2 } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
-
-const appExpiryPeriod = (86400000 * 365 * 10)  // 10 years
 
 export async function onRequestGet(context) {
     const {
