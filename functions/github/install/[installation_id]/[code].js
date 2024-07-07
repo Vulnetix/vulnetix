@@ -34,15 +34,16 @@ export async function onRequestGet(context) {
         let oauthData
         if (params?.code && params?.installation_id) {
             const method = "POST"
-            const url = "https://github.com/login/oauth/access_token"
-            const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json' }
-            const body = {
+            const url = new URL("https://github.com/login/oauth/access_token")
+
+            url.search = new URLSearchParams({
                 code: params.code,
                 client_id: env.GITHUB_APP_CLIENT_ID,
                 client_secret: env.GITHUB_APP_CLIENT_SECRET,
-            }
+            }).toString()
 
-            const resp = await fetch(url, { headers, method, body })
+            const headers = { 'Accept': 'application/json' }
+            const resp = await fetch(url, { headers, method })
             oauthData = await resp.json()
             if (oauthData?.error) {
                 throw new Error(oauthData.error)
