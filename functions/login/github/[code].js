@@ -52,7 +52,7 @@ export async function onRequestGet(context) {
         let githubApp, ghEmail, installationId;
         const ghUserData = await gh.getUser()
         if (ghUserData?.email) {
-            githubApp = await this.prisma.github_apps.findFirst({
+            githubApp = await prisma.github_apps.findFirst({
                 where: { memberEmail: ghUserData.email },
             })
             if (githubApp?.installationId) {
@@ -63,7 +63,7 @@ export async function onRequestGet(context) {
         if (!ghEmail) {
             for (const ghUserEmail of await gh.getUserEmails()) {
                 if (ghUserEmail?.verified === true && !!ghUserEmail?.email && !ghUserEmail.email.endsWith('@users.noreply.github.com')) {
-                    githubApp = await this.prisma.github_apps.findFirst({
+                    githubApp = await prisma.github_apps.findFirst({
                         where: { memberEmail: ghUserEmail?.email },
                     })
                     if (githubApp?.installationId) {
