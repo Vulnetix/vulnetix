@@ -42,6 +42,9 @@ const login = async () => {
                 return
             }
             localStorage.setItem('/member/email', state.email)
+            if (data.member?.avatarUrl) {
+                localStorage.setItem('/member/avatarUrl', btoa(data.avatarUrl))
+            }
             if (data.member?.orgName) {
                 localStorage.setItem('/member/orgName', data.orgName)
             }
@@ -181,7 +184,7 @@ const login = async () => {
                             class="text-center "
                         >
                             <VBtn
-                                href="https://github.com/login/oauth/authorize?client_id=Iv23liW5R5lkjMRgFrWI&scope=user&redirect_uri=/login"
+                                href="https://github.com/login/oauth/authorize?client_id=Iv23liW5R5lkjMRgFrWI&scope=user"
                                 prepend-icon="line-md:github-loop"
                                 :variant="global.name.value === 'dark' ? 'tonal' : 'outlined'"
                                 size="x-large"

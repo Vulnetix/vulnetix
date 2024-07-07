@@ -62,9 +62,6 @@ class GitHub {
     }
     login = async code => {
         state.loading = true
-        const url = new URL(location)
-        url.search = ""
-        history.pushState({}, "", url)
         const { data } = await axios.get(`/login/github/${code}`)
         state.loading = false
         if (data?.err) {
@@ -238,7 +235,7 @@ function persistData(data) {
         localStorage.setItem('/member/email', data.member.email)
     }
     if (data?.member?.avatarUrl) {
-        localStorage.setItem('/member/avatarUrl', data.member.avatarUrl)
+        localStorage.setItem('/member/avatarUrl', btoa(data.member.avatarUrl))
     }
     if (data?.member?.orgName) {
         localStorage.setItem('/member/orgName', data.member.orgName)

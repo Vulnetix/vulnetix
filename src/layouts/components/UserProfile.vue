@@ -52,6 +52,10 @@ class Profile {
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
                 return router.push('/logout')
             }
+            if (data.member?.avatarUrl) {
+                state.member.avatarUrl = data.member.avatarUrl
+                localStorage.setItem('/member/avatarUrl', btoa(data.member.avatarUrl))
+            }
             if (data.member?.orgName) {
                 state.member.orgName = data.member.orgName
                 localStorage.setItem('/member/orgName', data.member.orgName)
