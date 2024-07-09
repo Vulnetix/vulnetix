@@ -21,7 +21,7 @@ const scaHeadings = [
     { title: 'SPDX Version', key: 'spdxVersion' },
     { title: '', key: 'actions', align: 'end' },
 ]
-const sastHeadings = [
+const sarifHeadings = [
     { title: 'Title', key: 'ruleId', align: 'start' },
     { title: 'Source', key: 'source' },
     { title: 'Discovered', key: 'createdAt', align: 'start' },
@@ -43,7 +43,8 @@ const initialState = {
     loading: false,
     sca: [],
     sast: [],
-    secrets: [],
+    sarif: [],
+    vex: [],
 }
 const state = reactive({
     ...initialState,
@@ -83,8 +84,14 @@ class TriageQueue {
             if (data?.sca) {
                 state.sca = data.sca
             }
+            if (data?.sarif) {
+                state.sarif = data.sarif
+            }
             if (data?.sast) {
                 state.sast = data.sast
+            }
+            if (data?.vex) {
+                state.vex = data.vex
             }
         } catch (e) {
             console.error(e)
@@ -105,17 +112,17 @@ const manager = reactive(new TriageQueue())
         fixed-tabs
     >
         <VTab
-            text="Dependencies"
+            text="Supply Chain Security"
             value="sca"
         ></VTab>
         <VTab
-            text="Coding Defects"
+            text="CodeQL & SARIF"
+            value="sarif"
+        ></VTab>
+        <VTab
+            text="Defects"
             value="sast"
         ></VTab>
-        <!-- <VTab
-            text="Secrets"
-            value="secrets"
-        ></VTab> -->
     </VTabs>
     <VAlert
         v-if="state.error"
@@ -334,10 +341,10 @@ const manager = reactive(new TriageQueue())
                 </v-data-table>
             </v-card>
         </VTabsWindowItem>
-        <VTabsWindowItem value="sast">
+        <VTabsWindowItem value="sarif">
             <v-card flat>
                 <v-card-title class="d-flex align-center pe-2">
-                    {{ state.sast.length }} Findings
+                    {{ state.sarif.length }} Findings
                     <v-spacer></v-spacer>
                     <v-text-field
                         v-model="search"
@@ -353,8 +360,8 @@ const manager = reactive(new TriageQueue())
                 <v-divider></v-divider>
                 <v-data-table
                     v-model:search="search"
-                    :items="state.sast"
-                    :headers="sastHeadings"
+                    :items="state.sarif"
+                    :headers="sarifHeadings"
                     :sort-by="[{ key: 'createdAt', order: 'desc' }, { key: 'securitySeverity', order: 'asc' }]"
                     multi-sort
                 >
@@ -530,9 +537,9 @@ const manager = reactive(new TriageQueue())
                 </v-data-table>
             </v-card>
         </VTabsWindowItem>
-        <!-- <VTabsWindowItem value="secrets">
-            Secrets
-        </VTabsWindowItem> -->
+        <VTabsWindowItem value="sast">
+            SAST, DAST, Linting, IaC, and Secrets
+        </VTabsWindowItem>
     </VTabsWindow>
 
 </template>

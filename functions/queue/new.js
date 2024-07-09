@@ -25,7 +25,7 @@ export async function onRequestGet(context) {
             return Response.json({ ok: false, err, result })
         }
 
-        const findings = await prisma.findings_sca.findMany({
+        let findings = await prisma.findings.findMany({
             where: {
                 memberEmail: session.memberEmail,
             },
@@ -33,25 +33,26 @@ export async function onRequestGet(context) {
                 memberEmail: true,
             },
             include: {
-                spdx: true
+                spdx: true,
+                triage: true,
                 // cdx: true
             }
         })
-        const scaKeys = new Set()
-        const sca = findings.map(o => {
-            const { spdx, ...rest } = o
+        const vex = findings.flatMap(({ triage }) => triage)
+        const findingKeys = new Set(findings.flatMap(({ spdx, ...rest }) => [...Object.keys(rest), ...Object.keys(spdx)]))
+        findings = findings.map(({ spdx, triage, ...rest }) => {
             const finding = { ...rest, ...spdx }
-            Object.keys(finding).forEach(k => scaKeys.add(k))
-            return finding
-        }).map(finding => {
-            scaKeys.forEach(k => {
+            for (const k of findingKeys) {
                 if (typeof finding[k] === 'undefined') {
                     finding[k] = ''
                 }
-            })
+            }
             finding['actions'] = ''
             return finding
         })
+        const sca = findings.filter(finding => finding.category === 'sca')
+        const sast = findings.filter(finding => finding.category === 'sast')
+
         const sarifResults = await prisma.sarif.findMany({
             where: {
                 memberEmail: session.memberEmail,
@@ -63,24 +64,22 @@ export async function onRequestGet(context) {
                 results: true
             }
         })
-        let sast = []
-        const sastKeys = new Set()
-        sarifResults.forEach(({ results, ...result }) => {
-            results.forEach(sarif => {
-                const finding = { ...sarif, ...result }
-                Object.keys(finding).forEach(k => sastKeys.add(k))
-                sast.push(finding)
-            })
-        })
+        const sarifKeys = new Set(sarifResults.flatMap(({ results, ...result }) =>
+            results.flatMap(sarif => Object.keys({ ...sarif, ...result }))
+        ))
 
-        sast = sast.map(finding => {
-            sastKeys.forEach(k => {
+        let sarif = sarifResults.flatMap(({ results, ...result }) =>
+            results.map(sarif => ({ ...sarif, ...result }))
+        )
+
+        sarif = sarif.map(finding => {
+            sarifKeys.forEach(k => {
                 finding[k] = finding[k] || ''
             })
             finding['actions'] = ''
             return finding
         })
-        return Response.json({ ok: true, sca, sast })
+        return Response.json({ ok: true, sca, sast, sarif, vex })
     } catch (err) {
         console.error(err)
         return Response.json({ ok: false, result: AuthResult.REVOKED })

@@ -90,13 +90,15 @@ export async function onRequestPost(context) {
                     .map(ref => ({
                         purl: ref.referenceLocator,
                         name: pkg.name,
-                        version: pkg.versionInfo,
-                        licenseDeclared: pkg.licenseDeclared
+                        version: pkg?.versionInfo,
+                        licenseDeclared: pkg?.licenseDeclared
                     }))
             })
             const osv = new OSV()
             const queries = osvQueries.filter(q => q?.purl).map(q => ({ package: { purl: q?.purl } }))
+            console.log(`osvQueries`, queries)
             const vulns = await osv.queryBatch(queries)
+            console.log(`vulns length`, vulns?.length)
             if (typeof vulns?.length !== 'undefined') {
                 let i = 0
                 for (const vuln of vulns) {
@@ -127,6 +129,22 @@ export async function onRequestPost(context) {
                         }
                     })
                     console.log(`findings SCA`, finding)
+                    const vex = await prisma.triage_activity.upsert({
+                        where: {
+                            findingId,
+                        },
+                        update: {
+                            lastObserved: (new Date()).getTime()
+                        },
+                        create: {
+                            findingId,
+                            createdAt: (new Date()).getTime(),
+                            lastObserved: (new Date()).getTime(),
+                            seen: 0,
+                            analysisState: 'in_triage'
+                        }
+                    })
+                    console.log(`findings VEX`, vex)
                     i = i++
                 }
             }

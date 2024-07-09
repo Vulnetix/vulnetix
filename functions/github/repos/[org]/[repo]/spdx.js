@@ -1,6 +1,6 @@
+import { App, AuthResult, GitHub, hex, isSPDX, OSV } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
-import { App, AuthResult, GitHub, hex, isSPDX, OSV } from "@/utils";
 
 export async function onRequestGet(context) {
     const {
@@ -126,6 +126,22 @@ export async function onRequestGet(context) {
                     }
                 })
                 console.log(`findings SCA`, finding)
+                const vex = await prisma.triage_activity.upsert({
+                    where: {
+                        findingId,
+                    },
+                    update: {
+                        lastObserved: (new Date()).getTime()
+                    },
+                    create: {
+                        findingId,
+                        createdAt: (new Date()).getTime(),
+                        lastObserved: (new Date()).getTime(),
+                        seen: 0,
+                        analysisState: 'in_triage'
+                    }
+                })
+                console.log(`findings VEX`, vex)
                 i = i++
             }
         }

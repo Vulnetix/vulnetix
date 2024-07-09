@@ -121,11 +121,11 @@ model sarif_results {
 }
 
 model spdx {
-  spdxId            String         @unique
+  spdxId            String     @unique
   spdxVersion       String
   source            String
   repoName          String?
-  repo              git_repos?     @relation(fields: [repoName], references: [fullName])
+  repo              git_repos? @relation(fields: [repoName], references: [fullName])
   name              String?
   dataLicense       String?
   documentNamespace String?
@@ -133,9 +133,9 @@ model spdx {
   packageCount      Int
   createdAt         Int
   memberEmail       String
-  member            members        @relation(fields: [memberEmail], references: [email])
+  member            members    @relation(fields: [memberEmail], references: [email])
   comment           String?
-  findings_sca      findings_sca[]
+  findings          findings[]
 }
 
 model integration_usage_log {
@@ -150,26 +150,62 @@ model integration_usage_log {
 }
 
 model findings {
-  findingId       String  @unique
-  memberEmail     String
-  source          String
-  category        String
-  member          members @relation(fields: [memberEmail], references: [email])
-  createdAt       Int
-  modifiedAt      Int
-  detectionTitle  String
-  purl            String?
-  cpe             String?
-  packageName     String
-  packageVersion  String?
-  licenseDeclared String?
-  fixVersion      String?
-  remediation     String?
-  maliciousSource String?
-  abandoned       Int?
-  squattedPackage String?
-  spdxId          String?
-  spdx            spdx?   @relation(fields: [spdxId], references: [spdxId])
-  cdxId           String?
+  findingId                  String            @unique
+  memberEmail                String
+  source                     String
+  category                   String
+  member                     members           @relation(fields: [memberEmail], references: [email])
+  createdAt                  Int
+  modifiedAt                 Int
+  publishedAt                Int?
+  detectionTitle             String
+  purl                       String?
+  cpe                        String?
+  databaseReviewed           Int?
+  cve                        String?
+  aliases                    String?
+  cwes                       String?
+  packageName                String
+  packageVersion             String?
+  vendor                     String?
+  product                    String?
+  packageEcosystem           String?
+  sourceCodeUrl              String?
+  exploitsJSON               String?
+  knownExploitsJSON          String?
+  cisaDateAdded              Int?
+  knownRansomwareCampaignUse String?
+  fixVersion                 String?
+  fixAutomatable             Int?
+  vulnerableVersionRange     String?
+  licenseDeclared            String?
+  maliciousSource            String?
+  abandoned                  Int?
+  squattedPackage            String?
+  referencesJSON             String?
+  spdxId                     String?
+  spdx                       spdx?             @relation(fields: [spdxId], references: [spdxId])
+  cdxId                      String?
   // cdx             cdx?    @relation(fields: [cdxId], references: [cdxId])
+  triage                     triage_activity[]
+}
+
+model triage_activity {
+  findingId             String
+  finding               findings @relation(fields: [findingId], references: [findingId])
+  createdAt             Int
+  seen                  Int
+  seenAt                Int?
+  cvssVector            String?
+  cvssScore             String?
+  epssPercentile        String?
+  epssScore             String?
+  ssvc                  String?
+  remediation           String?
+  analysisState         String
+  analysisJustification String?
+  analysisResponseJSON  String?
+  analysisDetail        String?
+
+  @@id([findingId, analysisState])
 }
