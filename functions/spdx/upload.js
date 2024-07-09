@@ -1,6 +1,6 @@
+import { App, AuthResult, OSV, hex, isSPDX } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
-import { App, AuthResult, OSV, hex, isSPDX } from "@/utils";
 
 
 export async function onRequestPost(context) {
@@ -40,39 +40,31 @@ export async function onRequestPost(context) {
             const spdxId = await hex(spdxStr)
             const objectPrefix = `uploads/${session.memberEmail}/spdx/`
             const fileName = `${spdxId}.json`
-            console.log(fileName, await env.r2icache.put(`${objectPrefix}${fileName}`, spdxStr, putOptions))
-
-            const info = await env.d1db.prepare(`
-                INSERT OR REPLACE INTO spdx (
-                spdxId,
-                spdxVersion,
-                source,
-                repoName,
-                name,
-                dataLicense,
-                documentNamespace,
-                toolName,
-                packageCount,
-                createdAt,
-                memberEmail,
-                comment
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
-            `)
-                .bind(
+            const r2Put = await env.r2icache.put(`${objectPrefix}${fileName}`, spdxStr, putOptions)
+            console.log(fileName, JSON.stringify(r2Put))
+            const info = await prisma.spdx.upsert({
+                where: {
                     spdxId,
-                    spdx.spdxVersion,
-                    'upload',
-                    '',
-                    spdx.name,
-                    spdx.dataLicense,
-                    spdx.documentNamespace,
-                    spdx.creationInfo.creators.join(', '),
-                    spdx.packages.length,
-                    (new Date(spdx.creationInfo.created)).getTime(),
-                    session.memberEmail,
-                    spdx.creationInfo?.comment || ''
-                )
-                .run()
+                    memberEmail: session.memberEmail,
+                },
+                update: {
+                    createdAt: (new Date(spdx.creationInfo.created)).getTime(),
+                },
+                create: {
+                    spdxId,
+                    spdxVersion: spdx.spdxVersion,
+                    source: 'upload',
+                    repoName: '',
+                    name: spdx.name,
+                    dataLicense: spdx.dataLicense,
+                    documentNamespace: spdx.documentNamespace,
+                    toolName: spdx.creationInfo.creators.join(', '),
+                    packageCount: spdx.packages.length,
+                    createdAt: (new Date(spdx.creationInfo.created)).getTime(),
+                    memberEmail: session.memberEmail,
+                    comment: spdx.creationInfo?.comment || ''
+                }
+            })
 
             console.log(`/github/repos/spdx ${fileName} kid=${session.kid}`, info)
 
@@ -112,7 +104,7 @@ export async function onRequestPost(context) {
                         continue
                     }
                     const findingId = await hex(`${session.memberEmail}${vuln.id}${osvQueries[i].name}${osvQueries[i].version}`)
-                    const finding = await prisma.findings_sca.upsert({
+                    const finding = await prisma.findings.upsert({
                         where: {
                             findingId,
                         },
@@ -123,6 +115,7 @@ export async function onRequestPost(context) {
                             findingId,
                             memberEmail: session.memberEmail,
                             source: 'osv.dev',
+                            category: 'sca',
                             createdAt: (new Date()).getTime(),
                             modifiedAt: (new Date(vuln.modified)).getTime(),
                             detectionTitle: vuln.id,
@@ -133,7 +126,7 @@ export async function onRequestPost(context) {
                             spdxId
                         }
                     })
-                    console.log(`findings_sca`, finding)
+                    console.log(`findings SCA`, finding)
                     i = i++
                 }
             }

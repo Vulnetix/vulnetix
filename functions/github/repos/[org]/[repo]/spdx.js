@@ -103,7 +103,7 @@ export async function onRequestGet(context) {
                     continue
                 }
                 const findingId = await hex(`${session.memberEmail}${vuln.id}${osvQueries[i].name}${osvQueries[i].version}`)
-                const finding = await prisma.findings_sca.upsert({
+                const finding = await prisma.findings.upsert({
                     where: {
                         findingId,
                     },
@@ -114,6 +114,7 @@ export async function onRequestGet(context) {
                         findingId,
                         memberEmail: session.memberEmail,
                         source: 'osv.dev',
+                        category: 'sca',
                         createdAt: (new Date()).getTime(),
                         modifiedAt: (new Date(vuln.modified)).getTime(),
                         detectionTitle: vuln.id,
@@ -124,7 +125,7 @@ export async function onRequestGet(context) {
                         spdxId
                     }
                 })
-                console.log(`findings_sca`, finding)
+                console.log(`findings SCA`, finding)
                 i = i++
             }
         }

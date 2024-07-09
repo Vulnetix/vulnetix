@@ -40,7 +40,7 @@ model members {
   sessions              sessions[]
   spdx                  spdx[]
   integration_usage_log integration_usage_log[]
-  findings_sca          findings_sca[]
+  findings              findings[]
 }
 
 model member_keys {
@@ -149,10 +149,11 @@ model integration_usage_log {
   createdAt   Int
 }
 
-model findings_sca {
+model findings {
   findingId       String  @unique
   memberEmail     String
   source          String
+  category        String
   member          members @relation(fields: [memberEmail], references: [email])
   createdAt       Int
   modifiedAt      Int

@@ -132,11 +132,12 @@ export class VulnCheck {
     //     })
     //     console.log(`vulncheck.getPurl(${ref.referenceLocator})`, createLog)
     //     for (const vulnerability of vc.content?.data?.vulnerabilities) {
-    //         const createFinding = await prisma.findings_sca.create({
+    //         const createFinding = await prisma.findings.create({
     //             data: {
     //                 findingId: hex(`${session.memberEmail}${vulnerability.detection}${pkg.name}${pkg.versionInfo}`),
     //                 memberEmail: session.memberEmail,
     //                 source: 'vulncheck',
+    //                 category: 'sca',
     //                 createdAt: (new Date()).getTime(),
     //                 detectionTitle: vulnerability.detection,
     //                 purl: ref.referenceLocator,
@@ -149,7 +150,7 @@ export class VulnCheck {
     //                 squattedPackage: research_attributes.squatted_package,
     //             }
     //         })
-    //         console.log(`findings_sca`, createFinding)
+    //         console.log(`findings SCA`, createFinding)
     //     }
     // }
     // const keyData = await prisma.member_keys.findFirst({

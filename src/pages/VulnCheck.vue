@@ -5,6 +5,11 @@ import { reactive } from 'vue'
 import { useTheme } from 'vuetify'
 import router from "../router"
 
+// curl 'https://api.vulncheck.com/v3/index/vulncheck-kev' \
+//     -H 'User-Agent: Triage-by-Trivial-Security' \
+//     -H 'Accept: application/json' \
+//     -H 'Authorization: Bearer undefined' > ./vulncheck-kev.json
+
 const { global } = useTheme()
 
 const initialState = {
