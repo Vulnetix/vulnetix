@@ -58,7 +58,7 @@ export async function onRequestGet(context) {
         const response = { installationId: params.installation_id, session: {}, member: {} }
         const gh = new GitHub(oauthData.access_token)
         const { content, error } = await gh.getUser()
-        if (error) {
+        if (error?.message) {
             return Response.json({ error })
         }
         if (!session?.kid) {

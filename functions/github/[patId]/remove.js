@@ -2,7 +2,7 @@ import { App, AuthResult } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
-export async function onRequestGet(context) {
+export async function onRequestDelete(context) {
     const {
         request, // same as existing Worker API
         env, // same as existing Worker API
@@ -23,39 +23,12 @@ export async function onRequestGet(context) {
     if (result !== AuthResult.AUTHENTICATED) {
         return Response.json({ error: { message: err }, result })
     }
-    const githubApps = await prisma.github_apps.findMany({
+    const tokenInfo = await prisma.member_keys.delete({
         where: {
+            id: parseInt(params.patId, 10),
             memberEmail: session.memberEmail,
-        },
-        omit: {
-            memberEmail: true,
-            accessToken: true,
-        },
+        }
     })
-    const gitRepos = await prisma.git_repos.findMany({
-        where: {
-            memberEmail: session.memberEmail,
-        },
-        omit: {
-            memberEmail: true,
-        },
-    })
-    const patTokens = await prisma.member_keys.findMany({
-        where: {
-            memberEmail: session.memberEmail,
-            keyType: 'github_pat',
-        },
-        omit: {
-            memberEmail: true,
-        },
-    })
-
-    return Response.json({
-        githubApps, gitRepos, patTokens: patTokens.map(i => {
-            i.secretMasked = mask(i.secret)
-            delete i.secret
-            return i
-        })
-    })
+    console.log(`/github/[${params.patId}]/remove github_pat`, tokenInfo)
+    return Response.json(tokenInfo)
 }
-const mask = s => s.slice(0, 11) + s.slice(10).slice(4, s.length - 4).replace(/(.)/g, '*') + s.slice(s.length - 4)

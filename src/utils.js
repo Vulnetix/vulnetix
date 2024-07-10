@@ -94,7 +94,7 @@ export class OSV {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
-            return { ok: response.ok, status: response.status, statusText: response.statusText, url, error: { message: e.message, lineno, colno } }
+            return { url, error: { message: e.message, lineno, colno } }
         }
     }
     async queryBatch(queries) {
@@ -186,7 +186,7 @@ export class VulnCheck {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
-            return { ok: response.ok, status: response.status, statusText: response.statusText, url, error: { message: e.message, lineno, colno } }
+            return { url, error: { message: e.message, lineno, colno } }
         }
     }
     async getPurl(purl) {
@@ -228,7 +228,7 @@ export class GitHub {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
-            return { ok: response.ok, status: response.status, statusText: response.statusText, url, error: { message: e.message, lineno, colno } }
+            return { url, error: { message: e.message, lineno, colno } }
         }
     }
     async fetchSARIF(url) {
@@ -247,7 +247,7 @@ export class GitHub {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
-            return { ok: response.ok, status: response.status, statusText: response.statusText, url, error: { message: e.message, lineno, colno } }
+            return { url, error: { message: e.message, lineno, colno } }
         }
     }
     async getRepoSarif(full_name) {
@@ -276,6 +276,8 @@ export class GitHub {
                         report: Object.assign({}, report),
                         sarif: Object.assign({}, sarifData.content)
                     })
+                } else {
+                    console.log(`github.getRepoSarif(${full_name})`, report?.id, isSARIF(sarifData.content), sarifData)
                 }
             }
 
@@ -305,6 +307,23 @@ export class GitHub {
         const url = `${this.baseUrl}/user`
         console.log(`github.getUser() ${url}`)
         return this.fetchJSON(url)
+    }
+    async revokeToken() {
+        const url = `${this.baseUrl}/installation/token`
+        try {
+            const method = "DELETE"
+            const response = await fetch(url, { headers: this.headers, method })
+            if (!response.ok) {
+                console.error(`resp headers=${JSON.stringify(this.headers, null, 2)}`)
+                console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
+            }
+            return { ok: response.ok, status: response.status, statusText: response.statusText, url }
+        } catch (e) {
+            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
+            console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
+
+            return { url, error: { message: e.message, lineno, colno } }
+        }
     }
     async getRepos() {
         // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repositories-for-the-authenticated-user

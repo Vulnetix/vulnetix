@@ -51,6 +51,8 @@ model member_keys {
   member      members @relation(fields: [memberEmail], references: [email])
   secret      String
   suspend     Int     @default(0)
+
+  @@unique([memberEmail, secret])
 }
 
 model github_apps {
@@ -192,9 +194,10 @@ model findings {
 }
 
 model triage_activity {
-  findingId             String
+  findingId             String   @id
   finding               findings @relation(fields: [findingId], references: [findingId])
   createdAt             Int
+  lastObserved          Int
   seen                  Int
   seenAt                Int?
   cvssVector            String?
@@ -208,5 +211,5 @@ model triage_activity {
   analysisResponseJSON  String?
   analysisDetail        String?
 
-  @@id([findingId, analysisState])
+  @@unique([findingId, analysisState])
 }

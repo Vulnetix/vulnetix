@@ -79,7 +79,8 @@ class TriageQueue {
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
                 state.info = data.result
 
-                return setTimeout(() => router.push('/logout'), 2000)
+                // setTimeout(() => router.push('/logout'), 2000)
+                return
             }
             if (data?.sca) {
                 state.sca = data.sca
@@ -112,14 +113,20 @@ const manager = reactive(new TriageQueue())
         fixed-tabs
     >
         <VTab
+            base-color="#272727"
+            prepend-icon="hugeicons:blockchain-07"
             text="Supply Chain Security"
             value="sca"
         ></VTab>
         <VTab
+            base-color="#272727"
+            prepend-icon="eos-icons:critical-bug-outlined"
             text="CodeQL & SARIF"
             value="sarif"
         ></VTab>
         <VTab
+            base-color="#272727"
+            prepend-icon="eos-icons:critical-bug-outlined"
             text="Defects"
             value="sast"
         ></VTab>
@@ -483,7 +490,7 @@ const manager = reactive(new TriageQueue())
                                                         class="pa-4"
                                                     >{{
                                                         location.physicalLocation?.region?.snippet?.text
-                                                        }}</VCode>
+                                                    }}</VCode>
                                                 </div>
                                             </v-card-subtitle>
                                         </v-card>

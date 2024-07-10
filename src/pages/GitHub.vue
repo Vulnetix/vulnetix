@@ -23,6 +23,7 @@ const initialState = {
     showEmptyState: false,
     loadingBar: false,
     octodexImageUrl: `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`,
+    patTokens: [],
     githubApps: [],
     gitRepos: [],
     refreshLoaders: {}
@@ -55,7 +56,14 @@ class GitHub {
         state.loadingBar = true
         const { data } = await axios.get(`/github/install/${installation_id}/${code}`)
         if (data?.error?.message) {
-            state.error = data?.error?.message
+            if (data?.app?.installationId) {
+                data.error.message = `[Installation ID ${data.app.installationId}] ${data.error.message}`
+            }
+            if (data?.app?.login) {
+                data.error.message = `${data.error.message} (${data.app.login})`
+            }
+            state.error = data.error.message
+            return
         }
         if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
             state.info = data.result
@@ -72,7 +80,14 @@ class GitHub {
         const { data } = await axios.get(`/login/github/${code}`)
         state.loadingBar = false
         if (data?.error?.message) {
-            state.error = data?.error?.message
+            if (data?.app?.installationId) {
+                data.error.message = `[Installation ID ${data.app.installationId}] ${data.error.message}`
+            }
+            if (data?.app?.login) {
+                data.error.message = `${data.error.message} (${data.app.login})`
+            }
+            state.error = data.error.message
+            return
         }
         if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
             state.info = data.result
@@ -94,19 +109,27 @@ class GitHub {
             const { data } = await axios.get(uriPath)
             state.loadingBar = false
             if (data?.error?.message) {
-                state.error = data?.error?.message
+                if (data?.app?.installationId) {
+                    data.error.message = `[Installation ID ${data.app.installationId}] ${data.error.message}`
+                }
+                if (data?.app?.login) {
+                    data.error.message = `${data.error.message} (${data.app.login})`
+                }
+                state.error = data.error.message
+                return false
             }
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
                 state.info = data.result
-
-                return setTimeout(() => router.push('/logout'), 2000)
+                setTimeout(() => router.push('/logout'), 2000)
+                return false
             }
             if (typeof data === "string" && !isJSON(data)) {
                 state.warning = cached === true ? "No cached data. Have you tried to install the GitHub App?" : "No data retrieved from GitHub. Was this GitHub App uninstalled?"
                 state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
 
-                return
+                return false
             }
+            state.patTokens = data?.patTokens || []
             state.githubApps = data?.githubApps || []
             if (data.gitRepos.length === 0) {
                 state.error = "No data retrieved from GitHub. Is this GitHub App installed?"
@@ -128,7 +151,7 @@ class GitHub {
                 state.success = "GitHub App installed successfully."
             }
 
-            return
+            return true
         } catch (e) {
             console.error(e)
             state.error = `${e.code} ${e.message}`
@@ -136,6 +159,7 @@ class GitHub {
         state.warning = "No data retrieved from GitHub. Is this GitHub App uninstalled?"
         state.octodexImageUrl = `https://octodex.github.com/images/${octodex[Math.floor(Math.random() * octodex.length)]}`
         state.loadingBar = false
+        return false
     }
     refreshSecurity = async (full_name, alerts = true) => {
         state.refreshLoaders[full_name] = true
@@ -146,9 +170,10 @@ class GitHub {
         state.refreshLoaders[full_name] = false
     }
     refreshGithub = async () => {
-        await this.refreshRepos(false, false)
-        for (const repo of state.gitRepos) {
-            this.refreshSecurity(repo.fullName, false)
+        if (await this.refreshRepos(false, false)) {
+            for (const repo of state.gitRepos) {
+                this.refreshSecurity(repo.fullName, false)
+            }
         }
     }
     refreshSpdx = async (full_name, alerts = true) => {
@@ -156,18 +181,24 @@ class GitHub {
         try {
             const { data } = await axios.get(`/github/repos/${full_name}/spdx`)
 
-            if (typeof data === "string" && !isJSON(data)) {
-                state.warning = "No data retrieved from GitHub. Was this GitHub App uninstalled?"
-
-                return
-            }
             if (data?.error?.message && alerts === true) {
-                state.error = data?.error?.message
+                if (data?.app?.installationId) {
+                    data.error.message = `[Installation ID ${data.app.installationId}] ${data.error.message}`
+                }
+                if (data?.app?.login) {
+                    data.error.message = `${data.error.message} (${data.app.login})`
+                }
+                state.error = data.error.message
+                return
             }
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
                 state.info = data.result
 
                 return setTimeout(() => router.push('/logout'), 2000)
+            }
+            if (typeof data === "string" && !isJSON(data)) {
+                state.warning = "No data retrieved from GitHub. Was this GitHub App uninstalled?"
+                return
             }
             if (alerts === true) {
                 if (!data) {
@@ -194,18 +225,25 @@ class GitHub {
         try {
             const { data } = await axios.get(`/github/repos/${full_name}/sarif`)
 
-            if (typeof data === "string" && !isJSON(data)) {
-                state.warning = "No data retrieved from GitHub. Was this GitHub App uninstalled?"
-
-                return
-            }
             if (data?.error?.message && alerts === true) {
-                state.error = data?.error?.message
+                if (data?.app?.installationId) {
+                    data.error.message = `[Installation ID ${data.app.installationId}] ${data.error.message}`
+                }
+                if (data?.app?.login) {
+                    data.error.message = `${data.error.message} (${data.app.login})`
+                }
+                state.error = data.error.message
+                return
             }
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
                 state.info = data.result
 
                 return setTimeout(() => router.push('/logout'), 2000)
+            }
+            if (typeof data === "string" && !isJSON(data)) {
+                state.warning = "No data retrieved from GitHub. Was this GitHub App uninstalled?"
+
+                return
             }
             if (alerts === true) {
                 if (!data) {
@@ -231,24 +269,67 @@ class GitHub {
         clearAlerts()
         state.loading = true
         try {
-            const { data } = await axios.post(`/github/pat`, { token: state.pat }, { headers: { 'Content-Type': 'application/json' } })
+            const { data } = await axios.post(`/github/pat`, { token: state.pat, label: state.patName }, { headers: { 'Content-Type': 'application/json' } })
             state.loading = false
 
-            if (typeof data === "string" && !isJSON(data)) {
-                state.error = "Data could not be saved, please try again later."
-
-                return
-            }
             if (data?.error?.message) {
-                state.error = data?.error?.message
+                if (data?.app?.installationId) {
+                    data.error.message = `[Installation ID ${data.app.installationId}] ${data.error.message}`
+                }
+                if (data?.app?.login) {
+                    data.error.message = `${data.error.message} (${data.app.login})`
+                }
+                state.error = data.error.message
+                return
             }
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
                 state.info = data.result
 
                 return setTimeout(() => router.push('/logout'), 2000)
             }
-            if (data.ok === true) {
+            if (typeof data === "string" && !isJSON(data)) {
+                state.error = "Data could not be saved, please try again later."
+
+                return
+            }
+            if (data) {
+                state.patTokens.push(data)
                 state.success = "Saved successfully."
+            } else {
+                state.info = data?.result || 'No change'
+            }
+
+            return
+        } catch (e) {
+            console.error(e)
+            state.error = typeof e === "string" ? e : `${e.code} ${e.message}`
+            state.loading = false
+        }
+    }
+    deletePat = async patId => {
+        clearAlerts()
+        state.loading = true
+        try {
+            const { data } = await axios.delete(`/github/${patId}/remove`)
+            state.loading = false
+
+            if (data?.error?.message) {
+                state.error = data.error.message
+                return
+            }
+            if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
+                state.info = data.result
+
+                return setTimeout(() => router.push('/logout'), 2000)
+            }
+            if (typeof data === "string" && !isJSON(data)) {
+                state.error = "Data could not be saved, please try again later."
+
+                return
+            }
+            if (data) {
+                state.patTokens = state.patTokens.filter(o => o.id !== patId)
+                state.success = "PAT deleted successfully."
             } else {
                 state.info = data?.result || 'No change'
             }
@@ -267,20 +348,28 @@ class GitHub {
             const { data } = await axios.get(`/github/${installationId}/uninstall`)
             state.loading = false
 
-            if (typeof data === "string" && !isJSON(data)) {
-                state.error = "Unable to uninstall, please try again later."
-
-                return
-            }
             if (data?.error?.message) {
-                state.error = data?.error?.message
+                if (data?.app?.installationId) {
+                    data.error.message = `[Installation ID ${data.app.installationId}] ${data.error.message}`
+                }
+                if (data?.app?.login) {
+                    data.error.message = `${data.error.message} (${data.app.login})`
+                }
+                state.error = data.error.message
+                return
             }
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
                 state.info = data.result
 
                 return setTimeout(() => router.push('/logout'), 2000)
             }
-            if (data.ok === true) {
+            if (typeof data === "string" && !isJSON(data)) {
+                state.error = "Unable to uninstall, please try again later."
+
+                return
+            }
+            if (data) {
+                state.githubApps = state.githubApps.filter(o => o.installationId !== installationId)
                 state.success = "Uninstalled successfully."
             } else {
                 state.info = data?.result || 'No change'
@@ -444,11 +533,15 @@ const gh = reactive(new GitHub())
                 fixed-tabs
             >
                 <VTab
+                    base-color="#272727"
+                    prepend-icon="mdi:source-repository-multiple"
                     text="Repositories"
                     value="repos"
                 ></VTab>
                 <VTab
-                    text="integration"
+                    base-color="#272727"
+                    prepend-icon="mdi:integrated-circuit"
+                    text="Integration"
                     value="integration"
                 ></VTab>
             </VTabs>
@@ -637,7 +730,7 @@ const gh = reactive(new GitHub())
                                         <VTextField
                                             :disabled="state.loading"
                                             v-model="state.pat"
-                                            placeholder="gha_xxxx...xxxx"
+                                            placeholder="github_pat_xxxx...xxxx"
                                             label="GitHub Personal Access Token (PAT)"
                                         />
                                     </VCol>
@@ -654,77 +747,148 @@ const gh = reactive(new GitHub())
                                 </VRow>
                             </VForm>
                         </VCardText>
-                        <VSkeletonLoader
-                            v-if="state.loading"
-                            type="table"
-                        />
-                        <VTable
-                            class="text-no-wrap"
-                            v-if="!state.loading && state.githubApps.length"
-                        >
-                            <thead>
-                                <tr>
-                                    <th scope="col">
-                                        Installation ID
-                                    </th>
-                                    <th scope="col">
-                                        Handle
-                                    </th>
-                                    <th scope="col">
-                                        Created
-                                    </th>
-                                    <th scope="col">
-                                        Expires
-                                    </th>
-                                    <th scope="col">
+                        <VExpansionPanels accordion>
+                            <VSkeletonLoader
+                                v-if="state.loading"
+                                type="table"
+                            />
+                            <VExpansionPanel>
+                                <VExpansionPanelTitle class="text-subtitle-1">
+                                    {{ state.githubApps.length }} GitHub App Installations
+                                </VExpansionPanelTitle>
+                                <VExpansionPanelText>
+                                    <VTable
+                                        class="text-no-wrap"
+                                        v-if="!state.loading && state.githubApps.length"
+                                    >
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">
+                                                    Installation ID
+                                                </th>
+                                                <th scope="col">
+                                                    Handle
+                                                </th>
+                                                <th scope="col">
+                                                    Created
+                                                </th>
+                                                <th scope="col">
+                                                    Expires
+                                                </th>
+                                                <th scope="col">
 
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr
-                                    v-for="(app, i) in state.githubApps"
-                                    :key="i"
-                                >
-                                    <td class="text-center">
-                                        {{ app.installationId }}
-                                    </td>
-                                    <td class="text-center">
-                                        {{ app.login }}
-                                    </td>
-                                    <td class="text-center">
-                                        {{ new Date(app.created).toLocaleDateString() }}
-                                    </td>
-                                    <td class="text-center">
-                                        {{ new Date(app.created).toLocaleDateString() }}
-                                    </td>
-                                    <td class="text-end">
-                                        <VTooltip
-                                            text=" Uninstall GitHub App"
-                                            location="left"
-                                        >
-                                            <template v-slot:activator="{ props }">
-                                                <VBtn
-                                                    color="error"
-                                                    variant="tonal"
-                                                    density="comfortable"
-                                                    @click="gh.deleteApp(app.installationId)"
-                                                    icon="mdi-close"
-                                                    v-bind="props"
-                                                ></VBtn>
-                                            </template>
-                                        </VTooltip>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </VTable>
-                        <VAlert
-                            v-else
-                            color="primary"
-                            icon="pixelarticons-mood-sad"
-                            text="No GitHub App Installations"
-                            variant="tonal"
-                        />
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr
+                                                v-for="(app, i) in state.githubApps"
+                                                :key="i"
+                                            >
+                                                <td>
+                                                    {{ app.installationId }}
+                                                </td>
+                                                <td class="text-center">
+                                                    {{ app.login }}
+                                                </td>
+                                                <td class="text-center">
+                                                    {{ new Date(app.created).toLocaleDateString() }}
+                                                </td>
+                                                <td class="text-center">
+                                                    {{ new Date(app.created).toLocaleDateString() }}
+                                                </td>
+                                                <td class="text-end">
+                                                    <VTooltip
+                                                        text="Uninstall GitHub App"
+                                                        location="left"
+                                                    >
+                                                        <template v-slot:activator="{ props }">
+                                                            <VBtn
+                                                                color="error"
+                                                                variant="tonal"
+                                                                density="comfortable"
+                                                                @click="gh.deleteApp(app.installationId)"
+                                                                icon="mdi-close"
+                                                                v-bind="props"
+                                                            ></VBtn>
+                                                        </template>
+                                                    </VTooltip>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </VTable>
+                                    <VAlert
+                                        v-else
+                                        color="primary"
+                                        icon="pixelarticons-mood-sad"
+                                        text="No GitHub App Installations"
+                                        variant="tonal"
+                                    />
+                                </VExpansionPanelText>
+                            </VExpansionPanel>
+                            <VExpansionPanel>
+                                <VExpansionPanelTitle class="text-subtitle-1">
+                                    {{ state.patTokens.length }} Personal Access Tokens
+                                </VExpansionPanelTitle>
+                                <VExpansionPanelText>
+                                    <VTable
+                                        class="text-no-wrap"
+                                        v-if="!state.loading && state.patTokens.length"
+                                    >
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">
+                                                    Label
+                                                </th>
+                                                <th scope="col">
+                                                    Token
+                                                </th>
+                                                <th scope="col">
+
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr
+                                                v-for="item in state.patTokens"
+                                                :key="item.id"
+                                            >
+                                                <td>
+                                                    {{ item.keyLabel }}
+                                                </td>
+                                                <td class="text-center">
+                                                    {{ item.secretMasked }}
+                                                </td>
+                                                <td class="text-end">
+                                                    <VTooltip
+                                                        text="Delete PAT"
+                                                        location="left"
+                                                    >
+                                                        <template v-slot:activator="{ props }">
+                                                            <VBtn
+                                                                color="error"
+                                                                variant="tonal"
+                                                                density="comfortable"
+                                                                @click="gh.deletePat(item.id)"
+                                                                icon="mdi-close"
+                                                                v-bind="props"
+                                                            ></VBtn>
+                                                        </template>
+                                                    </VTooltip>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </VTable>
+                                    <VAlert
+                                        v-else
+                                        color="primary"
+                                        icon="pixelarticons-mood-sad"
+                                        text="No saved GitHub PAT"
+                                        variant="tonal"
+                                    />
+                                </VExpansionPanelText>
+                            </VExpansionPanel>
+                        </VExpansionPanels>
                         <VDivider />
                     </VCard>
                 </VTabsWindowItem>

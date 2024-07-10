@@ -28,14 +28,17 @@ export async function onRequestGet(context) {
         let findings = await prisma.findings.findMany({
             where: {
                 memberEmail: session.memberEmail,
-                analysisState: 'in_triage',
             },
             omit: {
                 memberEmail: true,
             },
             include: {
                 spdx: true,
-                triage: true,
+                triage: {
+                    where: {
+                        analysisState: params.state
+                    }
+                },
                 // cdx: true
             }
         })

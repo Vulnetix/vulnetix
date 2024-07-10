@@ -38,7 +38,6 @@ CREATE UNIQUE INDEX "findings_key" ON "findings"("findingId");
 CREATE TABLE "triage_activity" (
     "findingId" INTEGER NOT NULL,
     "createdAt" INTEGER NOT NULL,
-    "lastObserved" INTEGER NOT NULL,
     "seen" INTEGER NOT NULL,
     "seenAt" INTEGER,
     "cvssVector" TEXT,
@@ -47,7 +46,7 @@ CREATE TABLE "triage_activity" (
     "epssScore" TEXT,
     "ssvc" TEXT,
     "remediation" TEXT,
-    "analysisState" TEXT,
+    "analysisState" TEXT NOT NULL,
     -- resolved
     -- resolved_with_pedigree
     -- exploitable
