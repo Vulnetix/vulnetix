@@ -21,7 +21,7 @@ export async function onRequestGet(context) {
     })
     const { err, result, session } = await (new App(request, prisma)).authenticate()
     if (result !== AuthResult.AUTHENTICATED) {
-        return Response.json({ err, result })
+        return Response.json({ error: { message: err }, result })
     }
 
     const sarif = await prisma.sarif.findMany({

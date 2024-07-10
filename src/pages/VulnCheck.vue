@@ -48,8 +48,8 @@ class VulnCheck {
 
                 return
             }
-            if (data?.err) {
-                state.error = data.err
+            if (data?.error?.message) {
+                state.error = data?.error?.message
             }
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
                 state.info = data.result
@@ -76,8 +76,8 @@ class VulnCheck {
 
                 return
             }
-            if (data?.err) {
-                state.error = data.err
+            if (data?.error?.message) {
+                state.error = data?.error?.message
             }
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
                 state.info = data.result

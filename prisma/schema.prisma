@@ -46,6 +46,7 @@ model members {
 model member_keys {
   id          Int     @id @default(autoincrement())
   memberEmail String
+  keyLabel    String?
   keyType     String
   member      members @relation(fields: [memberEmail], references: [email])
   secret      String

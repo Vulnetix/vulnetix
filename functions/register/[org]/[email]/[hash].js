@@ -24,7 +24,7 @@ export async function onRequestGet(context) {
             .first('email')
 
         if (exists === params.email) {
-            return Response.json({ 'err': 'Forbidden' })
+            return Response.json({ error: { message: 'Forbidden' } })
         }
 
         const info = await env.d1db.prepare('INSERT INTO members (orgName, email, passwordHash) VALUES (?1, ?2, ?3)')
@@ -36,5 +36,5 @@ export async function onRequestGet(context) {
         return Response.json(info)
     }
 
-    return Response.json({ 'err': 'missing properties /register/[org]/[email]/[sha1]' })
+    return Response.json({ error: { message: 'missing properties /register/[org]/[email]/[sha1]' } })
 }

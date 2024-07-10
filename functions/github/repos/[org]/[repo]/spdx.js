@@ -21,7 +21,7 @@ export async function onRequestGet(context) {
     })
     const { err, result, session } = await (new App(request, prisma)).authenticate()
     if (result !== AuthResult.AUTHENTICATED) {
-        return Response.json({ err, result })
+        return Response.json({ error: { message: err }, result })
     }
     const githubApps = await prisma.github_apps.findMany({
         where: {
@@ -38,11 +38,14 @@ export async function onRequestGet(context) {
         const gh = new GitHub(app.accessToken)
 
         const repoName = `${params.org}/${params.repo}`
-        const data = await gh.getRepoSpdx(repoName)
-        if (typeof data?.sbom === 'undefined' || typeof data?.sbom?.SPDXID === 'undefined' || !isSPDX(data?.sbom)) {
+        const { content, error } = await gh.getRepoSpdx(repoName)
+        if (error) {
+            return Response.json({ error })
+        }
+        if (typeof content?.sbom === 'undefined' || typeof content?.sbom?.SPDXID === 'undefined' || !isSPDX(content?.sbom)) {
             continue
         }
-        const spdx = data.sbom
+        const spdx = content.sbom
         const spdxStr = JSON.stringify(spdx)
         const spdxId = await hex(spdxStr)
         const objectPrefix = `github/${app.installationId}/repos/${repoName}/sbom/`
@@ -80,7 +83,7 @@ export async function onRequestGet(context) {
             .run()
 
         console.log(`/github/repos/spdx ${repoName} kid=${session.kid}`, info)
-        files.push(data)
+        files.push(content)
 
         const osvQueries = spdx.packages.flatMap(pkg => {
             if (!pkg?.externalRefs) { return }

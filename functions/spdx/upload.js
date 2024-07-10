@@ -22,7 +22,7 @@ export async function onRequestPost(context) {
     })
     const { err, result, session } = await (new App(request, prisma)).authenticate()
     if (result !== AuthResult.AUTHENTICATED) {
-        return Response.json({ err, result })
+        return Response.json({ error: { message: err }, result })
     }
 
     const files = []
@@ -33,7 +33,9 @@ export async function onRequestPost(context) {
         for (const spdx of inputs) {
             if (!isSPDX(spdx)) {
                 return Response.json({
-                    ok: false, err: 'SPDX is missing necessary fields.'
+                    ok: false, error: {
+                        message: 'SPDX is missing necessary fields.'
+                    }
                 })
             }
             const spdxStr = JSON.stringify(spdx)
@@ -152,7 +154,7 @@ export async function onRequestPost(context) {
     } catch (err) {
         console.error(err)
 
-        return Response.json({ ok: false, result: AuthResult.REVOKED, files })
+        return Response.json({ ok: false, error: { message: err }, result: AuthResult.REVOKED, files })
     }
     if (errors.size) {
         errors = [...errors].join(' ')
@@ -160,5 +162,5 @@ export async function onRequestPost(context) {
         errors = null
     }
 
-    return Response.json({ ok: true, files, err: errors })
+    return Response.json({ ok: true, files, error: { message: errors } })
 }

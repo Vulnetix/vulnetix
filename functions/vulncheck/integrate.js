@@ -22,7 +22,7 @@ export async function onRequestPost(context) {
         })
         const { err, result, session } = await (new App(request, prisma)).authenticate()
         if (result !== AuthResult.AUTHENTICATED) {
-            return Response.json({ ok: false, err, result })
+            return Response.json({ ok: false, error: { message: err }, result })
         }
         const where = {
             memberEmail: session.memberEmail,
@@ -46,6 +46,6 @@ export async function onRequestPost(context) {
         return Response.json({ ok: false, result: 'No Change' })
     } catch (err) {
         console.error(err)
-        return Response.json({ ok: false, result: AuthResult.REVOKED })
+        return Response.json({ ok: false, error: { message: err }, result: AuthResult.REVOKED })
     }
 }

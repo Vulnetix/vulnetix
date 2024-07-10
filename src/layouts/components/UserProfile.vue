@@ -24,7 +24,9 @@ class Profile {
     async refresh() {
         try {
             const { data } = await axios.get(`/me`)
-
+            if (data?.error?.message) {
+                state.error = data?.error?.message
+            }
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
                 return router.push('/logout')
             }

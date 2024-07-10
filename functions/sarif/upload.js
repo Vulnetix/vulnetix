@@ -1,6 +1,6 @@
+import { App, AuthResult, UUID, hex, isSARIF } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
-import { App, AuthResult, UUID, hex, isSARIF } from "@/utils";
 
 
 export async function onRequestPost(context) {
@@ -22,7 +22,7 @@ export async function onRequestPost(context) {
     })
     const { err, result, session } = await (new App(request, prisma)).authenticate()
     if (result !== AuthResult.AUTHENTICATED) {
-        return Response.json({ err, result })
+        return Response.json({ error: { message: err }, result })
     }
     const files = []
     try {
@@ -30,7 +30,7 @@ export async function onRequestPost(context) {
         const inputs = await request.json()
         for (const sarif of inputs) {
             if (!isSARIF(sarif)) {
-                return Response.json({ ok: false, err: 'SARIF is missing necessary fields.' })
+                return Response.json({ ok: false, error: { message: 'SARIF is missing necessary fields.' } })
             }
             const sarifId = UUID()
             const createdAt = (new Date()).getTime()
@@ -165,7 +165,7 @@ export async function onRequestPost(context) {
         }
     } catch (err) {
         console.error(err)
-        return Response.json({ ok: false, err })
+        return Response.json({ ok: false, error: { message: err } })
     }
 
     return Response.json(files)

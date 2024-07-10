@@ -1,6 +1,6 @@
+import { App, AuthResult, GitHub } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
-import { App, AuthResult, GitHub } from "@/utils";
 
 export async function onRequestGet(context) {
     const {
@@ -21,7 +21,7 @@ export async function onRequestGet(context) {
     })
     const { err, result, session } = await (new App(request, prisma)).authenticate()
     if (result !== AuthResult.AUTHENTICATED) {
-        return Response.json({ err, result })
+        return Response.json({ error: { message: err }, result })
     }
     const githubApps = await prisma.github_apps.findMany({
         where: {
@@ -38,7 +38,11 @@ export async function onRequestGet(context) {
         const gh = new GitHub(app.accessToken)
 
         const full_name = `${params.org}/${params.repo}`
-        for (const data of await gh.getRepoSarif(full_name)) {
+        const { content, error } = await gh.getRepoSarif(full_name)
+        if (error) {
+            return Response.json({ error })
+        }
+        for (const data of content) {
             const objectPrefix = `github/${app.installationId}/repos/${full_name}/code-scanning/`
             console.log(`${full_name}/code-scanning/${data.report.id}.json`, await env.r2icache.put(`${objectPrefix}${data.report.id}.json`, JSON.stringify(data.report), putOptions))
             console.log(`${full_name}/code-scanning/${data.report.id}_${data.report.sarif_id}.json`, await env.r2icache.put(`${objectPrefix}${data.report.id}_${data.report.sarif_id}.json`, JSON.stringify(data.sarif), putOptions))

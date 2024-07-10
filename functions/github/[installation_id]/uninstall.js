@@ -19,27 +19,24 @@ export async function onRequestGet(context) {
             timeout: 2000, // default: 5000
         },
     })
-    const { err, result, session } = await (new App(request, prisma)).authenticate()
-    if (result !== AuthResult.AUTHENTICATED) {
-        return Response.json({ error: { message: err }, result })
+    const app = new App(request, prisma)
+    let err, result, session;
+    const authToken = request.headers.get('x-trivialsec')
+    if (!!authToken.trim()) {
+        ({ err, result, session } = await app.authenticate())
+        if (result !== AuthResult.AUTHENTICATED) {
+            return Response.json({ error: { message: err }, result })
+        }
     }
-    const githubApps = await prisma.github_apps.findMany({
-        where: {
-            memberEmail: session.memberEmail,
-        },
-        omit: {
-            memberEmail: true,
-            accessToken: true,
-        },
-    })
-    const gitRepos = await prisma.git_repos.findMany({
-        where: {
-            memberEmail: session.memberEmail,
-        },
-        omit: {
-            memberEmail: true,
-        },
-    })
+    try {
+        const response = await prisma.github_apps.delete({
+            where: { installationId: params.installation_id }
+        })
+        console.log(`/github/uninstall session kid=${session.token}`, response)
+        return Response.json(response)
+    } catch (err) {
+        console.error(err)
 
-    return Response.json({ githubApps, gitRepos })
+        return Response.json({ ok: false, error: { message: err }, result: AuthResult.REVOKED })
+    }
 }

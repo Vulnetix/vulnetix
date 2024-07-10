@@ -94,7 +94,7 @@ export class OSV {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
-            return { ok: response.ok, status: response.status, statusText: response.statusText, error: { message: e.message, lineno, colno } }
+            return { ok: response.ok, status: response.status, statusText: response.statusText, url, error: { message: e.message, lineno, colno } }
         }
     }
     async queryBatch(queries) {
@@ -186,7 +186,7 @@ export class VulnCheck {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
-            return { ok: response.ok, status: response.status, statusText: response.statusText, error: { message: e.message, lineno, colno } }
+            return { ok: response.ok, status: response.status, statusText: response.statusText, url, error: { message: e.message, lineno, colno } }
         }
     }
     async getPurl(purl) {
@@ -223,12 +223,12 @@ export class GitHub {
                 console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
             }
             const content = JSON.parse(respText)
-            return { ok: response.ok, status: response.status, statusText: response.statusText, content }
+            return { ok: response.ok, status: response.status, statusText: response.statusText, error: { message: content?.message }, content, url }
         } catch (e) {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
-            return { ok: response.ok, status: response.status, statusText: response.statusText, error: { message: e.message, lineno, colno } }
+            return { ok: response.ok, status: response.status, statusText: response.statusText, url, error: { message: e.message, lineno, colno } }
         }
     }
     async fetchSARIF(url) {
@@ -242,12 +242,12 @@ export class GitHub {
                 console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
             }
             const content = JSON.parse(respText)
-            return { ok: response.ok, status: response.status, statusText: response.statusText, content }
+            return { ok: response.ok, status: response.status, statusText: response.statusText, error: { message: content?.message }, content, url }
         } catch (e) {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
-            return { ok: response.ok, status: response.status, statusText: response.statusText, error: { message: e.message, lineno, colno } }
+            return { ok: response.ok, status: response.status, statusText: response.statusText, url, error: { message: e.message, lineno, colno } }
         }
     }
     async getRepoSarif(full_name) {
@@ -261,14 +261,14 @@ export class GitHub {
             console.log(`github.getRepoSarif(${full_name}) ${url}`)
             const data = await this.fetchJSON(url)
             if (!data?.ok) {
-                break
+                return data
             }
             for (const report of data.content) {
                 const sarifUrl = `${this.baseUrl}/repos/${full_name}/code-scanning/analyses/${report.id}`
                 console.log(`github.getRepoSarif(${full_name}) ${sarifUrl}`)
                 const sarifData = await this.fetchSARIF(sarifUrl)
                 if (!sarifData?.ok) {
-                    continue
+                    return sarifData
                 }
                 if (report?.id && isSARIF(sarifData.content)) {
                     files.push({
@@ -286,37 +286,25 @@ export class GitHub {
             page++
         }
 
-        return files
+        return { content: files }
     }
     async getRepoSpdx(full_name) {
         // https://docs.github.com/en/rest/dependency-graph/sboms?apiVersion=2022-11-28#export-a-software-bill-of-materials-sbom-for-a-repository
         const url = `${this.baseUrl}/repos/${full_name}/dependency-graph/sbom`
         console.log(`github.getRepoSpdx(${full_name}) ${url}`)
-        const data = await this.fetchJSON(url)
-        if (!data?.ok) {
-            return null
-        }
-        return data.content
+        return this.fetchJSON(url)
     }
     async getUserEmails() {
         // https://docs.github.com/en/rest/users/emails?apiVersion=2022-11-28#list-email-addresses-for-the-authenticated-user
         const url = `${this.baseUrl}/user/emails`
         console.log(`github.getUserEmails() ${url}`)
-        const data = await this.fetchJSON(url)
-        if (!data?.ok) {
-            return null
-        }
-        return data.content
+        return this.fetchJSON(url)
     }
     async getUser() {
         // https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-the-authenticated-user
         const url = `${this.baseUrl}/user`
         console.log(`github.getUser() ${url}`)
-        const data = await this.fetchJSON(url)
-        if (!data?.ok) {
-            return null
-        }
-        return data.content
+        return this.fetchJSON(url)
     }
     async getRepos() {
         // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repositories-for-the-authenticated-user
@@ -329,7 +317,7 @@ export class GitHub {
             console.log(`github.getRepos() ${url}`)
             const data = await this.fetchJSON(url)
             if (!data?.ok) {
-                break
+                return data
             }
             repos.push(...data.content)
 
@@ -340,11 +328,13 @@ export class GitHub {
             page++
         }
 
-        return repos
+        return { content: repos }
     }
     async getBranch(repo, branch) {
         // https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#get-a-branch
-        return await this.fetchJSON(`${this.baseUrl}/repos/${repo.full_name}/branches/${branch}`)
+        const url = `${this.baseUrl}/repos/${repo.full_name}/branches/${branch}`
+        console.log(`github.getBranch() ${url}`)
+        return this.fetchJSON(url)
     }
     async getBranches(full_name) {
         // https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#list-branches
@@ -364,11 +354,13 @@ export class GitHub {
             page++
         }
 
-        return branches
+        return { content: branches }
     }
     async getCommit(full_name, commit_sha) {
         // https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28
-        return await this.fetchJSON(`${this.baseUrl}/repos/${full_name}/commits/${commit_sha}`)
+        const url = `${this.baseUrl}/repos/${full_name}/commits/${commit_sha}`
+        console.log(`github.getCommit() ${url}`)
+        return this.fetchJSON(url)
     }
     async getCommits(full_name, branch_name) {
         // https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28
@@ -379,7 +371,7 @@ export class GitHub {
         while (true) {
             const currentCommits = await this.fetchJSON(`${this.baseUrl}/repos/${full_name}/commits?sha=${branch_name}&per_page=${perPage}&page=${page}`)
 
-            commits.push(...currentCommits)
+            commits.push(...currentCommits.content)
 
             if (currentCommits.length < perPage) {
                 break
@@ -388,7 +380,7 @@ export class GitHub {
             page++
         }
 
-        return commits
+        return { content: commits }
     }
     async getFileContents(full_name, branch_name) {
         // https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28

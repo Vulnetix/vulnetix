@@ -1,6 +1,6 @@
+import { App, AuthResult, GitHub } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
-import { App, AuthResult, GitHub } from "@/utils";
 
 export async function onRequestGet(context) {
     const {
@@ -21,7 +21,7 @@ export async function onRequestGet(context) {
     })
     const { err, result, session } = await (new App(request, prisma)).authenticate()
     if (result !== AuthResult.AUTHENTICATED) {
-        return Response.json({ err, result })
+        return Response.json({ error: { message: err }, result })
     }
 
     const installs = await prisma.github_apps.findMany({
@@ -41,7 +41,11 @@ export async function onRequestGet(context) {
         const prefixRepos = `github/${app.installationId}/repos/`
 
         console.log(`prefixRepos = ${prefixRepos}`)
-        for (const repo of await gh.getRepos()) {
+        const { content, error } = await gh.getRepos()
+        if (error) {
+            return Response.json({ error })
+        }
+        for (const repo of content) {
             const pathSuffix = `${repo.full_name}.json`
             console.log(`r2icache.put ${prefixRepos}${pathSuffix}`)
             await env.r2icache.put(`${prefixRepos}${pathSuffix}`, JSON.stringify(repo), putOptions)

@@ -66,15 +66,15 @@ class TriageQueue {
         clearAlerts()
         state.loading = true
         try {
-            const { data } = await axios.get(`/queue/new`)
+            const { data } = await axios.get(`/queue/in_triage`)
             state.loading = false
             if (typeof data === "string" && !isJSON(data)) {
                 state.error = "Data could not be retrieved, please try again later."
 
                 return
             }
-            if (data?.err) {
-                state.error = data.err
+            if (data?.error?.message) {
+                state.error = data?.error?.message
             }
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
                 state.info = data.result

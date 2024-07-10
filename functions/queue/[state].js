@@ -22,12 +22,13 @@ export async function onRequestGet(context) {
         })
         const { err, result, session } = await (new App(request, prisma)).authenticate()
         if (result !== AuthResult.AUTHENTICATED) {
-            return Response.json({ ok: false, err, result })
+            return Response.json({ ok: false, error: { message: err }, result })
         }
 
         let findings = await prisma.findings.findMany({
             where: {
                 memberEmail: session.memberEmail,
+                analysisState: 'in_triage',
             },
             omit: {
                 memberEmail: true,
@@ -82,6 +83,6 @@ export async function onRequestGet(context) {
         return Response.json({ ok: true, sca, sast, sarif, vex })
     } catch (err) {
         console.error(err)
-        return Response.json({ ok: false, result: AuthResult.REVOKED })
+        return Response.json({ ok: false, error: { message: err }, result: AuthResult.REVOKED })
     }
 }
