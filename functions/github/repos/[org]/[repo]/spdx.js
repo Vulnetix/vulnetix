@@ -11,7 +11,6 @@ export async function onRequestGet(context) {
         next, // used for middleware or to fetch assets
         data, // arbitrary space for passing data between middlewares
     } = context
-    return Response.json({})
     const adapter = new PrismaD1(env.d1db)
     const prisma = new PrismaClient({
         adapter,
