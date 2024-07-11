@@ -24,26 +24,48 @@ export async function onRequestGet(context) {
         if (result !== AuthResult.AUTHENTICATED) {
             return Response.json({ ok: false, error: { message: err }, result })
         }
+        const pageSize = 100; // Adjust this value based on your needs
+        let findings = [];
+        let hasMore = true;
+        let skip = 0;
 
-        let findings = await prisma.findings.findMany({
-            where: {
-                memberEmail: session.memberEmail,
-            },
-            omit: {
-                memberEmail: true,
-            },
-            include: {
-                spdx: true,
-                triage: {
-                    where: {
-                        analysisState: params.state
-                    }
+        while (hasMore) {
+            res = await prisma.findings.findMany({
+                where: {
+                    memberEmail: session.memberEmail,
                 },
-                // cdx: true
+                omit: {
+                    memberEmail: true,
+                },
+                include: {
+                    spdx: true,
+                    triage: {
+                        where: {
+                            analysisState: params.state
+                        }
+                    },
+                    // cdx: true
+                },
+                take: pageSize,
+                skip: skip,
+                orderBy: {
+                    createdAt: 'asc',
+                }
+            })
+            findings = [...findings, ...res]
+            if (findings.length < pageSize) {
+                hasMore = false
+            } else {
+                skip += pageSize
             }
-        })
+        }
+
         const vex = findings.flatMap(({ triage }) => triage)
-        const findingKeys = new Set(findings.flatMap(({ spdx, ...rest }) => [...Object.keys(rest), ...Object.keys(spdx)]))
+        console.log('findings', findings)
+        const findingKeys = new Set(findings.flatMap(({ spdx, ...rest }) => [
+            ...Object.keys(rest),
+            ...(spdx ? Object.keys(spdx) : [])
+        ]));
         findings = findings.map(({ spdx, triage, ...rest }) => {
             const finding = { ...rest, ...spdx }
             for (const k of findingKeys) {

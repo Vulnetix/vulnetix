@@ -23,14 +23,16 @@ export async function onRequestGet(context) {
     if (result !== AuthResult.AUTHENTICATED) {
         return Response.json({ error: { message: err }, result })
     }
-
     const spdx = await prisma.spdx.findMany({
         where: {
             memberEmail: session.memberEmail,
         },
+        omit: {
+            memberEmail: true,
+        },
         include: {
-            repo: true
-        }
+            repo: true,
+        },
     })
 
     return Response.json({ spdx })

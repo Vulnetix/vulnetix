@@ -36,18 +36,17 @@ class Spdx {
         try {
             const { data } = await axios.get(`/spdx/results`)
             state.loading = false
-
-            if (typeof data === "string" && !isJSON(data)) {
-                state.warning = "SPDX data could not be retrieved, please try again later."
-
-                return
-            }
             if (data?.error?.message) {
                 state.error = data?.error?.message
             }
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
                 state.info = data.result
                 setTimeout(() => router.push('/logout'), 2000)
+                return
+            }
+            if (typeof data === "string" && !isJSON(data)) {
+                state.warning = "SPDX data could not be retrieved, please try again later."
+
                 return
             }
             if (!data.spdx) {
@@ -89,11 +88,6 @@ class Spdx {
             const { data } = await axios.post(`/spdx/upload`, files, { headers: { 'Content-Type': 'application/json' } })
             state.loading = false
 
-            if (typeof data === "string" && !isJSON(data)) {
-                state.error = "SPDX data could not be uploaded, please try again later."
-
-                return
-            }
             if (data?.error?.message) {
                 state.error = data?.error?.message
             }
@@ -102,12 +96,23 @@ class Spdx {
 
                 return setTimeout(() => router.push('/logout'), 2000)
             }
+            if (typeof data === "string" && !isJSON(data)) {
+                state.error = "SPDX data could not be uploaded, please try again later."
+
+                return
+            }
             if (!data?.files?.length) {
                 state.info = "No SPDX data available."
             } else {
-                state.uploads.concat(...data.files.filter(item => item.source === "upload"))
-                state.github.concat(...data.files.filter(item => item.source === "GitHub"))
-                state.success = "Refreshed SPDX"
+                for (const file of data.files) {
+                    if (file.source === "upload") {
+                        state.uploads.push(file)
+                    }
+                    if (file.source === "GitHub") {
+                        state.github.push(file)
+                    }
+                }
+                state.success = "Uploaded SPDX"
             }
 
             return
@@ -259,7 +264,7 @@ const spdx = reactive(new Spdx())
                             />
                             <VSpacer></VSpacer>
                             <VBtn
-                                text="Save"
+                                text="Upload"
                                 variant="flat"
                                 @click="spdx.upload"
                             />

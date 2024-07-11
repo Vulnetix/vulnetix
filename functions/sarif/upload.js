@@ -42,32 +42,25 @@ export async function onRequestPost(context) {
 
             const results = []
             for (const run of sarif.runs) {
-                const info = await env.d1db.prepare(`
-                    INSERT OR REPLACE INTO sarif (
-                    sarifId,
-                    reportId,
-                    source,
-                    memberEmail,
-                    createdAt,
-                    resultsCount,
-                    rulesCount,
-                    toolName,
-                    toolVersion
-                    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
-                `)
-                    .bind(
+                const info = await prisma.sarif.upsert({
+                    where: {
+                        reportId,
+                    },
+                    update: {
+                        createdAt,
+                    },
+                    create: {
                         sarifId,
                         reportId,
-                        'upload',
-                        session.memberEmail,
+                        source: 'upload',
+                        memberEmail: session.memberEmail,
                         createdAt,
-                        run.results.length,
-                        run.tool.driver.rules.length,
-                        run.tool.driver.name,
-                        run.tool.driver.semanticVersion
-                    )
-                    .run()
-
+                        resultsCount: run.results.length,
+                        rulesCount: run.tool.driver.rules.length,
+                        toolName: run.tool.driver.name,
+                        toolVersion: run.tool.driver.semanticVersion,
+                    },
+                })
                 console.log(`/sarif/upload ${sarifId} kid=${session.kid}`, info)
                 for (const result of run.results) {
                     const resultData = {
@@ -108,40 +101,15 @@ export async function onRequestPost(context) {
                         }
                     }
                     results.push(resultData)
-                    const reportInfo = await env.d1db.prepare(`
-                        INSERT OR REPLACE INTO sarif_results (
-                        guid,
-                        reportId,
-                        messageText,
-                        ruleId,
-                        locations,
-                        automationDetailsId,
-                        rulesetName,
-                        level,
-                        description,
-                        helpMarkdown,
-                        securitySeverity,
-                        precision,
-                        tags
-                        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
-                    `)
-                        .bind(
-                            resultData.guid,
-                            resultData.reportId,
-                            resultData.messageText,
-                            resultData.ruleId,
-                            resultData.locations,
-                            resultData.automationDetailsId || '',
-                            resultData.rulesetName,
-                            resultData.level || '',
-                            resultData.description || '',
-                            resultData.helpMarkdown || '',
-                            resultData.securitySeverity || '',
-                            resultData.precision || '',
-                            resultData.tags || ''
-                        )
-                        .run()
-
+                    const reportInfo = await prisma.sarif_results.upsert({
+                        where: {
+                            guid: resultData.guid,
+                        },
+                        update: {
+                            reportId: resultData.reportId,
+                        },
+                        create: resultData,
+                    })
                     console.log(`/github/repos/sarif_results ${fileName} kid=${session.kid}`, reportInfo)
                 }
             }

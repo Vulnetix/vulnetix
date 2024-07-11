@@ -105,7 +105,7 @@ const controller = reactive(new Controller())
             />
         </VCol>
     </Vrow>
-    <VCard title="Google's Open Source Vulnerabilities (OSV)">
+    <VCard title="Open Source Vulnerabilities (OSV)">
         <VSkeletonLoader
             v-if="state.loading"
             type="table-row@10"
@@ -120,6 +120,9 @@ const controller = reactive(new Controller())
                 <tr>
                     <th scope="col">
                         Event Time
+                    </th>
+                    <th scope="col">
+                        URL
                     </th>
                     <th scope="col">
                         Status Code
@@ -141,6 +144,9 @@ const controller = reactive(new Controller())
                         {{ (new Date(record.createdAt)).toLocaleString() }}
                     </td>
                     <td>
+                        {{ JSON.parse(record.request || '')?.url }}
+                    </td>
+                    <td>
                         <v-chip
                             size="small"
                             variant="outlined"
@@ -154,7 +160,7 @@ const controller = reactive(new Controller())
                             <template v-slot:activator="{ props: activatorProps }">
                                 <VBtn
                                     v-bind="activatorProps"
-                                    :text="`View JSON (${record.request.length} chars)`"
+                                    :text="`View JSON (${JSON.parse(record.request || '')?.queries?.length} queries)`"
                                     :color="global.name.value === 'dark' ? 'secondary' : 'primary'"
                                     variant="tonal"
                                     density="comfortable"
@@ -179,14 +185,12 @@ const controller = reactive(new Controller())
                             </template>
                         </v-dialog>
                     </td>
-                    <td><v-dialog
-                            max-width="800"
-                            v-if="JSON.parse(record.response || '').length > 0"
-                        >
+                    <td><v-dialog max-width="800">
+                            <!-- v-if="JSON.parse(record.response || '').body.length > 0" -->
                             <template v-slot:activator="{ props: activatorProps }">
                                 <VBtn
                                     v-bind="activatorProps"
-                                    :text="`View JSON (${record.response.length} chars)`"
+                                    :text="`View JSON (${JSON.parse(record.response || '')?.body?.length} results)`"
                                     :color="global.name.value === 'dark' ? 'secondary' : 'primary'"
                                     variant="tonal"
                                     density="comfortable"
@@ -195,6 +199,7 @@ const controller = reactive(new Controller())
                             <template v-slot:default="{ isActive }">
                                 <v-card title="Response">
                                     <v-card-text>
+
                                         <pre>{{ JSON.stringify(JSON.parse(record.response || ''), null, 2) }}</pre>
                                     </v-card-text>
                                     <v-card-actions>

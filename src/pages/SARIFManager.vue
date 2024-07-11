@@ -113,7 +113,7 @@ class Sarif {
             } else {
                 state.uploads = data.sarif.filter(item => item.source === "upload")
                 state.github = data.sarif.filter(item => item.source === "GitHub")
-                state.success = "Refreshed SARIF"
+                state.success = "Uploaded SARIF"
             }
 
             return
@@ -265,7 +265,7 @@ const sarif = reactive(new Sarif())
                             />
                             <VSpacer></VSpacer>
                             <VBtn
-                                text="Save"
+                                text="Upload"
                                 variant="flat"
                                 @click="sarif.upload"
                             />

@@ -109,9 +109,10 @@ export async function onRequestPost(context) {
                     const finding = await prisma.findings.upsert({
                         where: {
                             findingId,
+                            spdxId,
                         },
                         update: {
-                            modifiedAt: (new Date(vuln.modified)).getTime()
+                            modifiedAt: (new Date(vuln.modified)).getTime(),
                         },
                         create: {
                             findingId,

@@ -103,13 +103,14 @@ export class OSV {
         const resp = await this.fetchJSON(url, { queries })
         let results = []
         if (resp?.content?.results) {
-            results = resp.content.results.map(r => r?.vulns).filter(i => !!i).flat(1)
+            console.log('results', resp.content.results)
+            results = resp.content.results.map(r => r?.vulns).flat(1)
             const createLog = await prisma.integration_usage_log.create({
                 data: {
                     memberEmail,
                     source: 'osv',
                     request: JSON.stringify({ url, queries }).trim(),
-                    response: JSON.stringify(results).trim(),
+                    response: JSON.stringify({ body: results.filter(i => !!i).map(i => ({ ...i, modified: (new Date(i?.modified)).getTime() })), status: resp.status }).trim(),
                     statusCode: resp?.status || 500,
                     createdAt: (new Date()).getTime(),
                 }

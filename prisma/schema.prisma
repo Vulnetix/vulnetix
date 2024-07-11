@@ -1,4 +1,3 @@
-// PRAGMA table_info(TABLE_NAME)
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
