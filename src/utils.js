@@ -94,17 +94,29 @@ export class OSV {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
-            return { url, error: { message: e.message, lineno, colno } }
+            return { url, status: 500, error: { message: e.message, lineno, colno } }
         }
     }
-    async queryBatch(queries) {
+    async queryBatch(prisma, memberEmail, queries) {
         // https://google.github.io/osv.dev/post-v1-querybatch/
         const url = `${this.baseUrl}/querybatch`
         const resp = await this.fetchJSON(url, { queries })
+        let results = []
         if (resp?.content?.results) {
-            return resp.content.results.map(r => r?.vulns || [{}]).flat(1)
+            results = resp.content.results.map(r => r?.vulns).filter(i => !!i).flat(1)
+            const createLog = await prisma.integration_usage_log.create({
+                data: {
+                    memberEmail,
+                    source: 'osv',
+                    request: JSON.stringify({ url, queries }).trim(),
+                    response: JSON.stringify(results).trim(),
+                    statusCode: resp?.status || 500,
+                    createdAt: (new Date()).getTime(),
+                }
+            })
+            console.log(`osv.queryBatch()`, createLog)
         }
-        return []
+        return results
     }
 }
 

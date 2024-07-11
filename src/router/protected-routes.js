@@ -45,6 +45,10 @@ const routes = [
                 component: () => import('../pages/VulnCheck.vue'),
             },
             {
+                path: 'osv-integration',
+                component: () => import('../pages/OSV.vue'),
+            },
+            {
                 path: 'mend-integration',
                 component: () => import('../pages/Mend.vue'),
             },

@@ -34,7 +34,7 @@ export async function onRequestGet(context) {
     const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
     for (const app of githubApps) {
         if (!app.accessToken) {
-            console.error(`Invaid github_apps kid=${session.kid} installationId=${app.installationId}`)
+            console.error(`Invalid github_apps kid=${session.kid} installationId=${app.installationId}`)
             continue
         }
         const gh = new GitHub(app.accessToken)

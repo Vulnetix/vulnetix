@@ -128,6 +128,11 @@ import UserProfile from '@/layouts/components/UserProfile.vue'
         icon: 'mdi-github',
         to: '/github-integration',
       }" />
+      <VerticalNavLink :item="{
+        title: 'OSV',
+        icon_url: '/osv-logo.png',
+        to: '/osv-integration',
+      }" />
     </template>
 
     <!-- 👉 Pages -->

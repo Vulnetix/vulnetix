@@ -128,10 +128,9 @@ const process = async (prisma, session, repoName, content) => {
                 licenseDeclared: pkg.licenseDeclared
             }))
     })
-    console.log(`osvQueries ${repoName} kid=${session.kid}`, osvQueries)
     const osv = new OSV()
     const queries = osvQueries.filter(q => q?.purl).map(q => ({ package: { purl: q.purl } }))
-    const vulns = await osv.queryBatch(queries)
+    const vulns = await osv.queryBatch(prisma, session.memberEmail, queries)
     if (typeof vulns?.length !== 'undefined') {
         let i = 0
         for (const vuln of vulns) {

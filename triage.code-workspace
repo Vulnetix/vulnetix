@@ -59,7 +59,8 @@
 			"trivialsec",
 			"Vuelidate",
 			"vuetify",
-			"vulncheck"
+			"vulncheck",
+			"vulns"
 		]
 	}
 }

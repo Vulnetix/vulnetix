@@ -4,7 +4,8 @@ CREATE TABLE "integration_usage_log" (
     "memberEmail" TEXT NOT NULL,
     "source" TEXT NOT NULL,
     "request" TEXT NOT NULL,
-    "response" TEXT NOT NULL,
+    "response" TEXT,
     "statusCode" INTEGER NOT NULL,
     "createdAt" INTEGER NOT NULL
 );
+CREATE UNIQUE INDEX "integration_usage_log_key" ON "integration_usage_log"("id");

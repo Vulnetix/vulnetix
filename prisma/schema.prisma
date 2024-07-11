@@ -147,7 +147,7 @@ model integration_usage_log {
   source      String
   member      members @relation(fields: [memberEmail], references: [email])
   request     String
-  response    String
+  response    String?
   statusCode  Int
   createdAt   Int
 }

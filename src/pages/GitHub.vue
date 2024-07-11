@@ -294,6 +294,8 @@ class GitHub {
             }
             if (data) {
                 state.patTokens.push(data)
+                state.pat = ''
+                state.patName = ''
                 state.success = "Saved successfully."
             } else {
                 state.info = data?.result || 'No change'

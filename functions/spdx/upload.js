@@ -98,9 +98,7 @@ export async function onRequestPost(context) {
             })
             const osv = new OSV()
             const queries = osvQueries.filter(q => q?.purl).map(q => ({ package: { purl: q?.purl } }))
-            console.log(`osvQueries`, queries)
-            const vulns = await osv.queryBatch(queries)
-            console.log(`vulns length`, vulns?.length)
+            const vulns = await osv.queryBatch(prisma, session.memberEmail, queries)
             if (typeof vulns?.length !== 'undefined') {
                 let i = 0
                 for (const vuln of vulns) {

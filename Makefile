@@ -41,4 +41,6 @@ run: ## FOR DOCO ONLY - Run these one at a time, do not call this target directl
 	npm run preview
 
 sql: ## FOR DOCO ONLY
+	npx prisma migrate reset
 	npx wrangler d1 execute trivial_triage --local --command "select * from sarif;"
+	npx wrangler d1 execute trivial_triage --local --command "PRAGMA table_info(integration_usage_log);"
