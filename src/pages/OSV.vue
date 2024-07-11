@@ -108,25 +108,27 @@ const controller = reactive(new Controller())
     <VCard title="Google's Open Source Vulnerabilities (OSV)">
         <VSkeletonLoader
             v-if="state.loading"
-            type="table"
+            type="table-row@10"
         />
         <VTable
             class="text-no-wrap"
+            height="40rem"
+            fixed-header
             v-if="!state.loading && state.log.length"
         >
             <thead>
                 <tr>
                     <th scope="col">
-                        Event Type
+                        Event Time
                     </th>
                     <th scope="col">
-                        Email
+                        Status Code
                     </th>
                     <th scope="col">
-                        Browser
+                        Request
                     </th>
                     <th scope="col">
-                        Webhook
+                        Response
                     </th>
                 </tr>
             </thead>
@@ -136,16 +138,78 @@ const controller = reactive(new Controller())
                     :key="i"
                 >
                     <td>
-
+                        {{ (new Date(record.createdAt)).toLocaleString() }}
                     </td>
                     <td>
-
+                        <v-chip
+                            size="small"
+                            variant="outlined"
+                            :color="record.statusCode.toString()[0] === '2' ? '#35933f' : 'error'"
+                        >
+                            {{ record.statusCode }}
+                        </v-chip>
                     </td>
                     <td>
-
+                        <v-dialog max-width="800">
+                            <template v-slot:activator="{ props: activatorProps }">
+                                <VBtn
+                                    v-bind="activatorProps"
+                                    :text="`View JSON (${record.request.length} chars)`"
+                                    :color="global.name.value === 'dark' ? 'secondary' : 'primary'"
+                                    variant="tonal"
+                                    density="comfortable"
+                                ></VBtn>
+                            </template>
+                            <template v-slot:default="{ isActive }">
+                                <v-card title="Request">
+                                    <v-card-text>
+                                        <pre>{{ JSON.stringify(JSON.parse(record.request || ''), null, 2) }}</pre>
+                                    </v-card-text>
+                                    <v-card-actions>
+                                        <v-spacer></v-spacer>
+                                        <VBtn
+                                            text="Close"
+                                            :color="global.name.value === 'dark' ? '#fff' : '#272727'"
+                                            variant="tonal"
+                                            density="comfortable"
+                                            @click="isActive.value = false"
+                                        ></VBtn>
+                                    </v-card-actions>
+                                </v-card>
+                            </template>
+                        </v-dialog>
                     </td>
-                    <td>
-
+                    <td><v-dialog
+                            max-width="800"
+                            v-if="JSON.parse(record.response || '').length > 0"
+                        >
+                            <template v-slot:activator="{ props: activatorProps }">
+                                <VBtn
+                                    v-bind="activatorProps"
+                                    :text="`View JSON (${record.response.length} chars)`"
+                                    :color="global.name.value === 'dark' ? 'secondary' : 'primary'"
+                                    variant="tonal"
+                                    density="comfortable"
+                                ></VBtn>
+                            </template>
+                            <template v-slot:default="{ isActive }">
+                                <v-card title="Response">
+                                    <v-card-text>
+                                        <pre>{{ JSON.stringify(JSON.parse(record.response || ''), null, 2) }}</pre>
+                                    </v-card-text>
+                                    <v-card-actions>
+                                        <v-spacer></v-spacer>
+                                        <VBtn
+                                            text="Close"
+                                            :color="global.name.value === 'dark' ? '#fff' : '#272727'"
+                                            variant="tonal"
+                                            density="comfortable"
+                                            @click="isActive.value = false"
+                                        ></VBtn>
+                                    </v-card-actions>
+                                </v-card>
+                            </template>
+                        </v-dialog>
                     </td>
                 </tr>
             </tbody>

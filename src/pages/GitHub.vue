@@ -566,7 +566,7 @@ const gh = reactive(new GitHub())
                         <VExpansionPanels accordion>
                             <VSkeletonLoader
                                 v-if="state.loadingBar"
-                                type="table"
+                                type="table-row@10"
                             />
                             <VExpansionPanel
                                 v-else
@@ -752,7 +752,7 @@ const gh = reactive(new GitHub())
                         <VExpansionPanels accordion>
                             <VSkeletonLoader
                                 v-if="state.loading"
-                                type="table"
+                                type="table-row@10"
                             />
                             <VExpansionPanel>
                                 <VExpansionPanelTitle class="text-subtitle-1">

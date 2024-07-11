@@ -201,7 +201,7 @@ const vulncheck = reactive(new VulnCheck())
 
         <VSkeletonLoader
             v-if="state.loading"
-            type="table"
+            type="table-row@10"
         />
         <VTable
             class="text-no-wrap"

@@ -299,7 +299,7 @@ const sarif = reactive(new Sarif())
                         <VExpansionPanelText>
                             <VSkeletonLoader
                                 v-if="state.loading"
-                                type="table"
+                                type="table-row@10"
                             />
                             <VTable
                                 v-else
@@ -400,7 +400,7 @@ const sarif = reactive(new Sarif())
                         <VExpansionPanelText v-if="sarif.results.length">
                             <VSkeletonLoader
                                 v-if="state.loading"
-                                type="table"
+                                type="table-row@10"
                             />
                             <VTable
                                 v-else

@@ -293,7 +293,7 @@ const spdx = reactive(new Spdx())
                         <VExpansionPanelText>
                             <VSkeletonLoader
                                 v-if="state.loading"
-                                type="table"
+                                type="table-row@10"
                             />
                             <VTable
                                 v-else
@@ -392,7 +392,7 @@ const spdx = reactive(new Spdx())
             >
                 <VSkeletonLoader
                     v-if="state.loading"
-                    type="table"
+                    type="table-row@10"
                 />
                 <VTable
                     v-else
