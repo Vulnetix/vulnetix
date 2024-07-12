@@ -129,8 +129,12 @@ class GitHub {
 
                 return false
             }
-            state.patTokens = data?.patTokens || []
-            state.githubApps = data?.githubApps || []
+            if (data?.patTokens) {
+                state.patTokens = data.patTokens
+            }
+            if (data?.githubApps) {
+                state.githubApps = data.githubApps
+            }
             if (data.gitRepos.length === 0) {
                 state.error = "No data retrieved from GitHub. Is this GitHub App installed?"
                 state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
@@ -840,10 +844,16 @@ const gh = reactive(new GitHub())
                                         <thead>
                                             <tr>
                                                 <th scope="col">
+                                                    Account
+                                                </th>
+                                                <th scope="col">
                                                     Label
                                                 </th>
                                                 <th scope="col">
                                                     Token
+                                                </th>
+                                                <th scope="col">
+                                                    Expires
                                                 </th>
                                                 <th scope="col">
 
@@ -856,10 +866,33 @@ const gh = reactive(new GitHub())
                                                 :key="item.id"
                                             >
                                                 <td>
+                                                    <v-avatar size="36px">
+                                                        <v-img
+                                                            v-if="item?.githubPat?.avatarUrl"
+                                                            alt="Avatar"
+                                                            :src="item?.githubPat.avatarUrl"
+                                                        ></v-img>
+                                                        <v-icon
+                                                            v-else
+                                                            color="secondary"
+                                                            icon="mdi-user"
+                                                        ></v-icon>
+                                                    </v-avatar>
+                                                    <span class="ml-3">
+                                                        {{ item?.githubPat?.login }}
+                                                    </span>
+                                                </td>
+                                                <td>
                                                     {{ item.keyLabel }}
                                                 </td>
                                                 <td class="text-center">
                                                     {{ item.secretMasked }}
+                                                </td>
+                                                <td
+                                                    class="text-center"
+                                                    :class="(new Date(item?.githubPat?.expires)).getTime() <= (new Date()).getTime() ? 'text-error' : 'text-success'"
+                                                >
+                                                    {{ (new Date(item?.githubPat?.expires)).toLocaleDateString() }}
                                                 </td>
                                                 <td class="text-end">
                                                     <VTooltip

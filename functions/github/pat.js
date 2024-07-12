@@ -1,4 +1,4 @@
-import { App, AuthResult } from "@/utils";
+import { App, AuthResult, GitHub } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
@@ -35,9 +35,26 @@ export async function onRequestPost(context) {
             secret: body.token,
         }
     })
-    console.log(`/github/pat github_pat label=${body.label}`, tokenInfo)
     tokenInfo.secretMasked = mask(tokenInfo.secret)
     delete tokenInfo.secret
+    console.log(`/github/pat github_pat label=${body.label}`, tokenInfo)
+    const gh = new GitHub(body.token)
+    const { content, error, tokenExpiry } = await gh.getUser()
+    if (error?.message) {
+        return Response.json({ error })
+    }
+    tokenInfo.githubPat = {
+        keyId: tokenInfo.id,
+        login: content?.login,
+        expires: tokenExpiry ? (new Date(tokenExpiry)).getTime() : null,
+        created: content?.created_at ? (new Date(content.created_at)).getTime() : (new Date()).getTime(),
+        avatarUrl: content?.avatar_url,
+    }
+    const patInfo = await prisma.github_pat.create({
+        data: tokenInfo.githubPat
+    })
+    console.log(`/github/pat github_pat label=${body.label}`, patInfo)
+
     return Response.json(tokenInfo)
 }
 const mask = s => s.slice(0, 11) + s.slice(10).slice(4, s.length - 4).replace(/(.)/g, '*') + s.slice(s.length - 4)

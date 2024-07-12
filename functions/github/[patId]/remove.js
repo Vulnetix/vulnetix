@@ -23,12 +23,21 @@ export async function onRequestDelete(context) {
     if (result !== AuthResult.AUTHENTICATED) {
         return Response.json({ error: { message: err }, result })
     }
+    const patInfo = await prisma.github_pat.delete({
+        where: {
+            keyId: parseInt(params.patId, 10),
+        }
+    })
+    console.log(`/github/[${params.patId}]/remove github_pat`, patInfo)
     const tokenInfo = await prisma.member_keys.delete({
         where: {
             id: parseInt(params.patId, 10),
             memberEmail: session.memberEmail,
         }
     })
+    tokenInfo.secretMasked = mask(tokenInfo.secret)
+    delete tokenInfo.secret
     console.log(`/github/[${params.patId}]/remove github_pat`, tokenInfo)
     return Response.json(tokenInfo)
 }
+const mask = s => s.slice(0, 11) + s.slice(10).slice(4, s.length - 4).replace(/(.)/g, '*') + s.slice(s.length - 4)

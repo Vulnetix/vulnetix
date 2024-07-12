@@ -39,7 +39,11 @@ export async function onRequestGet(context) {
             where: {
                 memberEmail: session.memberEmail,
                 source: 'vulncheck',
-            }
+            },
+            take: 1000,
+            orderBy: {
+                createdAt: 'desc',
+            },
         })
 
         return Response.json({ ok: true, log, _meta })

@@ -24,10 +24,11 @@ export async function onRequestGet(context) {
         if (result !== AuthResult.AUTHENTICATED) {
             return Response.json({ ok: false, error: { message: err }, result })
         }
-        const pageSize = 100; // Adjust this value based on your needs
-        let findings = [];
-        let hasMore = true;
-        let skip = 0;
+        const pageSize = 50
+        let findings = []
+        let hasMore = true
+        let skip = 0
+        let res
 
         while (hasMore) {
             res = await prisma.findings.findMany({
@@ -53,7 +54,7 @@ export async function onRequestGet(context) {
                 }
             })
             findings = [...findings, ...res]
-            if (findings.length < pageSize) {
+            if (res.length < pageSize) {
                 hasMore = false
             } else {
                 skip += pageSize
@@ -61,7 +62,6 @@ export async function onRequestGet(context) {
         }
 
         const vex = findings.flatMap(({ triage }) => triage)
-        console.log('findings', findings)
         const findingKeys = new Set(findings.flatMap(({ spdx, ...rest }) => [
             ...Object.keys(rest),
             ...(spdx ? Object.keys(spdx) : [])
@@ -88,7 +88,11 @@ export async function onRequestGet(context) {
             },
             include: {
                 results: true
-            }
+            },
+            take: 100,
+            orderBy: {
+                createdAt: 'desc',
+            },
         })
         const sarifKeys = new Set(sarifResults.flatMap(({ results, ...result }) =>
             results.flatMap(sarif => Object.keys({ ...sarif, ...result }))

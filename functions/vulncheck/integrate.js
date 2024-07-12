@@ -24,12 +24,15 @@ export async function onRequestPost(context) {
         if (result !== AuthResult.AUTHENTICATED) {
             return Response.json({ ok: false, error: { message: err }, result })
         }
+        const data = await request.json()
+        if (!data.apiKey.startsWith('vulncheck_')) {
+            return Response.json({ error: { message: `Invalid API Key provided, expected "vulncheck_" prefix.` } })
+        }
         const where = {
             memberEmail: session.memberEmail,
             keyType: 'vulncheck',
         }
         const original = await prisma.member_keys.findFirst({ where })
-        const data = await request.json()
         if (data.apiKey !== original?.secret) {
             let info
             if (original === null) {

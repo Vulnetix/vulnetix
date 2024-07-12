@@ -33,6 +33,10 @@ export async function onRequestGet(context) {
         include: {
             repo: true,
         },
+        take: 100,
+        orderBy: {
+            createdAt: 'desc',
+        },
     })
 
     return Response.json({ spdx })

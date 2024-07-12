@@ -39,11 +39,18 @@ export async function onRequestGet(context) {
         omit: {
             memberEmail: true,
         },
+        take: 100,
+        orderBy: {
+            createdAt: 'desc',
+        },
     })
     const patTokens = await prisma.member_keys.findMany({
         where: {
             memberEmail: session.memberEmail,
             keyType: 'github_pat',
+        },
+        include: {
+            githubPat: true,
         },
         omit: {
             memberEmail: true,

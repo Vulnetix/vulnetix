@@ -84,7 +84,8 @@ export class OSV {
             const response = await fetch(url, { headers: this.headers, method: 'POST', body: JSON.stringify(body) })
             const respText = await response.text()
             if (!response.ok) {
-                console.error(`resp headers=${JSON.stringify(this.headers, null, 2)}`)
+                console.error(`req headers=${JSON.stringify(this.headers, null, 2)}`)
+                console.error(`resp headers=${JSON.stringify(response.headers, null, 2)}`)
                 console.error(respText)
                 console.error(`OSV error! status: ${response.status} ${response.statusText}`)
             }
@@ -189,7 +190,8 @@ export class VulnCheck {
             const response = await fetch(url, { headers: this.headers })
             const respText = await response.text()
             if (!response.ok) {
-                console.error(`resp headers=${JSON.stringify(this.headers, null, 2)}`)
+                console.error(`req headers=${JSON.stringify(this.headers, null, 2)}`)
+                console.error(`resp headers=${JSON.stringify(response.headers, null, 2)}`)
                 console.error(respText)
                 console.error(`VulnCheck error! status: ${response.status} ${response.statusText}`)
             }
@@ -231,12 +233,14 @@ export class GitHub {
             const response = await fetch(url, { headers: this.headers })
             const respText = await response.text()
             if (!response.ok) {
-                console.error(`resp headers=${JSON.stringify(this.headers, null, 2)}`)
+                console.error(`req headers=${JSON.stringify(this.headers, null, 2)}`)
+                console.error(`resp headers=${JSON.stringify(response.headers, null, 2)}`)
                 console.error(respText)
                 console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
             }
+            const tokenExpiry = response.headers.get('GitHub-Authentication-Token-Expiration')
             const content = JSON.parse(respText)
-            return { ok: response.ok, status: response.status, statusText: response.statusText, error: { message: content?.message }, content, url }
+            return { ok: response.ok, status: response.status, statusText: response.statusText, tokenExpiry, error: { message: content?.message }, content, url }
         } catch (e) {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
@@ -254,8 +258,9 @@ export class GitHub {
                 console.error(respText)
                 console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
             }
+            const tokenExpiry = response.headers.get('GitHub-Authentication-Token-Expiration')
             const content = JSON.parse(respText)
-            return { ok: response.ok, status: response.status, statusText: response.statusText, error: { message: content?.message }, content, url }
+            return { ok: response.ok, status: response.status, statusText: response.statusText, tokenExpiry, error: { message: content?.message }, content, url }
         } catch (e) {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
@@ -327,7 +332,7 @@ export class GitHub {
             const method = "DELETE"
             const response = await fetch(url, { headers: this.headers, method })
             if (!response.ok) {
-                console.error(`resp headers=${JSON.stringify(this.headers, null, 2)}`)
+                console.error(`req headers=${JSON.stringify(this.headers, null, 2)}`)
                 console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
             }
             return { ok: response.ok, status: response.status, statusText: response.statusText, url }
