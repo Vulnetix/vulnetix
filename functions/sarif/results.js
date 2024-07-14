@@ -1,6 +1,6 @@
+import { App, AuthResult } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
-import { App, AuthResult } from "@/utils";
 
 export async function onRequestGet(context) {
     const {
@@ -21,7 +21,7 @@ export async function onRequestGet(context) {
     })
     const { err, result, session } = await (new App(request, prisma)).authenticate()
     if (result !== AuthResult.AUTHENTICATED) {
-        return Response.json({ error: { message: err }, result })
+        return Response.json({ ok: false, error: { message: err }, result })
     }
 
     const sarif = await prisma.sarif.findMany({

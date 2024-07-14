@@ -147,16 +147,16 @@ const controller = reactive(new Controller())
                         {{ JSON.parse(record.request || '')?.url }}
                     </td>
                     <td>
-                        <v-chip
+                        <VChip
                             size="small"
                             variant="outlined"
                             :color="record.statusCode.toString()[0] === '2' ? '#35933f' : 'error'"
                         >
                             {{ record.statusCode }}
-                        </v-chip>
+                        </VChip>
                     </td>
                     <td>
-                        <v-dialog max-width="800">
+                        <VDialog max-width="800">
                             <template v-slot:activator="{ props: activatorProps }">
                                 <VBtn
                                     v-bind="activatorProps"
@@ -167,12 +167,12 @@ const controller = reactive(new Controller())
                                 ></VBtn>
                             </template>
                             <template v-slot:default="{ isActive }">
-                                <v-card title="Request">
-                                    <v-card-text>
+                                <VCard title="Request">
+                                    <VCardText>
                                         <pre>{{ JSON.stringify(JSON.parse(record.request || ''), null, 2) }}</pre>
-                                    </v-card-text>
-                                    <v-card-actions>
-                                        <v-spacer></v-spacer>
+                                    </VCardText>
+                                    <VCardActions>
+                                        <VSpacer></VSpacer>
                                         <VBtn
                                             text="Close"
                                             :color="global.name.value === 'dark' ? '#fff' : '#272727'"
@@ -180,12 +180,13 @@ const controller = reactive(new Controller())
                                             density="comfortable"
                                             @click="isActive.value = false"
                                         ></VBtn>
-                                    </v-card-actions>
-                                </v-card>
+                                    </VCardActions>
+                                </VCard>
                             </template>
-                        </v-dialog>
+                        </VDialog>
                     </td>
-                    <td><v-dialog max-width="800">
+                    <td>
+                        <VDialog max-width="800">
                             <!-- v-if="JSON.parse(record.response || '').body.length > 0" -->
                             <template v-slot:activator="{ props: activatorProps }">
                                 <VBtn
@@ -197,13 +198,13 @@ const controller = reactive(new Controller())
                                 ></VBtn>
                             </template>
                             <template v-slot:default="{ isActive }">
-                                <v-card title="Response">
-                                    <v-card-text>
+                                <VCard title="Response">
+                                    <VCardText>
 
                                         <pre>{{ JSON.stringify(JSON.parse(record.response || ''), null, 2) }}</pre>
-                                    </v-card-text>
-                                    <v-card-actions>
-                                        <v-spacer></v-spacer>
+                                    </VCardText>
+                                    <VCardActions>
+                                        <VSpacer></VSpacer>
                                         <VBtn
                                             text="Close"
                                             :color="global.name.value === 'dark' ? '#fff' : '#272727'"
@@ -211,10 +212,10 @@ const controller = reactive(new Controller())
                                             density="comfortable"
                                             @click="isActive.value = false"
                                         ></VBtn>
-                                    </v-card-actions>
-                                </v-card>
+                                    </VCardActions>
+                                </VCard>
                             </template>
-                        </v-dialog>
+                        </VDialog>
                     </td>
                 </tr>
             </tbody>

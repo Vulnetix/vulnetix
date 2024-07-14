@@ -102,10 +102,8 @@ export class OSV {
         // https://google.github.io/osv.dev/post-v1-querybatch/
         const url = `${this.baseUrl}/querybatch`
         const resp = await this.fetchJSON(url, { queries })
-        let results = []
         if (resp?.content?.results) {
-            console.log('results', resp.content.results)
-            results = resp.content.results.map(r => r?.vulns).flat(1)
+            const results = resp.content.results.map(r => r?.vulns).flat(1).filter(q => q?.id)
             const createLog = await prisma.integration_usage_log.create({
                 data: {
                     memberEmail,
@@ -118,7 +116,7 @@ export class OSV {
             })
             console.log(`osv.queryBatch()`, createLog)
         }
-        return results
+        return resp?.content?.results || []
     }
 }
 
@@ -532,9 +530,13 @@ export function isSPDX(input) {
     }
     if (typeof spdx?.name === 'undefined' ||
         typeof spdx?.dataLicense === 'undefined' ||
-        typeof spdx?.documentNamespace === 'undefined' ||
+        typeof spdx?.documentDescribes === 'undefined' ||
+        typeof spdx?.packages === 'undefined' ||
         typeof spdx?.creationInfo?.creators === 'undefined' ||
-        !spdx?.creationInfo?.creators.length
+        !spdx?.creationInfo?.creators.length ||
+        !spdx.documentDescribes.length ||
+        !spdx.packages.length ||
+        !spdx.relationships.length
     ) {
         return false
     }

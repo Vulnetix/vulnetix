@@ -448,6 +448,13 @@ const gh = reactive(new GitHub())
 <template>
     <VRow>
         <VCol cols="12">
+            <VProgressLinear
+                :active="state.loadingBar"
+                :indeterminate="state.loadingBar"
+                color="primary"
+                absolute
+                bottom
+            ></VProgressLinear>
             <VAlert
                 v-if="state.error"
                 color="error"
@@ -486,14 +493,6 @@ const gh = reactive(new GitHub())
             />
         </VCol>
         <VCol cols="12">
-            <VProgressLinear
-                :active="state.loadingBar"
-                :indeterminate="state.loadingBar"
-                color="primary"
-                absolute
-                bottom
-            ></VProgressLinear>
-
             <VEmptyState
                 v-if="state.showEmptyState"
                 :image="state.octodexImageUrl"
@@ -531,7 +530,6 @@ const gh = reactive(new GitHub())
                     />
                 </template>
             </VEmptyState>
-
             <VTabs
                 v-model="tabs"
                 :bgColor="global.name.value === 'dark' ? 'rgb(var(--v-theme-primary))' : 'rgba(var(--v-theme-primary),var(--v-activated-opacity))'"
@@ -866,18 +864,18 @@ const gh = reactive(new GitHub())
                                                 :key="item.id"
                                             >
                                                 <td>
-                                                    <v-avatar size="36px">
-                                                        <v-img
+                                                    <VAvatar size="36px">
+                                                        <VImg
                                                             v-if="item?.githubPat?.avatarUrl"
                                                             alt="Avatar"
                                                             :src="item?.githubPat.avatarUrl"
-                                                        ></v-img>
-                                                        <v-icon
+                                                        ></VImg>
+                                                        <VIcon
                                                             v-else
                                                             color="secondary"
                                                             icon="mdi-user"
-                                                        ></v-icon>
-                                                    </v-avatar>
+                                                        ></VIcon>
+                                                    </VAvatar>
                                                     <span class="ml-3">
                                                         {{ item?.githubPat?.login }}
                                                     </span>

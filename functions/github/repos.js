@@ -21,7 +21,7 @@ export async function onRequestGet(context) {
     })
     const { err, result, session } = await (new App(request, prisma)).authenticate()
     if (result !== AuthResult.AUTHENTICATED) {
-        return Response.json({ error: { message: err }, result })
+        return Response.json({ ok: false, error: { message: err }, result })
     }
 
     const githubApps = []
@@ -87,6 +87,7 @@ const store = async (prisma, session, repo) => {
     const data = {
         ghid: repo.id.toString(),
         fullName: repo.full_name,
+        source: "GitHub",
         ownerId: repo.owner.id,
         createdAt: (new Date(repo.created_at)).getTime(),
         updatedAt: (new Date(repo.updated_at)).getTime(),
@@ -121,6 +122,7 @@ const store = async (prisma, session, repo) => {
         create: {
             pk: data.ghid,
             fullName: data.fullName,
+            source: "GitHub",
             createdAt: data.createdAt,
             updatedAt: data.updatedAt,
             pushedAt: data.pushedAt,

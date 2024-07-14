@@ -8,6 +8,8 @@ import { useTheme } from 'vuetify'
 const { global } = useTheme()
 
 const initialState = {
+    uploadError: "",
+    uploadSuccess: "",
     error: "",
     warning: "",
     success: "",
@@ -77,55 +79,57 @@ class Sarif {
             for (const blob of state.files) {
                 const text = await blob.text()
                 if (!isJSON(text)) {
-                    state.error = "Provided file does not contain a JSON string."
+                    state.uploadError = "Provided file does not contain a JSON string."
                     break
                 }
                 const json = JSON.parse(text)
                 if (isSARIF(json)) {
                     files.push(json)
                 } else {
-                    state.error = "Provided file does not contain valid SARIF."
+                    state.uploadError = "Provided file does not contain valid SARIF."
                     break
                 }
             }
             if (!files.length) {
-                state.warning = "No SARIF files were provided."
+                state.uploadError = "No SARIF files were provided."
                 return
             }
             const { data } = await axios.post(`/sarif/upload`, files, { headers: { 'Content-Type': 'application/json' } })
             state.loading = false
 
             if (typeof data === "string" && !isJSON(data)) {
-                state.error = "SARIF data could not be uploaded, please try again later."
+                state.uploadError = "SARIF data could not be uploaded, please try again later."
 
                 return
             }
             if (data?.error?.message) {
-                state.error = data?.error?.message
+                state.uploadError = data?.error?.message
             }
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
-                state.info = data.result
+                state.uploadError = data.result
 
                 return setTimeout(() => router.push('/logout'), 2000)
             }
             if (!data.sarif) {
-                state.info = "No SARIF data available."
+                state.uploadError = "No SARIF data available."
             } else {
                 state.uploads = data.sarif.filter(item => item.source === "upload")
                 state.github = data.sarif.filter(item => item.source === "GitHub")
-                state.success = "Uploaded SARIF"
+                state.uploadSuccess = "Uploaded SARIF, you may close this dialogue now."
             }
 
             return
         } catch (e) {
             console.error(e)
-            state.error = typeof e === "string" ? e : `${e.code} ${e.message}`
+            state.uploadError = typeof e === "string" ? e : `${e.code} ${e.message}`
             state.loading = false
         }
     }
 }
 
 function clearAlerts() {
+    state.uploadError = ''
+    state.uploadSuccess = ''
     state.error = ''
     state.warning = ''
     state.success = ''
@@ -219,6 +223,31 @@ const sarif = reactive(new Sarif())
                 </template>
                 <template v-slot:default="{ isActive }">
                     <VCard title="Select SARIF files">
+                        <VProgressLinear
+                            :active="state.loading"
+                            :indeterminate="state.loading"
+                            color="primary"
+                            absolute
+                            bottom
+                        ></VProgressLinear>
+                        <VAlert
+                            v-if="state.uploadError"
+                            color="error"
+                            icon="$error"
+                            title="Error"
+                            :text="state.uploadError"
+                            border="start"
+                            variant="tonal"
+                        />
+                        <VAlert
+                            v-if="state.uploadSuccess"
+                            color="success"
+                            icon="$success"
+                            title="Success"
+                            :text="state.uploadSuccess"
+                            border="start"
+                            variant="tonal"
+                        />
                         <VDivider class="mt-3"></VDivider>
                         <VCardText class="px-4">
                             <VFileInput
@@ -258,7 +287,7 @@ const sarif = reactive(new Sarif())
                         </VCardText>
 
                         <VDivider></VDivider>
-                        <VCard-actions class="mt-3">
+                        <VCardActions class="mt-3">
                             <VBtn
                                 text="Close"
                                 @click="isActive.value = false"
@@ -269,7 +298,7 @@ const sarif = reactive(new Sarif())
                                 variant="flat"
                                 @click="sarif.upload"
                             />
-                        </VCard-actions>
+                        </VCardActions>
                     </VCard>
                 </template>
             </VDialog>

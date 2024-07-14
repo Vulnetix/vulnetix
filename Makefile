@@ -53,3 +53,4 @@ _helpers: ## FOR DOCO ONLY
 	--to-schema-datamodel ./prisma/schema.prisma \
 	--script \
 	--output migrations/0001_init.sql
+	npx wrangler d1 execute trivial_triage --remote --file ./migrations/0001_init.sql

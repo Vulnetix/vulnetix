@@ -22,133 +22,118 @@ export async function onRequestPost(context) {
     })
     const { err, result, session } = await (new App(request, prisma)).authenticate()
     if (result !== AuthResult.AUTHENTICATED) {
-        return Response.json({ error: { message: err }, result })
+        return Response.json({ ok: false, error: { message: err }, result })
     }
 
     const files = []
     let errors = new Set()
     try {
-        const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
         const inputs = await request.json()
         for (const spdx of inputs) {
             if (!isSPDX(spdx)) {
-                return Response.json({
-                    ok: false, error: {
-                        message: 'SPDX is missing necessary fields.'
-                    }
-                })
+                return Response.json({ ok: false, error: { message: 'SPDX is missing necessary fields.' } })
+            }
+            if (!isSPDX(spdx)) {
+                return Response.json({ ok: false, error: { message: 'SPDX is missing necessary fields.' } })
             }
             const spdxStr = JSON.stringify(spdx)
             const spdxId = await hex(spdxStr)
-            const objectPrefix = `uploads/${session.memberEmail}/spdx/`
-            const fileName = `${spdxId}.json`
-            const r2Put = await env.r2icache.put(`${objectPrefix}${fileName}`, spdxStr, putOptions)
-            console.log(fileName, JSON.stringify(r2Put))
+            const spdxData = {
+                spdxId,
+                source: 'upload',
+                memberEmail: session.memberEmail,
+                repoName: '',
+                spdxVersion: spdx.spdxVersion,
+                dataLicense: spdx.dataLicense,
+                name: spdx.name,
+                documentNamespace: spdx.documentNamespace,
+                createdAt: (new Date(spdx.creationInfo.created)).getTime(),
+                toolName: spdx.creationInfo.creators.join(', '),
+                documentDescribes: spdx.documentDescribes.join(','),
+                packagesJSON: JSON.stringify(spdx.packages),
+                relationshipsJSON: JSON.stringify(spdx.relationships),
+                comment: spdx.creationInfo?.comment || '',
+            }
             const info = await prisma.spdx.upsert({
                 where: {
                     spdxId,
                     memberEmail: session.memberEmail,
                 },
                 update: {
-                    createdAt: (new Date(spdx.creationInfo.created)).getTime(),
+                    createdAt: spdxData.createdAt,
+                    comment: spdxData.comment
                 },
-                create: {
-                    spdxId,
-                    spdxVersion: spdx.spdxVersion,
-                    source: 'upload',
-                    repoName: '',
-                    name: spdx.name,
-                    dataLicense: spdx.dataLicense,
-                    documentNamespace: spdx.documentNamespace,
-                    toolName: spdx.creationInfo.creators.join(', '),
-                    packageCount: spdx.packages.length,
-                    createdAt: (new Date(spdx.creationInfo.created)).getTime(),
-                    memberEmail: session.memberEmail,
-                    comment: spdx.creationInfo?.comment || ''
-                }
+                create: spdxData
             })
-
-            console.log(`/github/repos/spdx ${fileName} kid=${session.kid}`, info)
-
-            files.push({
-                spdxId,
-                spdxVersion: spdx.spdxVersion,
-                source: 'upload',
-                repoName: '',
-                name: spdx.name,
-                dataLicense: spdx.dataLicense,
-                documentNamespace: spdx.documentNamespace,
-                toolName: spdx.creationInfo.creators.join(', '),
-                packageCount: spdx.packages.length,
-                createdAt: (new Date(spdx.creationInfo.created)).getTime(),
-                memberEmail: session.memberEmail,
-                comment: spdx.creationInfo?.comment || ''
-            })
+            console.log(`/github/repos/spdx ${spdxId} kid=${session.kid}`, info)
+            files.push(spdxData)
 
             const osvQueries = spdx.packages.flatMap(pkg => {
                 if (!pkg?.externalRefs) { return }
                 return pkg.externalRefs
                     .filter(ref => ref?.referenceType === 'purl')
                     .map(ref => ({
-                        purl: ref.referenceLocator,
+                        referenceLocator: ref.referenceLocator,
                         name: pkg.name,
                         version: pkg?.versionInfo,
-                        licenseDeclared: pkg?.licenseDeclared
+                        license: pkg?.licenseConcluded || pkg?.licenseDeclared,
                     }))
-            }).filter(q => q?.purl)
+            }).filter(q => q?.referenceLocator)
             const osv = new OSV()
-            const queries = osvQueries.map(q => ({ package: { purl: q?.purl } }))
-            const vulns = await osv.queryBatch(prisma, session.memberEmail, queries)
-            if (typeof vulns?.length !== 'undefined') {
-                let i = 0
-                for (const vuln of vulns) {
-                    if (typeof vuln?.id === 'undefined') {
-                        i = i++
+            const queries = osvQueries.map(q => ({ package: { purl: q?.referenceLocator } }))
+            const results = await osv.queryBatch(prisma, session.memberEmail, queries)
+            let i = 0
+            for (const result of results) {
+                const { referenceLocator, name, version, license } = osvQueries[i]
+                for (const vuln of result.vulns || []) {
+                    if (!vuln?.id) {
                         continue
                     }
-                    const findingId = await hex(`${session.memberEmail}${vuln.id}${osvQueries[i].name}${osvQueries[i].version}`)
+                    const findingId = await hex(`${session.memberEmail}${vuln.id}${referenceLocator}`)
+                    const findingData = {
+                        findingId,
+                        memberEmail: session.memberEmail,
+                        source: 'osv.dev',
+                        category: 'sca',
+                        createdAt: (new Date()).getTime(),
+                        modifiedAt: (new Date(vuln.modified)).getTime(),
+                        detectionTitle: vuln.id,
+                        purl: referenceLocator,
+                        packageName: name,
+                        packageVersion: version,
+                        packageLicense: license,
+                        spdxId
+                    }
                     const finding = await prisma.findings.upsert({
                         where: {
                             findingId,
                             spdxId,
                         },
                         update: {
-                            modifiedAt: (new Date(vuln.modified)).getTime(),
+                            modifiedAt: findingData.modifiedAt,
                         },
-                        create: {
-                            findingId,
-                            memberEmail: session.memberEmail,
-                            source: 'osv.dev',
-                            category: 'sca',
-                            createdAt: (new Date()).getTime(),
-                            modifiedAt: (new Date(vuln.modified)).getTime(),
-                            detectionTitle: vuln.id,
-                            purl: osvQueries[i].purl,
-                            packageName: osvQueries[i].name,
-                            packageVersion: osvQueries[i].version,
-                            licenseDeclared: osvQueries[i].licenseDeclared,
-                            spdxId
-                        }
+                        create: findingData,
                     })
                     console.log(`findings SCA`, finding)
+                    const vexData = {
+                        findingId,
+                        createdAt: (new Date()).getTime(),
+                        lastObserved: (new Date()).getTime(),
+                        seen: 0,
+                        analysisState: 'in_triage'
+                    }
                     const vex = await prisma.triage_activity.upsert({
                         where: {
                             findingId,
                         },
                         update: {
-                            lastObserved: (new Date()).getTime()
+                            lastObserved: vexData.lastObserved,
                         },
-                        create: {
-                            findingId,
-                            createdAt: (new Date()).getTime(),
-                            lastObserved: (new Date()).getTime(),
-                            seen: 0,
-                            analysisState: 'in_triage'
-                        }
+                        create: vexData,
                     })
                     console.log(`findings VEX`, vex)
-                    i = i++
                 }
+                i++
             }
         }
     } catch (err) {

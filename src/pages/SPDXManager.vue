@@ -8,6 +8,8 @@ import { useTheme } from 'vuetify'
 const { global } = useTheme()
 
 const initialState = {
+    uploadError: "",
+    uploadSuccess: "",
     error: "",
     warning: "",
     success: "",
@@ -45,12 +47,15 @@ class Spdx {
                 return
             }
             if (typeof data === "string" && !isJSON(data)) {
-                state.warning = "SPDX data could not be retrieved, please try again later."
-
+                if (initial !== true) {
+                    state.warning = "SPDX data could not be retrieved, please try again later."
+                }
                 return
             }
             if (!data.spdx) {
-                state.info = "No SPDX data available."
+                if (initial !== true) {
+                    state.info = "No SPDX data available."
+                }
             } else {
                 state.uploads = data.spdx.filter(item => item.source === "upload")
                 state.github = data.spdx.filter(item => item.source === "GitHub")
@@ -62,47 +67,51 @@ class Spdx {
             return
         } catch (e) {
             console.error(e)
-            state.error = `${e.code} ${e.message}`
+            if (initial !== true) {
+                state.error = `${e.code} ${e.message}`
+            }
             state.loading = false
         }
-        state.warning = "No SPDX data available."
+        if (initial !== true) {
+            state.warning = "No SPDX data available."
+        }
     }
 
     async upload() {
         clearAlerts()
-        state.loading = true
         const files = []
         try {
             for (const blob of state.files) {
                 const text = await blob.text()
                 if (!isSPDX(text)) {
-                    state.error = "Provided file does not include SPDX required fields."
+                    state.uploadError = "Provided file does not include SPDX required fields."
                     break
                 }
                 files.push(JSON.parse(text))
             }
             if (!files.length) {
-                state.warning = "No SPDX files were provided."
+                state.uploadError = state.uploadError ? state.uploadError : "No SPDX files were provided."
                 return
             }
+            state.loading = true
             const { data } = await axios.post(`/spdx/upload`, files, { headers: { 'Content-Type': 'application/json' } })
             state.loading = false
 
             if (data?.error?.message) {
-                state.error = data?.error?.message
+                state.uploadError = data?.error?.message
             }
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
-                state.info = data.result
+                state.uploadError = data.result
 
-                return setTimeout(() => router.push('/logout'), 2000)
+                // return setTimeout(() => router.push('/logout'), 2000)
             }
             if (typeof data === "string" && !isJSON(data)) {
-                state.error = "SPDX data could not be uploaded, please try again later."
+                state.uploadError = "SPDX data could not be uploaded, please try again later."
 
                 return
             }
             if (!data?.files?.length) {
-                state.info = "No SPDX data available."
+                state.uploadError = "No SPDX data available."
             } else {
                 for (const file of data.files) {
                     if (file.source === "upload") {
@@ -112,19 +121,21 @@ class Spdx {
                         state.github.push(file)
                     }
                 }
-                state.success = "Uploaded SPDX"
+                state.uploadSuccess = "Uploaded SPDX, you may close this dialogue now."
             }
 
             return
         } catch (e) {
             console.error(e)
-            state.error = typeof e === "string" ? e : `${e.code} ${e.message}`
+            state.uploadError = typeof e === "string" ? e : `${e.code} ${e.message}`
             state.loading = false
         }
     }
 }
 
 function clearAlerts() {
+    state.uploadError = ''
+    state.uploadSuccess = ''
     state.error = ''
     state.warning = ''
     state.success = ''
@@ -218,6 +229,31 @@ const spdx = reactive(new Spdx())
                 </template>
                 <template v-slot:default="{ isActive }">
                     <VCard title="Select SPDX files">
+                        <VProgressLinear
+                            :active="state.loading"
+                            :indeterminate="state.loading"
+                            color="primary"
+                            absolute
+                            bottom
+                        ></VProgressLinear>
+                        <VAlert
+                            v-if="state.uploadError"
+                            color="error"
+                            icon="$error"
+                            title="Error"
+                            :text="state.uploadError"
+                            border="start"
+                            variant="tonal"
+                        />
+                        <VAlert
+                            v-if="state.uploadSuccess"
+                            color="success"
+                            icon="$success"
+                            title="Success"
+                            :text="state.uploadSuccess"
+                            border="start"
+                            variant="tonal"
+                        />
                         <VDivider class="mt-3"></VDivider>
                         <VCardText class="px-4">
                             <VFileInput
@@ -257,7 +293,7 @@ const spdx = reactive(new Spdx())
                         </VCardText>
 
                         <VDivider></VDivider>
-                        <VCard-actions class="mt-3">
+                        <VCardActions class="mt-3">
                             <VBtn
                                 text="Close"
                                 @click="isActive.value = false"
@@ -268,7 +304,7 @@ const spdx = reactive(new Spdx())
                                 variant="flat"
                                 @click="spdx.upload"
                             />
-                        </VCard-actions>
+                        </VCardActions>
                     </VCard>
                 </template>
             </VDialog>
@@ -349,19 +385,7 @@ const spdx = reactive(new Spdx())
                                             >{{ result.spdxId }}</VTooltip>
                                             {{ result.spdxVersion }}
                                         </td>
-                                        <td
-                                            class="text-center"
-                                            v-if="result.documentNamespace"
-                                        >
-                                            <a
-                                                :href="result.documentNamespace"
-                                                target="_blank"
-                                            >{{ result.name }}</a>
-                                        </td>
-                                        <td
-                                            class="text-center"
-                                            v-else
-                                        >
+                                        <td class="text-center">
                                             {{ result.name }}
                                         </td>
                                         <td class="text-center">
@@ -454,19 +478,7 @@ const spdx = reactive(new Spdx())
                             <td class="text-center">
                                 {{ spdx.spdxVersion }}
                             </td>
-                            <td
-                                class="text-center"
-                                v-if="spdx.documentNamespace"
-                            >
-                                <a
-                                    :href="spdx.documentNamespace"
-                                    target="_blank"
-                                >{{ spdx.name }}</a>
-                            </td>
-                            <td
-                                class="text-center"
-                                v-else
-                            >
+                            <td class="text-center">
                                 {{ spdx.name }}
                             </td>
                             <td class="text-center">

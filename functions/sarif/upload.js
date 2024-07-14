@@ -22,11 +22,10 @@ export async function onRequestPost(context) {
     })
     const { err, result, session } = await (new App(request, prisma)).authenticate()
     if (result !== AuthResult.AUTHENTICATED) {
-        return Response.json({ error: { message: err }, result })
+        return Response.json({ ok: false, error: { message: err }, result })
     }
     const files = []
     try {
-        const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
         const inputs = await request.json()
         for (const sarif of inputs) {
             if (!isSARIF(sarif)) {
@@ -36,10 +35,6 @@ export async function onRequestPost(context) {
             const createdAt = (new Date()).getTime()
             const sarifStr = JSON.stringify(sarif)
             const reportId = await hex(sarifStr)
-            const objectPrefix = `uploads/${session.memberEmail}/sarif/`
-            const fileName = `${reportId}.json`
-            console.log(fileName, await env.r2icache.put(`${objectPrefix}${fileName}`, sarifStr, putOptions))
-
             const results = []
             for (const run of sarif.runs) {
                 const info = await prisma.sarif.upsert({
@@ -110,7 +105,7 @@ export async function onRequestPost(context) {
                         },
                         create: resultData,
                     })
-                    console.log(`/github/repos/sarif_results ${fileName} kid=${session.kid}`, reportInfo)
+                    console.log(`/github/repos/sarif_results ${sarifId} kid=${session.kid}`, reportInfo)
                 }
             }
 
@@ -136,5 +131,5 @@ export async function onRequestPost(context) {
         return Response.json({ ok: false, error: { message: err } })
     }
 
-    return Response.json(files)
+    return Response.json({ ok: true, sarif: files })
 }

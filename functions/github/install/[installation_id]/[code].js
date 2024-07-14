@@ -25,7 +25,7 @@ export async function onRequestGet(context) {
     if (!!authToken.trim()) {
         ({ err, result, session } = await app.authenticate())
         if (result !== AuthResult.AUTHENTICATED) {
-            return Response.json({ error: { message: err }, result })
+            return Response.json({ ok: false, error: { message: err }, result })
         }
     }
     try {

@@ -21,7 +21,7 @@ export async function onRequestDelete(context) {
     })
     const { err, result, session } = await (new App(request, prisma)).authenticate()
     if (result !== AuthResult.AUTHENTICATED) {
-        return Response.json({ error: { message: err }, result })
+        return Response.json({ ok: false, error: { message: err }, result })
     }
     const patInfo = await prisma.github_pat.delete({
         where: {

@@ -24,92 +24,53 @@ export async function onRequestGet(context) {
         if (result !== AuthResult.AUTHENTICATED) {
             return Response.json({ ok: false, error: { message: err }, result })
         }
-        const pageSize = 50
-        let findings = []
-        let hasMore = true
-        let skip = 0
-        let res
-
-        while (hasMore) {
-            res = await prisma.findings.findMany({
-                where: {
-                    memberEmail: session.memberEmail,
-                },
-                omit: {
-                    memberEmail: true,
-                },
-                include: {
-                    spdx: true,
-                    triage: {
-                        where: {
-                            analysisState: params.state
-                        }
-                    },
-                    // cdx: true
-                },
-                take: pageSize,
-                skip: skip,
-                orderBy: {
-                    createdAt: 'asc',
-                }
-            })
-            findings = [...findings, ...res]
-            if (res.length < pageSize) {
-                hasMore = false
-            } else {
-                skip += pageSize
-            }
-        }
-
-        const vex = findings.flatMap(({ triage }) => triage)
-        const findingKeys = new Set(findings.flatMap(({ spdx, ...rest }) => [
-            ...Object.keys(rest),
-            ...(spdx ? Object.keys(spdx) : [])
-        ]));
-        findings = findings.map(({ spdx, triage, ...rest }) => {
-            const finding = { ...rest, ...spdx }
-            for (const k of findingKeys) {
-                if (typeof finding[k] === 'undefined') {
-                    finding[k] = ''
-                }
-            }
-            finding['actions'] = ''
-            return finding
-        })
-        const sca = findings.filter(finding => finding.category === 'sca')
-        const sast = findings.filter(finding => finding.category === 'sast')
-
-        const sarifResults = await prisma.sarif.findMany({
+        const { searchParams } = new URL(request.url)
+        const take = parseInt(searchParams.get('take'), 10) || 50
+        const skip = parseInt(searchParams.get('skip'), 10) || 0
+        const sca = await prisma.findings.findMany({
             where: {
                 memberEmail: session.memberEmail,
+                category: 'sca',
             },
             omit: {
                 memberEmail: true,
             },
             include: {
-                results: true
+                spdx: {
+                    include: {
+                        repo: true
+                    }
+                },
+                triage: {
+                    where: {
+                        analysisState: params.state
+                    }
+                },
+                // cdx: true
             },
-            take: 100,
+            take,
+            skip,
             orderBy: {
-                createdAt: 'desc',
+                createdAt: 'asc',
+            }
+        })
+        const sast = await prisma.sarif_results.findMany({
+            where: {
+                sarif: {
+                    memberEmail: session.memberEmail,
+                },
+            },
+            include: {
+                sarif: true
+            },
+            take,
+            skip,
+            orderBy: {
+                guid: 'asc',
             },
         })
-        const sarifKeys = new Set(sarifResults.flatMap(({ results, ...result }) =>
-            results.flatMap(sarif => Object.keys({ ...sarif, ...result }))
-        ))
 
-        let sarif = sarifResults.flatMap(({ results, ...result }) =>
-            results.map(sarif => ({ ...sarif, ...result }))
-        )
-
-        sarif = sarif.map(finding => {
-            sarifKeys.forEach(k => {
-                finding[k] = finding[k] || ''
-            })
-            finding['actions'] = ''
-            return finding
-        })
-        return Response.json({ ok: true, sca, sast, sarif, vex })
+        return Response.json({ ok: true, sca, sast })
     } catch (err) {
         console.error(err)
         return Response.json({ ok: false, error: { message: err }, result: AuthResult.REVOKED })
