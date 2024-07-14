@@ -79,7 +79,7 @@ class TriageQueue {
             if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
                 state.info = data.result
 
-                // setTimeout(() => router.push('/logout'), 2000)
+                setTimeout(() => router.push('/logout'), 2000)
                 return
             }
             if (data?.sca) {
@@ -490,7 +490,7 @@ const manager = reactive(new TriageQueue())
                                                         class="pa-4"
                                                     >{{
                                                         location.physicalLocation?.region?.snippet?.text
-                                                    }}</VCode>
+                                                        }}</VCode>
                                                 </div>
                                             </v-card-subtitle>
                                         </v-card>

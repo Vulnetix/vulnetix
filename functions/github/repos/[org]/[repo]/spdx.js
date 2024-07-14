@@ -127,14 +127,15 @@ const process = async (prisma, session, repoName, content) => {
                 version: pkg.versionInfo,
                 licenseDeclared: pkg.licenseDeclared
             }))
-    })
+    }).filter(q => q?.purl)
     const osv = new OSV()
-    const queries = osvQueries.filter(q => q?.purl).map(q => ({ package: { purl: q.purl } }))
+    const queries = osvQueries.map(q => ({ package: { purl: q.purl } }))
     const vulns = await osv.queryBatch(prisma, session.memberEmail, queries)
     if (typeof vulns?.length !== 'undefined') {
         let i = 0
         for (const vuln of vulns) {
             if (typeof vuln?.id === 'undefined') {
+                i = i++
                 continue
             }
             const findingId = await hex(`${session.memberEmail}${vuln.id}${osvQueries[i].name}${osvQueries[i].version}`)
