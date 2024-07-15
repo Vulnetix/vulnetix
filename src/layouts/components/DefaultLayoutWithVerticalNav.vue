@@ -4,6 +4,8 @@ import VerticalNavLayout from '@layouts/components/VerticalNavLayout.vue'
 import VerticalNavLink from '@layouts/components/VerticalNavLink.vue'
 
 // Components
+import NavSearchBar from '@/layouts/components/NavSearchBar.vue'
+import NavBarNotifications from '@/layouts/components/NavBarNotifications.vue'
 import Footer from '@/layouts/components/Footer.vue'
 import NavbarThemeSwitcher from '@/layouts/components/NavbarThemeSwitcher.vue'
 import UserProfile from '@/layouts/components/UserProfile.vue'
@@ -11,10 +13,8 @@ import UserProfile from '@/layouts/components/UserProfile.vue'
 
 <template>
   <VerticalNavLayout>
-    <!-- 👉 navbar -->
     <template #navbar="{ toggleVerticalOverlayNavActive }">
       <div class="d-flex h-100 align-center">
-        <!-- 👉 Vertical nav toggle in overlay mode -->
         <IconBtn
           class="ms-n3 d-lg-none"
           @click="toggleVerticalOverlayNavActive(true)"
@@ -22,27 +22,19 @@ import UserProfile from '@/layouts/components/UserProfile.vue'
           <VIcon icon="bx-menu" />
         </IconBtn>
 
-        <!-- 👉 Search -->
-        <div
-          class="d-flex align-center cursor-pointer"
-          style="user-select: none;"
-        >
-          <!-- 👉 Search Trigger button -->
-          <IconBtn>
-            <VIcon icon="bx-search" />
-          </IconBtn>
-
-          <span class="d-none d-md-flex align-center text-disabled">
-            <span class="me-3">Search</span>
-            <span class="meta-key">&#8984;K</span>
-          </span>
-        </div>
+        <NavSearchBar class="ms-lg-n3" />
 
         <VSpacer />
 
-        <IconBtn class="me-2">
-          <VIcon icon="bx-bell" />
+        <IconBtn
+          href="https://github.com/trivialsec/triage-by-trivial-security"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <VIcon icon="bxl-github" />
         </IconBtn>
+
+        <NavBarNotifications class="me-2" />
 
         <NavbarThemeSwitcher class="me-2" />
 
@@ -59,12 +51,17 @@ import UserProfile from '@/layouts/components/UserProfile.vue'
 
       <!-- 👉 Activities -->
       <VerticalNavSectionTitle :item="{
-        heading: 'Activities',
+        heading: 'Queue',
       }" />
       <VerticalNavLink :item="{
-        title: 'Queue',
-        icon: 'fluent-mdl2:new-analytics-query',
-        to: '/triage-queue',
+        title: 'Supply Chain',
+        icon: 'hugeicons:blockchain-07',
+        to: '/supply-chain',
+      }" />
+      <VerticalNavLink :item="{
+        title: 'SAST',
+        icon: 'eos-icons:critical-bug-outlined',
+        to: '/queue-static',
       }" />
       <VerticalNavLink :item="{
         title: 'Overdue',

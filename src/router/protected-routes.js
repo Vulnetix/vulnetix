@@ -13,8 +13,12 @@ const routes = [
                 component: () => import('../pages/AccountSettings.vue'),
             },
             {
-                path: 'triage-queue',
-                component: () => import('../pages/TriageQueue.vue'),
+                path: 'supply-chain',
+                component: () => import('../pages/QueueSCA.vue'),
+            },
+            {
+                path: 'queue-static',
+                component: () => import('../pages/QueueSAST.vue'),
             },
             {
                 path: 'triage-overdue',
