@@ -1,10 +1,12 @@
 <script setup>
+import { useMemberStore } from '@/stores/member';
 import router from "@/router"
 import { isJSON, isSPDX } from '@/utils'
 import { default as axios } from 'axios'
 import { reactive } from 'vue'
 import { useTheme } from 'vuetify'
 
+const Member = useMemberStore()
 const { global } = useTheme()
 
 const initialState = {
@@ -25,7 +27,7 @@ const state = reactive({
 })
 
 axios.defaults.headers.common = {
-    'x-trivialsec': localStorage.getItem('/session/token') || '',
+    'x-trivialsec': Member.session?.token,
 }
 class Spdx {
     constructor() {

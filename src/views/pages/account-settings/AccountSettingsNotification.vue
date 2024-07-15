@@ -20,7 +20,7 @@ const state = reactive({
     ...initialState,
 })
 axios.defaults.headers.common = {
-    'x-trivialsec': localStorage.getItem('/session/token') || '',
+    'x-trivialsec': Member.session?.token
 }
 const clearAlerts = () => {
     state.error = ''

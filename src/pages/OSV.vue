@@ -1,9 +1,11 @@
 <script setup>
+import { useMemberStore } from '@/stores/member';
 import { isJSON } from '@/utils';
 import { default as axios } from 'axios';
 import { reactive } from 'vue';
 import { useTheme } from 'vuetify';
 
+const Member = useMemberStore()
 const { global } = useTheme()
 
 const initialState = {
@@ -19,7 +21,7 @@ const state = reactive({
     ...initialState,
 })
 axios.defaults.headers.common = {
-    'x-trivialsec': localStorage.getItem('/session/token') || '',
+    'x-trivialsec': Member.session?.token,
 }
 const clearAlerts = () => {
     state.error = ''

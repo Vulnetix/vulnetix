@@ -34,7 +34,7 @@ const state = reactive({
 })
 
 axios.defaults.headers.common = {
-    'x-trivialsec': localStorage.getItem('/session/token') || '',
+    'x-trivialsec': Member.session?.token,
 }
 
 class GitHub {
@@ -414,12 +414,14 @@ function persistData(data) {
         Member.lastName = data.member.lastName
     }
     if (data?.session?.token) {
-        localStorage.setItem('/session/token', data.session.token)
+        Member.session.token = data.session.token
+        localStorage.setItem('/session/token', Member.session.token)
         axios.defaults.headers.common = {
-            'x-trivialsec': data.session.token,
+            'x-trivialsec': Member.session.token,
         }
     }
     if (data?.session?.expiry) {
+        Member.session.expiry = data.session.expiry
         localStorage.setItem('/session/expiry', data.session.expiry)
     }
 }

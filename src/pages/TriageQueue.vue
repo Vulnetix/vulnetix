@@ -1,13 +1,24 @@
 <script setup>
-import { isJSON } from '@/utils'
-import { default as axios } from 'axios'
-import { reactive } from 'vue'
-import { useTheme } from 'vuetify'
-import router from "../router"
+import { useMemberStore } from '@/stores/member';
+import { usePreferencesStore } from '@/stores/preferences';
+import { isJSON } from '@/utils';
+import { default as axios } from 'axios';
+import { reactive } from 'vue';
+import { useTheme } from 'vuetify';
+import router from "../router";
 
 const { global } = useTheme()
+const Member = useMemberStore()
+const Preferences = usePreferencesStore()
+watch(
+    Preferences,
+    () => {
+        localStorage.setItem('/state/preferences/scaFilter', Preferences.scaFilter)
+        localStorage.setItem('/state/preferences/sastFilter', Preferences.sastFilter)
+    },
+    { deep: true }
+)
 const tabs = ref()
-const search = ref('')
 const dialogs = ref({})
 const scaHeadings = [
     { title: 'Title', key: 'detectionTitle', align: 'start' },
@@ -48,7 +59,7 @@ const state = reactive({
     ...initialState,
 })
 axios.defaults.headers.common = {
-    'x-trivialsec': localStorage.getItem('/session/token') || '',
+    'x-trivialsec': Member.session?.token,
 }
 const clearAlerts = () => {
     state.error = ''
@@ -177,7 +188,7 @@ const manager = reactive(new TriageQueue())
                     {{ state.sca.length }} Findings
                     <VSpacer></VSpacer>
                     <VTextField
-                        v-model="search"
+                        v-model="Preferences.scaFilter"
                         density="compact"
                         label="Filter"
                         prepend-inner-icon="mdi-magnify"
@@ -189,7 +200,7 @@ const manager = reactive(new TriageQueue())
                 </VCardTitle>
                 <VDivider></VDivider>
                 <VDataTable
-                    v-model:search="search"
+                    v-model:search="Preferences.scaFilter"
                     :items="state.sca"
                     :headers="scaHeadings"
                     :sort-by="[{ key: 'modifiedAt', order: 'desc' }, { key: 'detectionTitle', order: 'asc' }]"
@@ -497,7 +508,7 @@ const manager = reactive(new TriageQueue())
                     {{ state.sast.length }} Findings
                     <VSpacer></VSpacer>
                     <VTextField
-                        v-model="search"
+                        v-model="Preferences.sastFilter"
                         density="compact"
                         label="Filter"
                         prepend-inner-icon="mdi-magnify"
@@ -509,7 +520,7 @@ const manager = reactive(new TriageQueue())
                 </VCardTitle>
                 <VDivider></VDivider>
                 <VDataTable
-                    v-model:search="search"
+                    v-model:search="Preferences.sastFilter"
                     :items="state.sast"
                     :headers="sarifHeadings"
                     :sort-by="[{ key: 'createdAt', order: 'desc' }, { key: 'securitySeverity', order: 'asc' }]"
