@@ -10,6 +10,7 @@ const Member = useMemberStore()
 const Preferences = usePreferencesStore()
 watch(Preferences, () => localStorage.setItem('/state/preferences/sastFilter', Preferences.sastFilter), { deep: true })
 const dialogs = ref({})
+const expanded = ref([])
 const sarifHeadings = [
     { title: 'Title', key: 'ruleId', align: 'start' },
     { title: 'Source', key: 'source' },
@@ -147,12 +148,24 @@ const manager = reactive(new TriageQueue())
         </VCardTitle>
         <VDivider></VDivider>
         <VDataTable
+            v-model:expanded="expanded"
             v-model:search="Preferences.sastFilter"
             :items="state.sast"
+            item-value="guid"
             :headers="sarifHeadings"
             :sort-by="[{ key: 'createdAt', order: 'desc' }, { key: 'securitySeverity', order: 'asc' }]"
             multi-sort
+            hover
+            expand-on-click
+            show-expand
         >
+            <template v-slot:expanded-row="{ item, columns }">
+                <tr>
+                    <td :colspan="columns.length">
+                        {{ item.messageText }}
+                    </td>
+                </tr>
+            </template>
             <template v-slot:item.source="{ item }">
                 <div class="text-end">
                     <VChip
@@ -290,7 +303,7 @@ const manager = reactive(new TriageQueue())
                                                         class="pa-4"
                                                     >{{
                                                         location.physicalLocation?.region?.snippet?.text
-                                                        }}</VCode>
+                                                    }}</VCode>
                                                 </div>
                                             </VCardSubtitle>
                                         </VCard>

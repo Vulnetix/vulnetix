@@ -10,6 +10,7 @@ const Member = useMemberStore()
 const Preferences = usePreferencesStore()
 watch(Preferences, () => localStorage.setItem('/state/preferences/scaFilter', Preferences.scaFilter), { deep: true })
 const dialogs = ref({})
+const expanded = ref([])
 const scaHeadings = [
     { title: 'Title', key: 'detectionTitle', align: 'start' },
     { title: 'Source', key: 'source' },
@@ -146,12 +147,54 @@ const manager = reactive(new TriageQueue())
         </VCardTitle>
         <VDivider></VDivider>
         <VDataTable
+            v-model:expanded="expanded"
             v-model:search="Preferences.scaFilter"
             :items="state.sca"
+            item-value="findingId"
             :headers="scaHeadings"
             :sort-by="[{ key: 'modifiedAt', order: 'desc' }, { key: 'detectionTitle', order: 'asc' }]"
             multi-sort
+            hover
+            expand-on-click
+            show-expand
         >
+            <template v-slot:expanded-row="{ item, columns }">
+                <tr>
+                    <td :colspan="columns.length">
+                        <VList lines="two">
+                            <template
+                                v-for="(triage, key) in item.triage"
+                                :key="key"
+                            >
+                                <VListItem
+                                    v-if="triage.cvssVector"
+                                    title="cvssVector"
+                                >
+                                    {{ triage.cvssVector }} ({{ triage.cvssScore }})</VListItem>
+                                <VListItem
+                                    v-if="triage.epssScore"
+                                    title="epssScore"
+                                >
+                                    {{ triage.epssScore }} ({{ epssPercentile }})
+                                </VListItem>
+                                <VListItem
+                                    v-if="triage.ssvc"
+                                    :subtitle="triage.ssvc"
+                                    title="ssvc"
+                                >
+                                </VListItem>
+                                <VListItem
+                                    v-if="triage.lastObserved"
+                                    :subtitle="new Date(triage.lastObserved).toLocaleDateString()"
+                                    title="lastObserved"
+                                >
+                                </VListItem>
+                            </template>
+                        </VList>
+                    </td>
+                </tr>
+            </template>
+
             <template v-slot:item.source="{ item }">
                 <div class="text-end">
                     <VChip
