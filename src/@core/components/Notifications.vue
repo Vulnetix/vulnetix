@@ -35,7 +35,7 @@ const emit = defineEmits(['click:readAllNotifications'])
       <VBadge
         :model-value="!!props.notifications.length"
         color="error"
-        content="4"
+        :content="props.notifications.length"
       >
         <VIcon
           icon="tabler-bell"

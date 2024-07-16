@@ -52,7 +52,7 @@ class TriageQueue {
         clearAlerts()
         state.loading = true
         try {
-            const pageSize = 10
+            const pageSize = 20
             let hasMore = true
             let skip = 0
             while (hasMore) {
@@ -87,6 +87,9 @@ class TriageQueue {
             state.error = `${e.code} ${e.message}`
             state.loading = false
         }
+    }
+    expandRow = async (_, VEvent) => {
+        VEvent.item.detectionTitle
     }
 }
 
@@ -156,7 +159,7 @@ const manager = reactive(new TriageQueue())
             multi-sort
             hover
             expand-on-click
-            show-expand
+            @click:row="manager.expandRow"
         >
             <template v-slot:expanded-row="{ item, columns }">
                 <tr>

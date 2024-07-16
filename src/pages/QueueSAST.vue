@@ -53,7 +53,7 @@ class TriageQueue {
         clearAlerts()
         state.loading = true
         try {
-            const pageSize = 10
+            const pageSize = 20
             let hasMore = true
             let skip = 0
             while (hasMore) {
@@ -157,7 +157,6 @@ const manager = reactive(new TriageQueue())
             multi-sort
             hover
             expand-on-click
-            show-expand
         >
             <template v-slot:expanded-row="{ item, columns }">
                 <tr>
@@ -303,7 +302,7 @@ const manager = reactive(new TriageQueue())
                                                         class="pa-4"
                                                     >{{
                                                         location.physicalLocation?.region?.snippet?.text
-                                                    }}</VCode>
+                                                        }}</VCode>
                                                 </div>
                                             </VCardSubtitle>
                                         </VCard>
