@@ -56,7 +56,7 @@ export async function onRequestGet(context) {
             gitRepos.push(data)
         }
         githubApps.push({
-            installationId: app.installationId,
+            installationId: parseInt(app.installationId, 10),
             login: app.login,
             created: app.created,
             expires: app.expires,
