@@ -54,7 +54,7 @@ class GitHub {
     install = async (code, installation_id) => {
         state.showEmptyState = true
         state.loadingBar = true
-        const { data } = await axios.get(`/github/install/${installation_id}/${code}`)
+        const { data } = await axios.get(`/github/${installation_id}/install/${code}`)
         if (data?.error?.message) {
             if (data?.app?.installationId) {
                 data.error.message = `[Installation ID ${data.app.installationId}] ${data.error.message}`

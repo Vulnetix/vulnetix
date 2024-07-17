@@ -30,12 +30,12 @@ export class App {
         try {
             const member = await this.prisma.members.findFirstOrThrow({
                 where: { email: memberEmail },
-            });
+            })
 
-            return memberEmail === member.email;
+            return { exists: memberEmail === member.email, member }
         } catch (err) {
             if (err.name === 'NotFoundError') {
-                return false;
+                return { exists: false }
             }
             throw err;
         }
@@ -238,7 +238,7 @@ export class GitHub {
             }
             const tokenExpiry = response.headers.get('GitHub-Authentication-Token-Expiration')
             const content = JSON.parse(respText)
-            return { ok: response.ok, status: response.status, statusText: response.statusText, tokenExpiry, error: { message: content?.message }, content, url }
+            return { ok: response.ok, status: response.status, statusText: response.statusText, tokenExpiry, error: { message: content?.message }, content, url, raw: respText }
         } catch (e) {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)

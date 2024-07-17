@@ -84,8 +84,10 @@ export async function onRequestGet(context) {
             firstName = words.shift() || ''
             lastName = words.join(' ') || ''
         }
-        const memberExists = await app.memberExists(ghEmail)
-        if (!memberExists) {
+        const memberCheck = await app.memberExists(ghEmail)
+        if (memberCheck.exists) {
+            response.member = memberCheck.member
+        } else {
             const memberInfo = await prisma.members.create({
                 data: {
                     email: ghEmail,
@@ -97,6 +99,11 @@ export async function onRequestGet(context) {
                 }
             })
             console.log(`/github/install register email=${ghEmail}`, memberInfo)
+            response.member.email = ghEmail
+            response.member.avatarUrl = ghUserData.avatar_url
+            response.member.orgName = ghUserData.company
+            response.member.firstName = firstName
+            response.member.lastName = lastName
         }
         const token = crypto.randomUUID()
         const authn_ip = request.headers.get('cf-connecting-ip')
@@ -116,16 +123,11 @@ export async function onRequestGet(context) {
         console.log(`/github/install session kid=${token}`, sessionInfo)
         response.session.token = token
         response.session.expiry = expiry
-        response.member.email = ghEmail
-        response.member.avatarUrl = ghUserData.avatar_url
-        response.member.orgName = ghUserData.company
-        response.member.firstName = firstName
-        response.member.lastName = lastName
 
         const GHAppInfo = await prisma.github_apps.upsert({
             where: {
                 installationId,
-                memberEmail: session.memberEmail,
+                memberEmail: response.member.email,
             },
             update: {
                 accessToken: oauthData.access_token,
@@ -134,7 +136,7 @@ export async function onRequestGet(context) {
             },
             create: {
                 installationId,
-                memberEmail: session.memberEmail,
+                memberEmail: response.member.email,
                 accessToken: oauthData.access_token,
                 login: ghUserData.login,
                 created,

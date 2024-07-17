@@ -20,7 +20,7 @@ export async function onRequestGet(context) {
         },
     })
     const app = new App(request, prisma)
-    let err, result, session;
+    let { err = null, result = null, session = null } = {}
     const authToken = request.headers.get('x-trivialsec')
     if (!!authToken.trim()) {
         ({ err, result, session } = await app.authenticate())
@@ -64,8 +64,8 @@ export async function onRequestGet(context) {
         if (!session?.kid) {
             let ghEmail
             const ghUserEmails = await gh.getUserEmails()
-            if (ghUserEmails.error) {
-                return Response.json({ error: ghUserEmails.error })
+            if (!ghUserEmails?.ok || ghUserEmails?.error?.message || !ghUserEmails?.content || !ghUserEmails.content?.length) {
+                return Response.json({ ok: ghUserEmails.ok, error: ghUserEmails.error, result: `${ghUserEmails.status} ${ghUserEmails.statusText}` })
             }
             for (const ghUserEmail of ghUserEmails.content) {
                 if (ghUserEmail?.verified === true && !!ghUserEmail?.email && !ghUserEmail.email.endsWith('@users.noreply.github.com')) {
@@ -76,8 +76,10 @@ export async function onRequestGet(context) {
             if (content?.email && !ghEmail) {
                 ghEmail = content.email
             }
-            const memberExists = await app.memberExists(ghEmail)
-            if (!memberExists) {
+            const memberCheck = await app.memberExists(ghEmail)
+            if (memberCheck.exists) {
+                response.member = memberCheck.member
+            } else {
                 let firstName = ''
                 let lastName = ''
                 if (!!content?.name) {
@@ -96,36 +98,35 @@ export async function onRequestGet(context) {
                     }
                 })
                 console.log(`/github/install register email=${ghEmail}`, memberInfo)
-
-                const token = crypto.randomUUID()
-                const authn_ip = request.headers.get('cf-connecting-ip')
-                const authn_ua = request.headers.get('user-agent')
-                const expiry = created + (86400000 * 30) // 30 days
-                const secret = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-1", crypto.getRandomValues(new Uint32Array(26))))).map(b => b.toString(16).padStart(2, "0")).join("")
-                session = {
-                    kid: token,
-                    memberEmail: ghEmail,
-                    expiry,
-                    issued: created,
-                    secret,
-                    authn_ip,
-                    authn_ua
-                }
-                const sessionInfo = await prisma.sessions.create({ data: session })
-                console.log(`/github/install session kid=${token}`, sessionInfo)
-                response.session.token = token
-                response.session.expiry = expiry
                 response.member.email = ghEmail
                 response.member.avatarUrl = content.avatar_url
                 response.member.orgName = content.company
                 response.member.firstName = firstName
                 response.member.lastName = lastName
             }
+            const token = crypto.randomUUID()
+            const authn_ip = request.headers.get('cf-connecting-ip')
+            const authn_ua = request.headers.get('user-agent')
+            const expiry = created + (86400000 * 30) // 30 days
+            const secret = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-1", crypto.getRandomValues(new Uint32Array(26))))).map(b => b.toString(16).padStart(2, "0")).join("")
+            session = {
+                kid: token,
+                memberEmail: response.member.email,
+                expiry,
+                issued: created,
+                secret,
+                authn_ip,
+                authn_ua
+            }
+            const sessionInfo = await prisma.sessions.create({ data: session })
+            console.log(`/github/install session kid=${token}`, sessionInfo)
+            response.session.token = token
+            response.session.expiry = expiry
         }
         const GHAppInfo = await prisma.github_apps.create({
             data: {
                 installationId: params.installation_id,
-                memberEmail: session.memberEmail,
+                memberEmail: response.member.email,
                 accessToken: oauthData.access_token,
                 login: content.login,
                 created,
