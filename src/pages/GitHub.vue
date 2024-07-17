@@ -99,6 +99,7 @@ class GitHub {
         }
         persistData(data)
         state.showEmptyState = false
+        await this.refreshRepos(true, true, false)
 
         return true
     }
