@@ -236,7 +236,7 @@ export class GitHub {
                 console.error(respText)
                 console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
             }
-            const tokenExpiry = response.headers.get('GitHub-Authentication-Token-Expiration')
+            const tokenExpiry = (new Date(response.headers.get('GitHub-Authentication-Token-Expiration'))).getTime()
             const content = JSON.parse(respText)
             return { ok: response.ok, status: response.status, statusText: response.statusText, tokenExpiry, error: { message: content?.message }, content, url, raw: respText }
         } catch (e) {
@@ -322,6 +322,12 @@ export class GitHub {
         // https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-the-authenticated-user
         const url = `${this.baseUrl}/user`
         console.log(`github.getUser() ${url}`)
+        return this.fetchJSON(url)
+    }
+    async getInstallations() {
+        // https://docs.github.com/en/rest/apps/installations?apiVersion=2022-11-28#list-app-installations-accessible-to-the-user-access-token
+        const url = `${this.baseUrl}/user/installations`
+        console.log(`github.getInstallations() ${url}`)
         return this.fetchJSON(url)
     }
     async revokeToken() {

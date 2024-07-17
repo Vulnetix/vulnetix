@@ -19,8 +19,8 @@ export async function onRequestGet(context) {
             timeout: 2000, // default: 5000
         },
     })
-    const app = new App(request, prisma)
     try {
+        const app = new App(request, prisma)
         let oauthData
         if (params?.code) {
             const method = "POST"
@@ -36,115 +36,124 @@ export async function onRequestGet(context) {
             const resp = await fetch(url, { headers, method })
             oauthData = await resp.json()
             if (oauthData?.error) {
-                throw new Error(oauthData.error)
+                return Response.json({ ok: false, error: { message: oauthData.error } })
             }
         } else {
-            return Response.json({ error: { message: 'OAuth authorization code not provided' } })
+            return Response.json({ ok: false, error: { message: 'OAuth authorization code not provided' } })
         }
 
         if (!oauthData?.access_token) {
-            return Response.json({ error: { message: 'OAuth authorization failed' } })
+            return Response.json({ ok: false, error: { message: 'OAuth authorization failed' } })
         }
-        const created = (new Date()).getTime()
-        const expires = appExpiryPeriod + created
-        const response = { session: {}, member: {} }
         const gh = new GitHub(oauthData.access_token)
-        let githubApp, ghEmail, installationId;
-        const ghUserData = await gh.getUser()
-        if (ghUserData?.email) {
-            githubApp = await prisma.github_apps.findFirst({
-                where: { memberEmail: ghUserData.email },
-            })
-            if (githubApp?.installationId) {
-                installationId = githubApp.installationId
-                ghEmail = ghUserData.email
+        const created = (new Date()).getTime()
+        const response = { ok: false, session: {}, member: {} }
+        const { content, error, tokenExpiry } = await gh.getUser()
+        if (error?.message) {
+            return Response.json({ ok: false, error })
+        }
+        const expires = tokenExpiry || appExpiryPeriod + created
+        let ghEmail
+        const ghUserEmails = await gh.getUserEmails()
+        if (!ghUserEmails?.ok || ghUserEmails?.error?.message || !ghUserEmails?.content || !ghUserEmails.content?.length) {
+            return Response.json({ ok: ghUserEmails.ok, error: ghUserEmails.error, result: `${ghUserEmails.status} ${ghUserEmails.statusText}` })
+        }
+        for (const ghUserEmail of ghUserEmails.content) {
+            if (ghUserEmail?.verified === true && !!ghUserEmail?.email && !ghUserEmail.email.endsWith('@users.noreply.github.com')) {
+                ghEmail = ghUserEmail.email
+                break
             }
         }
-        if (!ghEmail) {
-            for (const ghUserEmail of await gh.getUserEmails()) {
-                if (ghUserEmail?.verified === true && !!ghUserEmail?.email && !ghUserEmail.email.endsWith('@users.noreply.github.com')) {
-                    githubApp = await prisma.github_apps.findFirst({
-                        where: { memberEmail: ghUserEmail?.email },
-                    })
-                    if (githubApp?.installationId) {
-                        installationId = githubApp.installationId
-                        ghEmail = ghUserEmail.email
-                        break
-                    }
-                }
-            }
-        }
-        if (!ghEmail) {
-            return Response.json({ error: { message: 'GitHub User has no verified email address, please verify your email with GitHub and try again.' } })
-        }
-        let firstName = ''
-        let lastName = ''
-        if (!!ghUserData?.name) {
-            const words = ghUserData.name.split(' ')
-            firstName = words.shift() || ''
-            lastName = words.join(' ') || ''
+        if (content?.email && !ghEmail) {
+            ghEmail = content.email
         }
         const memberCheck = await app.memberExists(ghEmail)
         if (memberCheck.exists) {
             response.member = memberCheck.member
         } else {
+            let firstName = ''
+            let lastName = ''
+            if (!!content?.name) {
+                const words = content.name.split(' ')
+                firstName = words.shift() || ''
+                lastName = words.join(' ') || ''
+            }
+            response.member = {
+                email: ghEmail,
+                avatarUrl: content?.avatar_url || '',
+                orgName: content?.company || '',
+                passwordHash: await pbkdf2(oauthData.access_token),
+                firstName,
+                lastName
+            }
             const memberInfo = await prisma.members.create({
-                data: {
-                    email: ghEmail,
-                    avatarUrl: ghUserData?.avatar_url || '',
-                    orgName: ghUserData?.company || '',
-                    passwordHash: await pbkdf2(oauthData.access_token),
-                    firstName,
-                    lastName
-                }
+                data: response.member
             })
             console.log(`/github/install register email=${ghEmail}`, memberInfo)
-            response.member.email = ghEmail
-            response.member.avatarUrl = ghUserData.avatar_url
-            response.member.orgName = ghUserData.company
-            response.member.firstName = firstName
-            response.member.lastName = lastName
+            delete response.member.passwordHash
         }
         const token = crypto.randomUUID()
         const authn_ip = request.headers.get('cf-connecting-ip')
         const authn_ua = request.headers.get('user-agent')
         const expiry = created + (86400000 * 30) // 30 days
         const secret = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-1", crypto.getRandomValues(new Uint32Array(26))))).map(b => b.toString(16).padStart(2, "0")).join("")
-        const session = {
-            kid: token,
-            memberEmail: ghEmail,
-            expiry,
-            issued: created,
-            secret,
-            authn_ip,
-            authn_ua
-        }
-        const sessionInfo = await prisma.sessions.create({ data: session })
+        const sessionInfo = await prisma.sessions.create({
+            data: {
+                kid: token,
+                memberEmail: response.member.email,
+                expiry,
+                issued: created,
+                secret,
+                authn_ip,
+                authn_ua
+            }
+        })
         console.log(`/github/install session kid=${token}`, sessionInfo)
         response.session.token = token
         response.session.expiry = expiry
-
-        const GHAppInfo = await prisma.github_apps.upsert({
-            where: {
-                installationId,
-                memberEmail: response.member.email,
-            },
-            update: {
-                accessToken: oauthData.access_token,
-                login: ghUserData.login,
-                expires
-            },
-            create: {
-                installationId,
-                memberEmail: response.member.email,
-                accessToken: oauthData.access_token,
-                login: ghUserData.login,
-                created,
-                expires
-            }
+        const githubApp = await prisma.github_apps.findFirst({
+            where: { memberEmail: response.member.email },
         })
-        console.log(`/github/install installationId=${installationId}`, GHAppInfo)
-        response.result = AuthResult.AUTHENTICATED
+        let installationId = githubApp?.installationId
+        if (!installationId) {
+            const ghInstalls = await gh.getInstallations()
+            if (!ghInstalls?.ok || ghInstalls?.error?.message || !ghInstalls?.content?.installations || !ghInstalls.content?.installations?.length) {
+                return Response.json({ ok: ghInstalls.ok, error: ghInstalls.error, result: `${ghInstalls.status} ${ghInstalls.statusText}` })
+            }
+            for (const install of ghInstalls.content.installations) {
+                if (install.app_slug === "triage-by-trivial-security") {
+                    installationId = install.id
+                    break
+                }
+            }
+        }
+        if (installationId) {
+            const GHAppInfo = await prisma.github_apps.upsert({
+                where: {
+                    installationId,
+                },
+                update: {
+                    accessToken: oauthData.access_token,
+                    login: content.login,
+                    expires,
+                },
+                create: {
+                    installationId: installationId,
+                    memberEmail: response.member.email,
+                    accessToken: oauthData.access_token,
+                    login: content.login,
+                    created,
+                    expires
+                }
+            })
+            console.log(`/github/install installationId=${params.installation_id}`, GHAppInfo)
+            response.result = AuthResult.AUTHENTICATED
+            response.ok = true
+        } else {
+            response.result = `NOT_INSTALLED`
+            response.error.message = `Please install the GitHub App before logging in.`
+        }
+
         return Response.json(response)
     } catch (err) {
         console.error(err)
