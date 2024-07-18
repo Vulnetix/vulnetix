@@ -1,7 +1,7 @@
 <script setup>
 import router from "@/router"
 import { useMemberStore } from '@/stores/member'
-import { isJSON, octodex } from '@/utils'
+import { isJSON, octodex, timeAgo } from '@/utils'
 import { default as axios } from 'axios'
 import { reactive } from 'vue'
 import { useTheme } from 'vuetify'
@@ -732,8 +732,8 @@ const gh = reactive(new GitHub())
                                         <VTextField
                                             :disabled="state.loading"
                                             v-model="state.patName"
-                                            placeholder="my token name"
-                                            label="Token Label"
+                                            placeholder="Customized token name"
+                                            label="Credential Label"
                                         />
                                     </VCol>
                                     <VCol
@@ -783,7 +783,7 @@ const gh = reactive(new GitHub())
                                                     Installation ID
                                                 </th>
                                                 <th scope="col">
-                                                    Created
+                                                    Installed
                                                 </th>
                                                 <th scope="col">
                                                     Expires
@@ -818,13 +818,47 @@ const gh = reactive(new GitHub())
                                                     {{ item.installationId }}
                                                 </td>
                                                 <td class="text-center">
-                                                    {{ new Date(item.created).toLocaleDateString() }}
+                                                    <VTooltip
+                                                        :text="(new Date(item.created)).toLocaleString()"
+                                                        location="right"
+                                                    >
+                                                        <template v-slot:activator="{ props }">
+                                                            <time
+                                                                v-bind="props"
+                                                                :datetime="(new Date(item.created)).toISOString()"
+                                                            >
+                                                                {{ timeAgo(new Date(item.created)) }}
+                                                            </time>
+                                                        </template>
+                                                    </VTooltip>
                                                 </td>
                                                 <td
                                                     class="text-center"
-                                                    :class="(new Date(item.expires)).getTime() <= (new Date()).getTime() ? 'text-error' : 'text-success'"
+                                                    :class="(new Date(item.expires)).getTime() < (new Date()).getTime() ? 'text-error' : 'text-success'"
                                                 >
-                                                    {{ (new Date(item.expires)).toLocaleDateString() }}
+                                                    <VTooltip
+                                                        :text="(new Date(item.expires)).toISOString()"
+                                                        location="right"
+                                                    >
+                                                        <template v-slot:activator="{ props }">
+                                                            <time
+                                                                v-bind="props"
+                                                                :datetime="(new Date(item.expires)).toISOString()"
+                                                            >
+                                                                {{ (new Date(item.expires)).getTime() <
+                                                                    (new
+                                                                        Date()).getTime()
+                                                                    ?
+                                                                    timeAgo(new
+                                                                        Date(item.expires))
+                                                                    :
+                                                                    (new
+                                                                        Date(item.expires)).toLocaleString()
+                                                                    }}
+                                                                    </time
+                                                                >
+                                                        </template>
+                                                    </VTooltip>
                                                 </td>
                                                 <td class="text-end">
                                                     <VTooltip
@@ -870,13 +904,13 @@ const gh = reactive(new GitHub())
                                                     Account
                                                 </th>
                                                 <th scope="col">
-                                                    Label
+                                                    Account Created
+                                                </th>
+                                                <th scope="col">
+                                                    Credential Label
                                                 </th>
                                                 <th scope="col">
                                                     Token
-                                                </th>
-                                                <th scope="col">
-                                                    Created
                                                 </th>
                                                 <th scope="col">
                                                     Expires
@@ -908,20 +942,54 @@ const gh = reactive(new GitHub())
                                                         {{ item?.githubPat?.login }}
                                                     </span>
                                                 </td>
+                                                <td class="text-center">
+                                                    <VTooltip
+                                                        :text="(new Date(item.githubPat.created)).toLocaleString()"
+                                                        location="right"
+                                                    >
+                                                        <template v-slot:activator="{ props }">
+                                                            <time
+                                                                v-bind="props"
+                                                                :datetime="(new Date(item.githubPat.created)).toISOString()"
+                                                            >
+                                                                {{ timeAgo(new Date(item.githubPat.created)) }}
+                                                            </time>
+                                                        </template>
+                                                    </VTooltip>
+                                                </td>
                                                 <td>
                                                     {{ item.keyLabel }}
                                                 </td>
                                                 <td class="text-center">
                                                     {{ item.secretMasked }}
                                                 </td>
-                                                <td class="text-center">
-                                                    {{ new Date(item.created).toLocaleDateString() }}
-                                                </td>
                                                 <td
                                                     class="text-center"
-                                                    :class="(new Date(item?.githubPat?.expires)).getTime() <= (new Date()).getTime() ? 'text-error' : 'text-success'"
+                                                    :class="(new Date(item.githubPat.expires)).getTime() <= (new Date()).getTime() ? 'text-error' : 'text-success'"
                                                 >
-                                                    {{ (new Date(item?.githubPat?.expires)).toLocaleDateString() }}
+                                                    <VTooltip
+                                                        :text="(new Date(item.githubPat.expires)).toISOString()"
+                                                        location="right"
+                                                    >
+                                                        <template v-slot:activator="{ props }">
+                                                            <time
+                                                                v-bind="props"
+                                                                :datetime="(new Date(item.githubPat.expires)).toISOString()"
+                                                            >
+                                                                {{ (new Date(item.githubPat.expires)).getTime() <
+                                                                    (new
+                                                                        Date()).getTime()
+                                                                    ?
+                                                                    timeAgo(new
+                                                                        Date(item.githubPat.expires))
+                                                                    :
+                                                                    (new
+                                                                        Date(item.githubPat.expires)).toLocaleString()
+                                                                    }}
+                                                                    </time
+                                                                >
+                                                        </template>
+                                                    </VTooltip>
                                                 </td>
                                                 <td class="text-end">
                                                     <VTooltip

@@ -148,7 +148,7 @@ const register = () => {
                             class="text-center"
                         >
                             <VBtn
-                                href="https://github.com/marketplace/triage-by-trivial-securiy/order/MLP_kgDNJys?quantity=1"
+                                href="https://github.com/apps/triage-by-trivial-security"
                                 prepend-icon="line-md:github-loop"
                                 :variant="global.name.value === 'dark' ? 'tonal' : 'outlined'"
                                 size="x-large"

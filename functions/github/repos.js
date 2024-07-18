@@ -29,6 +29,7 @@ export async function onRequestGet(context) {
     const installs = await prisma.github_apps.findMany({
         where: {
             memberEmail: session.memberEmail,
+            AND: { expires: { gte: (new Date()).getTime(), } }
         },
     })
     for (const app of installs) {
@@ -37,11 +38,19 @@ export async function onRequestGet(context) {
             throw new Error('github_apps invalid')
         }
         const gh = new GitHub(app.accessToken)
-        const prefixRepos = `github/${app.installationId}/repos/`
-
-        console.log(`prefixRepos = ${prefixRepos}`)
         const { content, error } = await gh.getRepos()
         if (error?.message) {
+            if ("Bad credentials" === error.message) {
+                app.expires = (new Date()).getTime()
+                await prisma.github_apps.update({
+                    where: {
+                        installationId: parseInt(app.installationId, 10),
+                        AND: { memberEmail: app.memberEmail, },
+                    },
+                    data: app,
+                })
+                continue
+            }
             delete app.accessToken
             delete app.memberEmail
             return Response.json({ error, app })

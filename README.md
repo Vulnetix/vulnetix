@@ -4,9 +4,13 @@ Your Comprehensive Vulnerability Management Tool to automate decision and resolu
 
 Triage aims to provide a robust and flexible vendor independent solution for managing vulnerabilities, ensuring your applications remain secure and compliant with industry standards.
 
-## GitHub App (WIP) available for early testers
+## Early Adopters
 
-[GitHub App Marketplace listing](https://github.com/marketplace/triage-by-trivial-securiy)
+Please install our [GitHub App](https://github.com/apps/triage-by-trivial-security).
+
+This is a preview, under active development, so you will encounter bugs while we complete the features.
+
+> **Note**: If you install now, you will forever gain access to Triage - this is by design for all GitHub Apps that add a paid plan later.
 
 ## Screenshots
 
