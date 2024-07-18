@@ -160,6 +160,7 @@ const manager = reactive(new TriageQueue())
             hover
             expand-on-click
             @click:row="manager.expandRow"
+            :loading="state.loading"
         >
             <template v-slot:expanded-row="{ item, columns }">
                 <tr>

@@ -81,14 +81,14 @@ watch(NotificationsStore, () => {
                 heading: 'Queue',
             }" />
             <VerticalNavLink :item="{
-                title: 'Supply Chain',
+                title: 'Dependencies',
                 icon: 'hugeicons:blockchain-07',
-                to: '/supply-chain',
+                to: '/queue/dependencies',
             }" />
             <VerticalNavLink :item="{
-                title: 'SAST',
+                title: 'Source Code',
                 icon: 'eos-icons:critical-bug-outlined',
-                to: '/queue-static',
+                to: '/queue/source-code',
             }" />
             <VerticalNavLink :item="{
                 title: 'Overdue',
