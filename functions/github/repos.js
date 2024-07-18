@@ -54,6 +54,7 @@ export async function onRequestGet(context) {
             installationId: parseInt(app.installationId, 10),
             login: app.login,
             created: app.created,
+            avatarUrl: app.avatarUrl,
             expires: app.expires,
         })
     }
@@ -80,61 +81,51 @@ export async function onRequestGet(context) {
 }
 const store = async (prisma, session, repo) => {
     const data = {
-        ghid: repo.ghid,
         fullName: repo.full_name,
+        ghid: repo.ghid,
         source: "GitHub",
-        ownerId: repo.owner.id,
         createdAt: (new Date(repo.created_at)).getTime(),
         updatedAt: (new Date(repo.updated_at)).getTime(),
-        visibility: repo.visibility,
-        archived: repo.archived ? 1 : 0,
-        fork: repo.fork ? 1 : 0,
-        template: repo.is_template ? 1 : 0,
-        defaultBranch: repo.default_branch,
         pushedAt: (new Date(repo.pushed_at)).getTime(),
-        avatarUrl: repo.owner.avatar_url,
+        defaultBranch: repo.default_branch,
+        ownerId: repo.owner.id,
+        memberEmail: session.memberEmail,
         licenseSpdxId: repo.license?.spdx_id || '',
         licenseName: repo.license?.name || '',
+        fork: repo.fork ? 1 : 0,
+        template: repo.is_template ? 1 : 0,
+        archived: repo.archived ? 1 : 0,
+        visibility: repo.visibility,
+        avatarUrl: repo.owner.avatar_url,
     }
-    const info = await prisma.git_repos.upsert({
-        where: {
-            fullName: data.fullName,
-            AND: [{ memberEmail: session.memberEmail }],
-        },
-        update: {
-            fullName: data.fullName,
-            updatedAt: data.updatedAt,
-            pushedAt: data.pushedAt,
-            defaultBranch: data.defaultBranch,
-            ownerId: data.ownerId,
-            licenseSpdxId: data.licenseSpdxId,
-            licenseName: data.licenseName,
-            fork: data.fork,
-            template: data.template,
-            archived: data.archived,
-            visibility: data.visibility,
-            avatarUrl: data.avatarUrl,
-        },
-        create: {
-            fullName: data.fullName,
-            ghid: data.ghid,
-            source: "GitHub",
-            createdAt: data.createdAt,
-            updatedAt: data.updatedAt,
-            pushedAt: data.pushedAt,
-            defaultBranch: data.defaultBranch,
-            ownerId: data.ownerId,
-            memberEmail: session.memberEmail,
-            licenseSpdxId: data.licenseSpdxId,
-            licenseName: data.licenseName,
-            fork: data.fork,
-            template: data.template,
-            archived: data.archived,
-            visibility: data.visibility,
-            avatarUrl: data.avatarUrl,
-        }
-    })
+    const where = {
+        fullName: data.fullName,
+        AND: [{ memberEmail: data.memberEmail }],
+    }
+    try {
+        await prisma.git_repos.findUniqueOrThrow({ where })
+        const info = await prisma.git_repos.update({
+            where, data: {
+                fullName: data.fullName,
+                updatedAt: data.updatedAt,
+                pushedAt: data.pushedAt,
+                defaultBranch: data.defaultBranch,
+                ownerId: data.ownerId,
+                licenseSpdxId: data.licenseSpdxId,
+                licenseName: data.licenseName,
+                fork: data.fork,
+                template: data.template,
+                archived: data.archived,
+                visibility: data.visibility,
+                avatarUrl: data.avatarUrl,
+            }
+        })
+        console.log(`/github/repos git_repos ${data.fullName} kid=${session.kid}`, info)
+        return data
+    } catch (_) {
+        const info = await prisma.git_repos.create({ data })
 
-    console.log(`/github/repos git_repos ${data.fullName} kid=${session.kid}`, info)
-    return data
+        console.log(`/github/repos git_repos ${data.fullName} kid=${session.kid}`, info)
+        return data
+    }
 }

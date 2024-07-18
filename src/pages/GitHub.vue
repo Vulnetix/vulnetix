@@ -777,10 +777,10 @@ const gh = reactive(new GitHub())
                                         <thead>
                                             <tr>
                                                 <th scope="col">
-                                                    Installation ID
+                                                    Account
                                                 </th>
                                                 <th scope="col">
-                                                    Handle
+                                                    Installation ID
                                                 </th>
                                                 <th scope="col">
                                                     Created
@@ -795,20 +795,36 @@ const gh = reactive(new GitHub())
                                         </thead>
                                         <tbody>
                                             <tr
-                                                v-for="(app, i) in state.githubApps"
-                                                :key="i"
+                                                v-for="(item, key) in state.githubApps"
+                                                :key="key"
                                             >
                                                 <td>
-                                                    {{ app.installationId }}
+                                                    <VAvatar size="36px">
+                                                        <VImg
+                                                            v-if="item?.avatarUrl"
+                                                            alt="Avatar"
+                                                            :src="item.avatarUrl"
+                                                        ></VImg>
+                                                        <VIcon
+                                                            v-else
+                                                            icon="line-md:github-loop"
+                                                        ></VIcon>
+                                                    </VAvatar>
+                                                    <span class="ml-3">
+                                                        {{ item.login }}
+                                                    </span>
                                                 </td>
                                                 <td class="text-center">
-                                                    {{ app.login }}
+                                                    {{ item.installationId }}
                                                 </td>
                                                 <td class="text-center">
-                                                    {{ new Date(app.created).toLocaleDateString() }}
+                                                    {{ new Date(item.created).toLocaleDateString() }}
                                                 </td>
-                                                <td class="text-center">
-                                                    {{ new Date(app.created).toLocaleDateString() }}
+                                                <td
+                                                    class="text-center"
+                                                    :class="(new Date(item.expires)).getTime() <= (new Date()).getTime() ? 'text-error' : 'text-success'"
+                                                >
+                                                    {{ (new Date(item.expires)).toLocaleDateString() }}
                                                 </td>
                                                 <td class="text-end">
                                                     <VTooltip
@@ -820,7 +836,7 @@ const gh = reactive(new GitHub())
                                                                 color="error"
                                                                 variant="tonal"
                                                                 density="comfortable"
-                                                                @click="gh.deleteApp(app.installationId)"
+                                                                @click="gh.deleteApp(item.installationId)"
                                                                 icon="mdi-close"
                                                                 v-bind="props"
                                                             ></VBtn>
@@ -860,6 +876,9 @@ const gh = reactive(new GitHub())
                                                     Token
                                                 </th>
                                                 <th scope="col">
+                                                    Created
+                                                </th>
+                                                <th scope="col">
                                                     Expires
                                                 </th>
                                                 <th scope="col">
@@ -894,6 +913,9 @@ const gh = reactive(new GitHub())
                                                 </td>
                                                 <td class="text-center">
                                                     {{ item.secretMasked }}
+                                                </td>
+                                                <td class="text-center">
+                                                    {{ new Date(item.created).toLocaleDateString() }}
                                                 </td>
                                                 <td
                                                     class="text-center"
