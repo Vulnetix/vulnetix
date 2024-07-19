@@ -51,7 +51,7 @@ class TriageQueue {
                 const { data } = await axios.get(`/history?take=${pageSize}&skip=${skip}`)
                 if (data.ok) {
                     if (data?.results) {
-                        data.results.forEach(result => state.results.push(result))
+                        state.results = data.results
                     }
                 } else if (typeof data === "string" && !isJSON(data)) {
                     break
@@ -67,7 +67,7 @@ class TriageQueue {
                 } else {
                     break
                 }
-                if (data.results.length < pageSize) {
+                if (Object.keys(data.results).length < pageSize) {
                     hasMore = false
                 } else {
                     skip += pageSize
@@ -127,7 +127,7 @@ const manager = reactive(new TriageQueue())
     />
     <VCard flat>
         <VCardTitle class="d-flex align-center pe-2">
-            {{ state.results.length }} Findings
+            {{ Object.keys(state.results).length }} Findings
             <VSpacer></VSpacer>
             <VTextField
                 v-model="Preferences.issueFilter"
@@ -141,88 +141,103 @@ const manager = reactive(new TriageQueue())
             ></VTextField>
         </VCardTitle>
         <VDivider></VDivider>
-        <VDataTable
-            v-model:expanded="expanded"
-            v-model:search="Preferences.issueFilter"
-            :items="state.results"
-            item-value="findingId"
-            :headers="issueHeadings"
-            :sort-by="[{ key: 'modifiedAt', order: 'desc' }, { key: 'detectionTitle', order: 'asc' }]"
-            multi-sort
-            hover
-            expand-on-click
-            @click:row="manager.expandRow"
-            :loading="state.loading"
-        >
-            <template v-slot:expanded-row="{ item, columns }">
-                <tr>
-                    <td :colspan="columns.length">
-                    </td>
-                </tr>
-            </template>
+        <VExpansionPanels accordion>
+            <VSkeletonLoader
+                v-if="state.loading"
+                type="table-row@10"
+            />
+            <VExpansionPanel v-for="(results, repoFullName) in state.results">
+                <VExpansionPanelTitle class="text-subtitle-1">
+                    {{ repoFullName }}
+                </VExpansionPanelTitle>
+                <VExpansionPanelText>
+                    <VDataTable
+                        class="elevation-1"
+                        v-model:expanded="expanded"
+                        v-model:search="Preferences.issueFilter"
+                        :items="results"
+                        item-value="findingId"
+                        :headers="issueHeadings"
+                        :sort-by="[{ key: 'modifiedAt', order: 'desc' }, { key: 'detectionTitle', order: 'asc' }]"
+                        multi-sort
+                        hover
+                        expand-on-click
+                        @click:row="manager.expandRow"
+                        :loading="state.loading"
+                    >
+                        <template v-slot:expanded-row="{ item, columns }">
+                            <tr>
+                                <td :colspan="columns.length">
+                                    <pre>{{ JSON.stringify(item, null, 2) }}</pre>
+                                </td>
+                            </tr>
+                        </template>
 
-            <template v-slot:item.createdAt="{ item }">
-                <div class="text-end">
-                    <VTooltip
-                        activator="parent"
-                        location="top"
-                    >{{ item.createdAt }}</VTooltip>
-                    {{ new Date(item.createdAt).toLocaleDateString() }}
-                </div>
-            </template>
-            <template v-slot:item.actions="{ item, index }">
-                <VDialog
-                    v-model="dialogs[index]"
-                    transition="dialog-bottom-transition"
-                    fullscreen
-                >
-                    <template v-slot:activator="{ props: activatorProps }">
-                        <VBtn
-                            prepend-icon="icon-park-outline:more-app"
-                            size="small"
-                            text="More"
-                            v-bind="activatorProps"
-                        ></VBtn>
-                    </template>
+                        <template v-slot:item.createdAt="{ item }">
+                            <div class="text-end">
+                                <VTooltip
+                                    activator="parent"
+                                    location="top"
+                                >{{ item.createdAt }}</VTooltip>
+                                {{ new Date(item.createdAt).toLocaleDateString() }}
+                            </div>
+                        </template>
+                        <template v-slot:item.actions="{ item, index }">
+                            <VDialog
+                                v-model="dialogs[index]"
+                                transition="dialog-bottom-transition"
+                                fullscreen
+                            >
+                                <template v-slot:activator="{ props: activatorProps }">
+                                    <VBtn
+                                        prepend-icon="icon-park-outline:more-app"
+                                        size="small"
+                                        text="More"
+                                        v-bind="activatorProps"
+                                    ></VBtn>
+                                </template>
 
-                    <VCard>
-                        <VToolbar color="#000">
-                            <VBtn
-                                icon="mdi-close"
-                                color="#FFF"
-                                @click="dialogs[index] = false"
-                            ></VBtn>
-                            <VToolbarTitle>Title</VToolbarTitle>
-                            <VSpacer></VSpacer>
-                            <VToolbarItems>
-                                <VBtn
-                                    text="Dismiss"
-                                    variant="text"
-                                    @click="dialogs[index] = false"
-                                ></VBtn>
-                            </VToolbarItems>
-                        </VToolbar>
-                        <VRow>
-                            <VCol cols="12">
-                            </VCol>
-                            <VCol cols="6">
-                                <VList
-                                    lines="two"
-                                    subheader
-                                >
-                                    <VListItemTitle>Details</VListItemTitle>
+                                <VCard>
+                                    <VToolbar color="#000">
+                                        <VBtn
+                                            icon="mdi-close"
+                                            color="#FFF"
+                                            @click="dialogs[index] = false"
+                                        ></VBtn>
+                                        <VToolbarTitle>Title</VToolbarTitle>
+                                        <VSpacer></VSpacer>
+                                        <VToolbarItems>
+                                            <VBtn
+                                                text="Dismiss"
+                                                variant="text"
+                                                @click="dialogs[index] = false"
+                                            ></VBtn>
+                                        </VToolbarItems>
+                                    </VToolbar>
+                                    <VRow>
+                                        <VCol cols="12">
+                                        </VCol>
+                                        <VCol cols="6">
+                                            <VList
+                                                lines="two"
+                                                subheader
+                                            >
+                                                <VListItemTitle>Details</VListItemTitle>
 
-                                    <VListItem
-                                        :subtitle="new Date(item.createdAt).toISOString()"
-                                        title="Discovered"
-                                    ></VListItem>
-                                </VList>
-                            </VCol>
-                        </VRow>
-                    </VCard>
-                </VDialog>
-            </template>
-        </VDataTable>
+                                                <VListItem
+                                                    :subtitle="new Date(item.createdAt).toISOString()"
+                                                    title="Discovered"
+                                                ></VListItem>
+                                            </VList>
+                                        </VCol>
+                                    </VRow>
+                                </VCard>
+                            </VDialog>
+                        </template>
+                    </VDataTable>
+                </VExpansionPanelText>
+            </VExpansionPanel>
+        </VExpansionPanels>
     </VCard>
 </template>
 <style scoped>

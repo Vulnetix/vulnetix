@@ -56,8 +56,39 @@ export async function onRequestGet(context) {
                 createdAt: 'asc',
             }
         })
+        const parsed = results.map(result => {
+            if (result?.spdx && result.spdx?.packagesJSON && result.spdx?.relationshipsJSON) {
+                return {
+                    ...result,
+                    spdx: {
+                        ...result.spdx,
+                        packagesJSON: JSON.parse(result.spdx.packagesJSON),
+                        relationshipsJSON: JSON.parse(result.spdx.relationshipsJSON)
+                    }
+                }
+            }
+            return result
+        })
+        const groupedByRepo = parsed.reduce((acc, result) => {
+            const repoFullName = result.spdx?.repo?.fullName || 'Others'
+            if (!acc[repoFullName]) {
+                acc[repoFullName] = []
+            }
+            acc[repoFullName].push(result)
+            return acc
+        }, {})
 
-        return Response.json({ ok: true, results })
+        // Sort results within each repo group by packageName + packageVersion
+        for (const repoFullName in groupedByRepo) {
+            groupedByRepo[repoFullName].sort((a, b) => {
+                const aPackage = `${a.packageName}${a.packageVersion}`
+                const bPackage = `${b.packageName}${b.packageVersion}`
+                return aPackage.localeCompare(bPackage)
+            })
+        }
+        return Response.json({
+            ok: true, results: groupedByRepo || []
+        })
     } catch (err) {
         console.error(err)
         return Response.json({ ok: false, error: { message: err }, result: AuthResult.REVOKED })
