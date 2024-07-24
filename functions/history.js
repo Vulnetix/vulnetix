@@ -56,19 +56,18 @@ export async function onRequestGet(context) {
                 createdAt: 'asc',
             }
         })
-        const parsed = findings.map(result => {
-            if (result?.spdx && result.spdx?.packagesJSON && result.spdx?.relationshipsJSON) {
-                return {
-                    ...result,
-                    spdx: {
-                        ...result.spdx,
-                        packagesJSON: JSON.parse(result.spdx.packagesJSON),
-                        relationshipsJSON: JSON.parse(result.spdx.relationshipsJSON)
-                    }
-                }
+        const parsed = findings.map(result => ({
+            ...result,
+            cwes: JSON.parse(result.cwes ?? '[]'),
+            aliases: JSON.parse(result.aliases ?? '[]'),
+            referencesJSON: JSON.parse(result.referencesJSON ?? '[]'),
+            spdx: {
+                ...result?.spdx || {},
+                packagesJSON: JSON.parse(result?.spdx?.packagesJSON ?? '[]'),
+                relationshipsJSON: JSON.parse(result?.spdx?.relationshipsJSON ?? '[]')
             }
-            return result
         })
+        )
         // const groupedByRepo = parsed.reduce((acc, result) => {
         //     const repoFullName = result.spdx?.repo?.fullName || 'Others'
         //     if (!acc[repoFullName]) {

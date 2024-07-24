@@ -1,5 +1,4 @@
 import { App, AuthResult, OSV } from "@/utils";
-import { CVSS30, CVSS31, CVSS40 } from '@pandatix/js-cvss';
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
@@ -43,14 +42,15 @@ export async function onRequestGet(context) {
                 // cdx: true
             }
         })
-        if (finding?.spdx && finding.spdx?.packagesJSON && finding.spdx?.relationshipsJSON) {
-            finding = {
-                ...finding,
-                spdx: {
-                    ...finding.spdx,
-                    packagesJSON: JSON.parse(finding.spdx.packagesJSON),
-                    relationshipsJSON: JSON.parse(finding.spdx.relationshipsJSON)
-                }
+        finding = {
+            ...finding,
+            cwes: JSON.parse(finding.cwes ?? '[]'),
+            aliases: JSON.parse(finding.aliases ?? '[]'),
+            referencesJSON: JSON.parse(finding.referencesJSON ?? '[]'),
+            spdx: {
+                ...finding?.spdx || {},
+                packagesJSON: JSON.parse(finding?.spdx?.packagesJSON ?? '[]'),
+                relationshipsJSON: JSON.parse(finding?.spdx?.relationshipsJSON ?? '[]')
             }
         }
 
@@ -59,10 +59,10 @@ export async function onRequestGet(context) {
         const vuln = await osv.query(prisma, session.memberEmail, finding.detectionTitle)
         finding.modifiedAt = (new Date(vuln.modified)).getTime()
         finding.publishedAt = (new Date(vuln.published)).getTime()
-        finding.databaseReviewed = !!vuln?.database_specific?.github_reviewed
+        finding.databaseReviewed = vuln?.database_specific?.github_reviewed ? 1 : 0
         finding.cve = vuln.aliases.filter(a => a.startsWith('CVE-')).pop()
-        finding.aliases = vuln.aliases
-        finding.cwes = vuln?.database_specific?.cwe_ids || []
+        finding.aliases = JSON.stringify(vuln.aliases)
+        finding.cwes = JSON.stringify(vuln?.database_specific?.cwe_ids || [])
         finding.packageEcosystem = vuln.affected.filter(affected => affected.package.ecosystem).pop()
         finding.sourceCodeUrl = vuln.affected.filter(affected => affected.database_specific.source).pop()
         finding.fixVersion = vuln.affected.filter(affected => affected.ranges.pop()?.events.pop()?.fixed).pop()
@@ -73,7 +73,20 @@ export async function onRequestGet(context) {
             where: {
                 findingId,
             },
-            data: finding
+            data: {
+                modifiedAt: finding.modifiedAt,
+                publishedAt: finding.publishedAt,
+                databaseReviewed: finding.databaseReviewed,
+                cve: finding.cve,
+                aliases: finding.aliases,
+                cwes: finding.cwes,
+                packageEcosystem: finding.packageEcosystem,
+                sourceCodeUrl: finding.sourceCodeUrl,
+                fixVersion: finding.fixVersion,
+                vulnerableVersionRange: finding.vulnerableVersionRange,
+                fixAutomatable: finding.fixAutomatable,
+                referencesJSON: finding.referencesJSON,
+            }
         })
         console.log(`Update ${finding.detectionTitle}`, info)
 
