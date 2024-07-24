@@ -27,13 +27,13 @@ export async function onRequestGet(context) {
         const { searchParams } = new URL(request.url)
         const take = parseInt(searchParams.get('take'), 10) || 50
         const skip = parseInt(searchParams.get('skip'), 10) || 0
-        const results = await prisma.findings.findMany({
+        const findings = await prisma.findings.findMany({
             where: {
                 memberEmail: session.memberEmail,
                 NOT: {
                     triage: {
                         every: {
-                            analysisState: { in: ['exploitable', 'in_triage'] }
+                            analysisState: { in: ['exploitable',] } // 'in_triage'
                         }
                     }
                 }
@@ -56,7 +56,7 @@ export async function onRequestGet(context) {
                 createdAt: 'asc',
             }
         })
-        const parsed = results.map(result => {
+        const parsed = findings.map(result => {
             if (result?.spdx && result.spdx?.packagesJSON && result.spdx?.relationshipsJSON) {
                 return {
                     ...result,
@@ -69,26 +69,30 @@ export async function onRequestGet(context) {
             }
             return result
         })
-        const groupedByRepo = parsed.reduce((acc, result) => {
-            const repoFullName = result.spdx?.repo?.fullName || 'Others'
-            if (!acc[repoFullName]) {
-                acc[repoFullName] = []
-            }
-            acc[repoFullName].push(result)
-            return acc
-        }, {})
+        // const groupedByRepo = parsed.reduce((acc, result) => {
+        //     const repoFullName = result.spdx?.repo?.fullName || 'Others'
+        //     if (!acc[repoFullName]) {
+        //         acc[repoFullName] = []
+        //     }
+        //     result.fullName = repoFullName
+        //     acc[repoFullName].push(result)
+        //     return acc
+        // }, {})
+        // // Sort results within each repo group by packageName + packageVersion
+        // for (const repoFullName in groupedByRepo) {
+        //     groupedByRepo[repoFullName].sort((a, b) => {
+        //         const aPackage = `${a.packageName}${a.packageVersion}`
+        //         const bPackage = `${b.packageName}${b.packageVersion}`
+        //         return aPackage.localeCompare(bPackage)
+        //     })
+        // }
 
-        // Sort results within each repo group by packageName + packageVersion
-        for (const repoFullName in groupedByRepo) {
-            groupedByRepo[repoFullName].sort((a, b) => {
-                const aPackage = `${a.packageName}${a.packageVersion}`
-                const bPackage = `${b.packageName}${b.packageVersion}`
-                return aPackage.localeCompare(bPackage)
-            })
-        }
-        return Response.json({
-            ok: true, results: groupedByRepo || []
+        const results = parsed.map(result => {
+            result.fullName = result.spdx?.repo?.fullName || 'Others'
+            return result
         })
+
+        return Response.json({ ok: true, results })
     } catch (err) {
         console.error(err)
         return Response.json({ ok: false, error: { message: err }, result: AuthResult.REVOKED })
