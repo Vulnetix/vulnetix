@@ -12,7 +12,11 @@ watch(Preferences, () => localStorage.setItem('/state/preferences/issueFilter', 
 const dialogs = ref({})
 const expanded = ref([])
 const issueHeadings = [
-    { title: 'Discovered', key: 'createdAt', align: 'start' },
+    { title: 'Issue', key: 'detectionTitle', align: 'end' },
+    { title: 'Discovered', key: 'createdAt', align: 'end' },
+    { title: 'Package', key: 'packageName', align: 'end' },
+    { title: 'Source', key: 'source', align: 'end' },
+    { title: 'Category', key: 'category', align: 'end' },
     { title: '', key: 'actions', align: 'end' },
 ]
 
@@ -23,6 +27,7 @@ const initialState = {
     info: "",
     loading: false,
     results: [],
+    triageLoaders: {},
 }
 const state = reactive({
     ...initialState,
@@ -81,7 +86,30 @@ class TriageQueue {
         }
     }
     expandRow = async (_, VEvent) => {
-        VEvent.item.detectionTitle
+        const findingId = VEvent.item.findingId.toString()
+        state.triageLoaders[findingId] = true
+        try {
+            const { data } = await axios.get(`/enrich/${findingId}`)
+            state.triageLoaders[findingId] = false
+            if (data.ok) {
+                if (data?.finding) {
+                    state.results = state.results.map(result => result.findingId === findingId ? data.finding : result)
+                }
+            } else if (typeof data === "string" && !isJSON(data)) {
+                return
+            } else if (data?.error?.message) {
+                state.error = data.error.message
+                return
+            } else if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
+                state.info = data.result
+                setTimeout(() => router.push('/logout'), 2000)
+                return
+            }
+        } catch (e) {
+            console.error(e)
+            state.error = `${e.code} ${e.message}`
+            state.triageLoaders[findingId] = false
+        }
     }
 }
 
@@ -159,7 +187,7 @@ const manager = reactive(new TriageQueue())
             :items="state.results"
             item-value="findingId"
             :headers="issueHeadings"
-            :sort-by="[{ key: 'modifiedAt', order: 'desc' }, { key: 'detectionTitle', order: 'asc' }]"
+            :sort-by="[{ key: 'packageName', order: 'asc' }, { key: 'detectionTitle', order: 'asc' }]"
             multi-sort
             hover
             expand-on-click
@@ -167,11 +195,81 @@ const manager = reactive(new TriageQueue())
             :loading="state.loading"
         >
             <template v-slot:expanded-row="{ item, columns }">
-                <tr>
+                <tr
+                    v-for="(triage, key) in item.triage"
+                    :key="key"
+                >
                     <td :colspan="columns.length">
-                        <pre>{{ JSON.stringify(item, null, 2) }}</pre>
+                        <VSkeletonLoader
+                            v-if="!!state.triageLoaders[item.findingId]"
+                            type="list-item-three-line"
+                        ></VSkeletonLoader>
+                        {{ triage.analysisState }}
                     </td>
                 </tr>
+            </template>
+
+            <template v-slot:item.detectionTitle="{ item }">
+                <div class="text-end">
+                    <VTooltip
+                        v-if="item.packageLicense"
+                        activator="parent"
+                        location="top"
+                    >{{ item.packageLicense }}</VTooltip>
+                    {{ item.detectionTitle }}
+                </div>
+            </template>
+
+            <template v-slot:item.packageName="{ item }">
+                <div class="text-end">
+                    <VTooltip
+                        v-if="item.purl"
+                        activator="parent"
+                        location="top"
+                    >{{ item.purl }}</VTooltip>
+                    <VTooltip
+                        v-else-if="item.cpe"
+                        activator="parent"
+                        location="top"
+                    >{{ item.cpe }}</VTooltip>
+                    {{ item.packageName }} {{ item.packageVersion }}
+                </div>
+            </template>
+
+            <template v-slot:item.source="{ item }">
+                <div
+                    class="text-end"
+                    v-if="item?.cdx?.source"
+                >
+                    {{ item.cdx.source }}
+                </div>
+                <div
+                    class="text-end"
+                    v-else-if="item?.spdx?.source"
+                >
+                    {{ item.spdx.source }}
+                </div>
+                <div
+                    class="text-end"
+                    v-else
+                >
+                    {{ item.source }}
+                </div>
+            </template>
+
+            <template v-slot:item.category="{ item }">
+                <div
+                    class="text-end"
+                    v-if="item.category === 'sast'"
+                >Static Analysis</div>
+                <div
+                    class="text-end"
+                    v-else-if="item.category === 'sca'"
+                >Package Vulnerability</div>
+                <div
+                    class="text-end"
+                    v-else
+                >Vulnerability</div>
             </template>
 
             <template v-slot:item.createdAt="{ item }">
@@ -179,10 +277,13 @@ const manager = reactive(new TriageQueue())
                     <VTooltip
                         activator="parent"
                         location="top"
-                    >{{ item.createdAt }}</VTooltip>
-                    {{ new Date(item.createdAt).toLocaleDateString() }}
+                    >{{ new Date(item.createdAt).toISOString() }}</VTooltip>
+                    <time :datetime="new Date(item.createdAt).toISOString()">
+                        {{ new Date(item.createdAt).toLocaleString() }}
+                    </time>
                 </div>
             </template>
+
             <template v-slot:item.actions="{ item, index }">
                 <VDialog
                     v-model="dialogs[index]"
