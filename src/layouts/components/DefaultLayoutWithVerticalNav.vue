@@ -51,7 +51,7 @@ watch(NotificationsStore, () => {
                 <VSpacer />
 
                 <IconBtn
-                    href="https://github.com/trivialsec/triage-by-trivial-security"
+                    href="https://github.com/0x73746F66/vulnetix"
                     target="_blank"
                     rel="noopener noreferrer"
                 >

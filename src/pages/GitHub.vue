@@ -34,7 +34,7 @@ const state = reactive({
 })
 
 axios.defaults.headers.common = {
-    'x-trivialsec': Member.session?.token,
+    'X-Vulnetix': Member.session?.token,
 }
 
 class GitHub {
@@ -424,7 +424,7 @@ function persistData(data) {
         Member.session.token = data.session.token
         localStorage.setItem('/session/token', Member.session.token)
         axios.defaults.headers.common = {
-            'x-trivialsec': Member.session.token,
+            'X-Vulnetix': Member.session.token,
         }
     }
     if (data?.session?.expiry) {
@@ -521,7 +521,7 @@ const gh = reactive(new GitHub())
                     </div>
                     <VBtn
                         v-else
-                        href="https://github.com/apps/triage-by-trivial-security/installations/new/"
+                        href="https://github.com/apps/vulnetix/installations/new/"
                         text="Install"
                         prepend-icon="line-md:github-loop"
                         :disabled="state.loadingBar"
@@ -710,7 +710,7 @@ const gh = reactive(new GitHub())
                     <VCard title="GitHub Integration">
                         <VCardText>
                             <VBtn
-                                href="https://github.com/apps/triage-by-trivial-security/installations/new/"
+                                href="https://github.com/apps/vulnetix/installations/new/"
                                 text="Install another GitHub Account"
                                 prepend-icon="line-md:github-loop"
                                 variant="text"

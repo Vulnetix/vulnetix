@@ -47,7 +47,7 @@ export class App {
      */
     async authenticate() {
         try {
-            const token = this.request.headers.get('x-trivialsec');
+            const token = this.request.headers.get('X-Vulnetix');
 
             if (!token) {
                 return { err: null, result: AuthResult.FORBIDDEN, session: null };
@@ -75,7 +75,7 @@ export class OSV {
     constructor() {
         this.headers = {
             'Accept': 'application/json',
-            'User-Agent': 'Triage-by-Trivial-Security',
+            'User-Agent': 'Vulnetix',
         }
         this.baseUrl = "https://api.osv.dev/v1"
     }
@@ -213,7 +213,7 @@ export class VulnCheck {
         this.headers = {
             'Accept': 'application/json',
             'Authorization': `Bearer ${BearerToken}`,
-            'User-Agent': 'Triage-by-Trivial-Security',
+            'User-Agent': 'Vulnetix',
         }
         this.baseUrl = "https://api.vulncheck.com/v3"
     }
@@ -256,7 +256,7 @@ export class GitHub {
             'Accept': 'application/vnd.github+json',
             'Authorization': `token ${accessToken}`,
             'X-GitHub-Api-Version': '2022-11-28',
-            'User-Agent': 'Triage-by-Trivial-Security',
+            'User-Agent': 'Vulnetix',
         }
         this.baseUrl = "https://api.github.com"
     }
@@ -459,7 +459,7 @@ export class GitHub {
     }
     async getFileContents(full_name, branch_name) {
         // https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28
-        const fileUrl = `${this.baseUrl}/repos/${full_name}/contents/.trivialsec?ref=${branch_name}`
+        const fileUrl = `${this.baseUrl}/repos/${full_name}/contents/.vulnetix?ref=${branch_name}`
 
         console.log(fileUrl)
         try {
