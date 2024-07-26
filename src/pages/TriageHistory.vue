@@ -56,7 +56,7 @@ class TriageQueue {
                 const { data } = await axios.get(`/history?take=${pageSize}&skip=${skip}`)
                 if (data.ok) {
                     if (data?.results) {
-                        state.results = data.results
+                        data.results.map(r => state.results.push(r))
                     }
                 } else if (typeof data === "string" && !isJSON(data)) {
                     break
@@ -86,6 +86,9 @@ class TriageQueue {
         }
     }
     expandRow = async (_, VEvent) => {
+        if (VEvent.isExpanded(VEvent.internalItem)) {
+            return
+        }
         const findingId = VEvent.item.findingId.toString()
         state.triageLoaders[findingId] = true
         try {
