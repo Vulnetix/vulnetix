@@ -3,7 +3,7 @@
 
 ### Automate vulnerability triage which prioritizes remediation over discovery
 
-## Early Adopters needed
+**Early Adopters needed**
 
 Please install our [GitHub App](https://github.com/apps/vulnetix).
 
