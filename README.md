@@ -1,7 +1,7 @@
-# <img align="left" width="60" height="60" src="./src/assets/images/logo.svg"> Vulnetix
+# <img align="left" width="55" height="55" src="./src/assets/images/logo.svg"> Vulnetix
 <img align="right" width="500" height="500" src=".repo/Vulnetix.png">
 
-<br><br><br>
+<br><br>
 
 ### Automate vulnerability triage which prioritizes remediation over discovery
 
