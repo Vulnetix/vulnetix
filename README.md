@@ -1,4 +1,4 @@
-# <img align="left" width="50" src="./src/assets/images/logo.svg"> Vulnetix
+# <img align="left" height="50" src="./src/assets/images/logo.svg"> Vulnetix
 <img align="right" height="500" src=".repo/Vulnetix.png">
 
 <br>
