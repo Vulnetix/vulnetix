@@ -1,4 +1,4 @@
-# Vulnetix
+# <img width="30" height="30" src="./src/assets/images/logo.svg"> Vulnetix
 <img align="right" width="500" height="500" src=".repo/Vulnetix.png">
 
 ### Automate vulnerability triage which prioritizes remediation over discovery
