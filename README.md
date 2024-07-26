@@ -1,5 +1,5 @@
 # Vulnetix
-<img align="right" width="100" height="100" src=".repo/Vulnetix.png">
+<img align="right" width="500" height="500" src=".repo/Vulnetix.png">
 
 ### Automate vulnerability triage which prioritizes remediation over discovery
 
