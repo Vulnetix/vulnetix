@@ -1,5 +1,5 @@
 <script setup>
-import AnalyticsCongratulations from '@/views/dashboard/AnalyticsCongratulations.vue'
+import AnalyticsCongratulations from '@/views/dashboard/AnalyticsWelcome.vue'
 import AnalyticsFinanceTabs from '@/views/dashboard/AnalyticsFinanceTab.vue'
 import AnalyticsOrderStatistics from '@/views/dashboard/AnalyticsOrderStatistics.vue'
 import AnalyticsProfitReport from '@/views/dashboard/AnalyticsProfitReport.vue'
@@ -33,14 +33,12 @@ import wallet from '@images/cards/wallet-info.png'
           cols="12"
           md="6"
         >
-          <CardStatisticsVertical
-            v-bind="{
-              title: 'Profit',
-              image: chart,
-              stats: '$12,628',
-              change: 72.80,
-            }"
-          />
+          <CardStatisticsVertical v-bind="{
+            title: 'Profit',
+            image: chart,
+            stats: '$12,628',
+            change: 72.80,
+          }" />
         </VCol>
 
         <!-- 👉 Sales -->
@@ -48,14 +46,12 @@ import wallet from '@images/cards/wallet-info.png'
           cols="12"
           md="6"
         >
-          <CardStatisticsVertical
-            v-bind="{
-              title: 'Sales',
-              image: wallet,
-              stats: '$4,679',
-              change: 28.42,
-            }"
-          />
+          <CardStatisticsVertical v-bind="{
+            title: 'Sales',
+            image: wallet,
+            stats: '$4,679',
+            change: 28.42,
+          }" />
         </VCol>
       </VRow>
     </VCol>
@@ -83,14 +79,12 @@ import wallet from '@images/cards/wallet-info.png'
           cols="12"
           sm="6"
         >
-          <CardStatisticsVertical
-            v-bind=" {
-              title: 'Payments',
-              image: paypal,
-              stats: '$2,468',
-              change: -14.82,
-            }"
-          />
+          <CardStatisticsVertical v-bind="{
+            title: 'Payments',
+            image: paypal,
+            stats: '$2,468',
+            change: -14.82,
+          }" />
         </VCol>
 
         <!-- 👉 Revenue -->
@@ -98,14 +92,12 @@ import wallet from '@images/cards/wallet-info.png'
           cols="12"
           sm="6"
         >
-          <CardStatisticsVertical
-            v-bind="{
-              title: 'Transactions',
-              image: card,
-              stats: '$14,857',
-              change: 28.14,
-            }"
-          />
+          <CardStatisticsVertical v-bind="{
+            title: 'Transactions',
+            image: card,
+            stats: '$14,857',
+            change: 28.14,
+          }" />
         </VCol>
       </VRow>
 
