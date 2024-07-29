@@ -43,47 +43,71 @@ export async function onRequestGet(context) {
                 // cdx: true
             }
         })
+
+        const parseJSON = (str) => JSON.parse(str ?? '[]')
+
         const parsed = findings.map(result => ({
             ...result,
-            cwes: JSON.parse(result.cwes ?? '[]'),
-            aliases: JSON.parse(result.aliases ?? '[]'),
-            referencesJSON: JSON.parse(result.referencesJSON ?? '[]'),
+            cwes: parseJSON(result.cwes),
+            aliases: parseJSON(result.aliases),
+            referencesJSON: parseJSON(result.referencesJSON),
             spdx: {
                 ...result?.spdx || {},
-                packagesJSON: JSON.parse(result?.spdx?.packagesJSON ?? '[]'),
-                relationshipsJSON: JSON.parse(result?.spdx?.relationshipsJSON ?? '[]')
+                packagesJSON: parseJSON(result?.spdx?.packagesJSON),
+                relationshipsJSON: parseJSON(result?.spdx?.relationshipsJSON)
             }
+        }))
+
+        const countByFilter = (filterFn) => parsed.filter(filterFn).length
+
+        const ssvcKeys = [
+            { key: 'ssvc_act', action: ActionCISA.ACT },
+            { key: 'ssvc_attend', action: ActionCISA.ATTEND },
+            { key: 'ssvc_track', action: ActionCISA.TRACK },
+            { key: 'ssvc_track_star', action: ActionCISA.TRACK_STAR },
+            { key: 'ssvc_immediate', action: ActionFIRST.IMMEDIATE },
+            { key: 'ssvc_oob', action: ActionFIRST.OUT_OF_BAND },
+            { key: 'ssvc_scheduled', action: ActionFIRST.SCHEDULED }
+        ]
+
+        const analysisStateKeys = [
+            'in_triage', 'resolved', 'resolved_with_pedigree', 'exploitable',
+            'false_positive', 'not_affected'
+        ]
+
+        const analysisJustificationKeys = [
+            'code_not_present', 'code_not_reachable', 'requires_configuration',
+            'requires_dependency', 'requires_environment', 'protected_by_compiler',
+            'protected_at_runtime', 'protected_at_perimeter', 'protected_by_mitigating_control'
+        ]
+
+        const analysisResponseKeys = [
+            'can_not_fix', 'will_not_fix', 'update', 'rollback', 'workaround_available'
+        ]
+
+        const results = {}
+
+        // Add SSVC keys
+        ssvcKeys.forEach(({ key, action }) => {
+            results[key] = countByFilter(f => f.triage.some(t => t.ssvc === action))
         })
-        )
-        const results = {
-            ssvc_act: parsed.filter(f => f.triage.filter(t => t.ssvc === ActionCISA.ACT).length > 0).length,
-            ssvc_attend: parsed.filter(f => f.triage.filter(t => t.ssvc === ActionCISA.ATTEND).length > 0).length,
-            ssvc_track: parsed.filter(f => f.triage.filter(t => t.ssvc === ActionCISA.TRACK).length > 0).length,
-            ssvc_track_star: parsed.filter(f => f.triage.filter(t => t.ssvc === ActionCISA.TRACK_STAR).length > 0).length,
-            ssvc_immediate: parsed.filter(f => f.triage.filter(t => t.ssvc === ActionFIRST.IMMEDIATE).length > 0).length,
-            ssvc_oob: parsed.filter(f => f.triage.filter(t => t.ssvc === ActionFIRST.OUT_OF_BAND).length > 0).length,
-            ssvc_scheduled: parsed.filter(f => f.triage.filter(t => t.ssvc === ActionFIRST.SCHEDULED).length > 0).length,
-            in_triage: parsed.filter(f => f.triage.filter(t => t.analysisState === 'in_triage').length > 0).length,
-            resolved: parsed.filter(f => f.triage.filter(t => t.analysisState === 'resolved').length > 0).length,
-            resolved_with_pedigree: parsed.filter(f => f.triage.filter(t => t.analysisState === 'resolved_with_pedigree').length > 0).length,
-            exploitable: parsed.filter(f => f.triage.filter(t => t.analysisState === 'exploitable').length > 0).length,
-            false_positive: parsed.filter(f => f.triage.filter(t => t.analysisState === 'false_positive').length > 0).length,
-            not_affected: parsed.filter(f => f.triage.filter(t => t.analysisState === 'not_affected').length > 0).length,
-            code_not_present: parsed.filter(f => f.triage.filter(t => t.analysisJustification === 'code_not_present').length > 0).length,
-            code_not_reachable: parsed.filter(f => f.triage.filter(t => t.analysisJustification === 'code_not_reachable').length > 0).length,
-            requires_configuration: parsed.filter(f => f.triage.filter(t => t.analysisJustification === 'requires_configuration').length > 0).length,
-            requires_dependency: parsed.filter(f => f.triage.filter(t => t.analysisJustification === 'requires_dependency').length > 0).length,
-            requires_environment: parsed.filter(f => f.triage.filter(t => t.analysisJustification === 'requires_environment').length > 0).length,
-            protected_by_compiler: parsed.filter(f => f.triage.filter(t => t.analysisJustification === 'protected_by_compiler').length > 0).length,
-            protected_at_runtime: parsed.filter(f => f.triage.filter(t => t.analysisJustification === 'protected_at_runtime').length > 0).length,
-            protected_at_perimeter: parsed.filter(f => f.triage.filter(t => t.analysisJustification === 'protected_at_perimeter').length > 0).length,
-            protected_by_mitigating_control: parsed.filter(f => f.triage.filter(t => t.analysisJustification === 'protected_by_mitigating_control').length > 0).length,
-            can_not_fix: parsed.filter(f => f.triage.filter(t => t.analysisResponse === 'can_not_fix').length > 0).length,
-            will_not_fix: parsed.filter(f => f.triage.filter(t => t.analysisResponse === 'will_not_fix').length > 0).length,
-            update: parsed.filter(f => f.triage.filter(t => t.analysisResponse === 'update').length > 0).length,
-            rollback: parsed.filter(f => f.triage.filter(t => t.analysisResponse === 'rollback').length > 0).length,
-            workaround_available: parsed.filter(f => f.triage.filter(t => t.analysisResponse === 'workaround_available').length > 0).length,
-        }
+
+        // Add analysis state keys
+        analysisStateKeys.forEach(state => {
+            results[state] = countByFilter(f => f.triage.some(t => t.analysisState === state))
+        })
+
+        // Add analysis justification keys
+        analysisJustificationKeys.forEach(justification => {
+            results[justification] = countByFilter(f => f.triage.some(t => t.analysisJustification === justification))
+        })
+
+        // Add analysis response keys
+        analysisResponseKeys.forEach(response => {
+            results[response] = countByFilter(f => f.triage.some(t => t.analysisResponse === response))
+        })
+
+        console.log(results)
 
         return Response.json({ ok: true, results })
     } catch (err) {

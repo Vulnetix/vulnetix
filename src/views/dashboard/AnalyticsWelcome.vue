@@ -1,36 +1,11 @@
 <script setup>
 import pixImg from '@/assets/images/pix.png';
+import { useAnalyticsStore } from '@/stores/analytics';
 import { useMemberStore } from '@/stores/member';
-import { default as axios } from 'axios';
-import { reactive } from 'vue';
 
 const Member = useMemberStore()
-
-axios.defaults.headers.common = {
-    'X-Vulnetix': Member.session?.token,
-}
-class Controller {
-    constructor() {
-        this.refresh()
-    }
-
-    async refresh() {
-        try {
-            const { data } = await axios.get(`/analytics`)
-            if (data?.error?.message) {
-                state.error = data?.error?.message
-            }
-            if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
-                return router.push('/logout')
-            }
-
-        } catch (e) {
-            console.error(e)
-        }
-    }
-}
-
-const controller = reactive(new Controller())
+const Analytics = useAnalyticsStore()
+const state = await Analytics.$state
 </script>
 
 <template>
@@ -49,18 +24,21 @@ const controller = reactive(new Controller())
                 </VCardItem>
 
                 <VCardText>
-                    <span>
+                    <pre>
+                        {{ JSON.stringify(state, null, 2) }}
+                    </pre>
+                    <!-- <span>
                         You have done 72% 🤩 more sales today.
                         <br>
                         Check your new raising badge in your profile.
-                    </span>
+                    </span> -->
                     <br>
                     <VBtn
                         variant="tonal"
                         class="mt-4"
                         size="small"
                     >
-                        View Badges
+                        Refresh
                     </VBtn>
                 </VCardText>
             </VCol>
