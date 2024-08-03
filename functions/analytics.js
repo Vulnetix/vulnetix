@@ -56,6 +56,7 @@ export async function onRequestGet(context) {
         return Response.json({ ok: false, error: { message: err }, result: AuthResult.REVOKED })
     }
 }
+
 function calculateMonthlyCounts(parsed) {
     // Helper function to get the month and year from a date
     const getMonthYear = (date) => {
@@ -96,6 +97,7 @@ function calculateMonthlyCounts(parsed) {
         }
     }).reverse()
 }
+
 function makeAnalysis(arr) {
     const data = {
         total_findings: arr.length,
@@ -140,6 +142,7 @@ function makeAnalysis(arr) {
 
     return data
 }
+
 function calcPercent(data, valueKeys, totalKeys) {
     const value = valueKeys.reduce((sum, key) => sum + data[key], 0)
     const total = totalKeys.reduce((sum, key) => sum + data[key], 0)
