@@ -24,21 +24,19 @@ const state = await Analytics.$state
                 </VCardItem>
 
                 <VCardText>
-                    <pre>
-                        {{ JSON.stringify(state, null, 2) }}
-                    </pre>
-                    <!-- <span>
-                        You have done 72% 🤩 more sales today.
+                    <span>
+                        Pix has automated {{ state.current_week.automated_percentage }}% of issues this week.
                         <br>
-                        Check your new raising badge in your profile.
-                    </span> -->
+                        The unseen issues in queue is {{ state.total.unseen_queue_percentage }}% ({{
+                            state.total.triage_unseen }}) of {{ state.total.total_findings }}
+                    </span>
                     <br>
                     <VBtn
                         variant="tonal"
                         class="mt-4"
                         size="small"
                     >
-                        Refresh
+                        Refresh Dashboard
                     </VBtn>
                 </VCardText>
             </VCol>

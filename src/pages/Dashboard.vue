@@ -1,16 +1,19 @@
 <script setup>
-import AnalyticsCongratulations from '@/views/dashboard/AnalyticsWelcome.vue'
+import { useAnalyticsStore } from '@/stores/analytics'
 import AnalyticsFinanceTabs from '@/views/dashboard/AnalyticsFinanceTab.vue'
 import AnalyticsOrderStatistics from '@/views/dashboard/AnalyticsOrderStatistics.vue'
 import AnalyticsProfitReport from '@/views/dashboard/AnalyticsProfitReport.vue'
 import AnalyticsTotalRevenue from '@/views/dashboard/AnalyticsTotalRevenue.vue'
 import AnalyticsTransactions from '@/views/dashboard/AnalyticsTransactions.vue'
-
+import AnalyticsWelcome from '@/views/dashboard/AnalyticsWelcome.vue'
 // 👉 Images
-import chart from '@images/cards/chart-success.png'
-import card from '@images/cards/credit-card-primary.png'
-import paypal from '@images/cards/paypal-error.png'
-import wallet from '@images/cards/wallet-info.png'
+import chart3 from '@images/cards/chart-error.png'
+import chart1 from '@images/cards/chart-info.png'
+import chart4 from '@images/cards/chart-purple.png'
+import chart2 from '@images/cards/chart-success.png'
+
+const Analytics = useAnalyticsStore()
+const state = await Analytics.$state
 </script>
 
 <template>
@@ -20,7 +23,7 @@ import wallet from '@images/cards/wallet-info.png'
       cols="12"
       md="8"
     >
-      <AnalyticsCongratulations />
+      <AnalyticsWelcome />
     </VCol>
 
     <VCol
@@ -34,10 +37,16 @@ import wallet from '@images/cards/wallet-info.png'
           md="6"
         >
           <CardStatisticsVertical v-bind="{
-            title: 'Profit',
-            image: chart,
-            stats: '$12,628',
-            change: 72.80,
+            title: 'Unresolved this week',
+            image: chart1,
+            stats: state.current_week.in_triage,
+            change: state.current_week.unresolved_percentage,
+            moreList: [
+              {
+                title: 'Go to Queue',
+                value: 'queue'
+              }
+            ],
           }" />
         </VCol>
 
@@ -47,10 +56,16 @@ import wallet from '@images/cards/wallet-info.png'
           md="6"
         >
           <CardStatisticsVertical v-bind="{
-            title: 'Sales',
-            image: wallet,
-            stats: '$4,679',
-            change: 28.42,
+            title: 'Resolved this week',
+            image: chart2,
+            stats: state.current_week.resolved_all,
+            change: state.current_week.resolved_percentage,
+            moreList: [
+              {
+                title: 'Go to Queue',
+                value: 'queue'
+              }
+            ],
           }" />
         </VCol>
       </VRow>
@@ -80,10 +95,16 @@ import wallet from '@images/cards/wallet-info.png'
           sm="6"
         >
           <CardStatisticsVertical v-bind="{
-            title: 'Payments',
-            image: paypal,
-            stats: '$2,468',
-            change: -14.82,
+            title: 'Pix Automated',
+            image: chart3,
+            stats: state.total.triage_automated,
+            change: state.total.automated_percentage,
+            moreList: [
+              {
+                title: 'Go to Queue',
+                value: 'queue'
+              }
+            ],
           }" />
         </VCol>
 
@@ -93,10 +114,16 @@ import wallet from '@images/cards/wallet-info.png'
           sm="6"
         >
           <CardStatisticsVertical v-bind="{
-            title: 'Transactions',
-            image: card,
-            stats: '$14,857',
-            change: 28.14,
+            title: 'Queued',
+            image: chart4,
+            stats: state.total.triage_unseen,
+            change: -state.total.unseen_queue_percentage,
+            moreList: [
+              {
+                title: 'Go to Queue',
+                value: 'queue'
+              }
+            ],
           }" />
         </VCol>
       </VRow>

@@ -47,7 +47,10 @@ export async function onRequestGet(context) {
         return Response.json({
             ok: true,
             data: {
-                analysis: makeAnalysis(findings),
+                total: makeAnalysis(findings),
+                current_week: filterFindingsByPeriod(findings, 'current_week'),
+                month_to_date: filterFindingsByPeriod(findings, 'month_to_date'),
+                year_to_date: filterFindingsByPeriod(findings, 'year_to_date'),
                 monthly: calculateMonthlyCounts(findings),
             }
         })
@@ -84,7 +87,7 @@ function calculateMonthlyCounts(parsed) {
     }, {})
 
     // Ensure 12 months of data, even if some months have no data
-    const keys = ["total_findings", "ssvc_act", "ssvc_attend", "ssvc_track", "ssvc_track_star", "ssvc_immediate", "ssvc_oob", "ssvc_scheduled", "in_triage", "resolved", "resolved_with_pedigree", "exploitable", "false_positive", "not_affected", "code_not_present", "code_not_reachable", "requires_configuration", "requires_dependency", "requires_environment", "protected_by_compiler", "protected_at_runtime", "protected_at_perimeter", "protected_by_mitigating_control", "can_not_fix", "will_not_fix", "update", "rollback", "workaround_available"];
+    const keys = ["total_findings", "ssvc_act", "ssvc_attend", "ssvc_track", "ssvc_track_star", "ssvc_immediate", "ssvc_oob", "ssvc_scheduled", "in_triage", "resolved", "resolved_with_pedigree", "exploitable", "false_positive", "not_affected", "code_not_present", "code_not_reachable", "requires_configuration", "requires_dependency", "requires_environment", "protected_by_compiler", "protected_at_runtime", "protected_at_perimeter", "protected_by_mitigating_control", "can_not_fix", "will_not_fix", "update", "rollback", "workaround_available"]
     const now = new Date()
     const months = 12
     return Array.from({ length: months }, (_, index) => {
@@ -101,8 +104,7 @@ function calculateMonthlyCounts(parsed) {
 function makeAnalysis(arr) {
     const data = {
         total_findings: arr.length,
-        total_automated: arr.filter(f => f.triage.filter(t => t.triageAutomated === 1).length > 0).length,
-        triage_automated: arr.filter(f => f.triage.filter(t => ['in_triage', 'exploitable'].includes(t.analysisState) && t.triageAutomated === 1).length > 0).length,
+        triage_automated: arr.filter(f => f.triage.filter(t => !['in_triage', 'exploitable'].includes(t.analysisState) && t.triageAutomated === 1).length > 0).length,
         triage_unseen: arr.filter(f => f.triage.filter(t => ['in_triage', 'exploitable'].includes(t.analysisState) && t.seen === 0).length > 0).length,
         ssvc_act: arr.filter(f => f.triage.filter(t => t.ssvc === ActionCISA.ACT).length > 0).length,
         ssvc_attend: arr.filter(f => f.triage.filter(t => t.ssvc === ActionCISA.ATTEND).length > 0).length,
@@ -114,6 +116,7 @@ function makeAnalysis(arr) {
         in_triage: arr.filter(f => f.triage.filter(t => t.analysisState === 'in_triage').length > 0).length,
         resolved: arr.filter(f => f.triage.filter(t => t.analysisState === 'resolved').length > 0).length,
         resolved_with_pedigree: arr.filter(f => f.triage.filter(t => t.analysisState === 'resolved_with_pedigree').length > 0).length,
+        resolved_all: arr.filter(f => f.triage.filter(t => ['resolved_with_pedigree', 'resolved'].includes(t.analysisState)).length > 0).length,
         exploitable: arr.filter(f => f.triage.filter(t => t.analysisState === 'exploitable' && t.seen === 0).length > 0).length,
         exploitable_unseen: arr.filter(f => f.triage.filter(t => t.analysisState === 'exploitable').length > 0).length,
         false_positive: arr.filter(f => f.triage.filter(t => t.analysisState === 'false_positive').length > 0).length,
@@ -147,4 +150,48 @@ function calcPercent(data, valueKeys, totalKeys) {
     const value = valueKeys.reduce((sum, key) => sum + data[key], 0)
     const total = totalKeys.reduce((sum, key) => sum + data[key], 0)
     return total === 0 ? 0 : (value / total) * 100
+}
+
+const getStartOfWeek = (date) => {
+    const day = date.getDay()
+    const diff = date.getDate() - day
+    return new Date(date.setDate(diff))
+}
+
+const getStartOfMonth = (date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1)
+}
+
+const getStartOfYear = (date) => {
+    return new Date(date.getFullYear(), 0, 1)
+}
+
+const isWithinPeriod = (dateString, startDate, endDate) => {
+    const date = new Date(dateString)
+    return date >= startDate && date <= endDate
+}
+
+const filterFindingsByPeriod = (arr, period = 'current_week') => {
+    const now = new Date()
+    let startDate
+    let endDate = new Date(now) // End date is today for all periods
+
+    switch (period) {
+        case 'current_week':
+            startDate = getStartOfWeek(new Date(now))
+            endDate.setDate(startDate.getDate() + 6)
+            break
+        case 'month_to_date':
+            startDate = getStartOfMonth(new Date(now))
+            break
+        case 'year_to_date':
+            startDate = getStartOfYear(new Date(now))
+            break
+        default:
+            throw new Error('Unsupported period')
+    }
+
+    const filteredFindings = arr.filter(f => f.triage.some(t => isWithinPeriod(t.lastObserved, startDate, endDate)))
+
+    return makeAnalysis(filteredFindings)
 }
