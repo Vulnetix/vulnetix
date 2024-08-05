@@ -3,7 +3,7 @@ import { useAnalyticsStore } from '@/stores/analytics'
 import AnalyticsFinanceTabs from '@/views/dashboard/AnalyticsFinanceTab.vue'
 import AnalyticsOrderStatistics from '@/views/dashboard/AnalyticsOrderStatistics.vue'
 import AnalyticsProfitReport from '@/views/dashboard/AnalyticsProfitReport.vue'
-import AnalyticsTotalRevenue from '@/views/dashboard/AnalyticsTotalRevenue.vue'
+import AnalyticsTriageHistory from '@/views/dashboard/AnalyticsTriageHistory.vue'
 import AnalyticsTransactions from '@/views/dashboard/AnalyticsTransactions.vue'
 import AnalyticsWelcome from '@/views/dashboard/AnalyticsWelcome.vue'
 // 👉 Images
@@ -14,6 +14,33 @@ import chart2 from '@images/cards/chart-success.png'
 
 const Analytics = useAnalyticsStore()
 const state = await Analytics.$state
+
+const categories = state.monthly.map(i => i.monthYear)
+const series = [
+  {
+    name: `${new Date().getFullYear()}`,
+    data: state.monthly.filter(i => i.monthYear.startsWith(new Date().getFullYear())).map(i => i.total_findings),
+  },
+  {
+    name: `${new Date().getFullYear() - 1}`,
+    data: state.monthly.filter(i => i.monthYear.startsWith(new Date().getFullYear() - 1)).map(i => -(i.resolved + i.resolved_with_pedigree)),
+  },
+]
+
+const totalsData = [
+  {
+    icon: 'tabler-eye-exclamation',
+    value: `${state.total.unseen_queue_percentage}%`,
+    text: `Unseen`,
+    color: state.total.unseen_queue_percentage < 20 ? 'success' : state.total.unseen_queue_percentage < 50 ? 'info' : state.total.unseen_queue_percentage < 80 ? 'warning' : 'error',
+  },
+  {
+    icon: 'solar-bug-minimalistic-broken',
+    value: `${state.total.unresolved_percentage}%`,
+    text: `Unresolved`,
+    color: state.total.unresolved_percentage < 20 ? 'success' : state.total.unresolved_percentage < 50 ? 'info' : state.total.unresolved_percentage < 80 ? 'warning' : 'error',
+  },
+]
 </script>
 
 <template>
@@ -78,7 +105,15 @@ const state = await Analytics.$state
       order="2"
       order-md="1"
     >
-      <AnalyticsTotalRevenue />
+      <AnalyticsTriageHistory
+        :title="`Triage History`"
+        :totalsText="`Queued Issues Remaining`"
+        :totalsData="totalsData"
+        :series="series"
+        :categories="categories"
+        :radialLabel="`Triaged`"
+        :radialValue="state.total.resolved_percentage"
+      />
     </VCol>
 
     <VCol
@@ -96,7 +131,7 @@ const state = await Analytics.$state
         >
           <CardStatisticsVertical v-bind="{
             title: 'Pix Automated',
-            image: chart3,
+            image: chart4,
             stats: state.total.triage_automated,
             change: state.total.automated_percentage,
             moreList: [
@@ -115,7 +150,7 @@ const state = await Analytics.$state
         >
           <CardStatisticsVertical v-bind="{
             title: 'Queued',
-            image: chart4,
+            image: chart3,
             stats: state.total.triage_unseen,
             change: -state.total.unseen_queue_percentage,
             moreList: [
@@ -128,19 +163,17 @@ const state = await Analytics.$state
         </VCol>
       </VRow>
 
-      <VRow>
-        <!-- 👉 Profit Report -->
+      <!-- <VRow>
         <VCol
           cols="12"
           sm="12"
         >
           <AnalyticsProfitReport />
         </VCol>
-      </VRow>
+      </VRow> -->
     </VCol>
 
-    <!-- 👉 Order Statistics -->
-    <VCol
+    <!-- <VCol
       cols="12"
       md="4"
       sm="6"
@@ -149,7 +182,6 @@ const state = await Analytics.$state
       <AnalyticsOrderStatistics />
     </VCol>
 
-    <!-- 👉 Tabs chart -->
     <VCol
       cols="12"
       md="4"
@@ -159,7 +191,6 @@ const state = await Analytics.$state
       <AnalyticsFinanceTabs />
     </VCol>
 
-    <!-- 👉 Transactions -->
     <VCol
       cols="12"
       md="4"
@@ -167,6 +198,6 @@ const state = await Analytics.$state
       order="3"
     >
       <AnalyticsTransactions />
-    </VCol>
+    </VCol> -->
   </VRow>
 </template>
