@@ -12,6 +12,7 @@ watch(Preferences, () => localStorage.setItem('/state/preferences/scaFilter', Pr
 const dialogs = ref({})
 const expanded = ref([])
 const scaHeadings = [
+    { title: '', key: 'seen', align: 'start' },
     { title: 'Title', key: 'detectionTitle', align: 'start' },
     { title: 'Source', key: 'source' },
     { title: 'Discovered', key: 'createdAt', align: 'start' },
@@ -20,7 +21,7 @@ const scaHeadings = [
     { title: 'Version', key: 'packageVersion', align: 'start' },
     { title: 'License', key: 'packageLicense' },
     { title: 'Repository', key: 'repoName', align: 'start' },
-    { title: 'SPDX Version', key: 'spdxVersion' },
+    { title: 'BOM Version', key: 'spdxVersion' },
     { title: '', key: 'actions', align: 'end' },
 ]
 
@@ -30,7 +31,8 @@ const initialState = {
     success: "",
     info: "",
     loading: false,
-    sca: [],
+    results: [],
+    triageLoaders: {},
 }
 const state = reactive({
     ...initialState,
@@ -59,7 +61,7 @@ class Controller {
                 const { data } = await axios.get(`/queue/sca?take=${pageSize}&skip=${skip}`)
                 if (data.ok) {
                     if (data?.sca) {
-                        data.sca.forEach(sca => state.sca.push(sca))
+                        data.sca.forEach(sca => state.results.push(sca))
                     }
                 } else if (typeof data === "string" && !isJSON(data)) {
                     break
@@ -88,8 +90,35 @@ class Controller {
             state.loading = false
         }
     }
-    expandRow = async (_, VEvent) => {
-        VEvent.item.detectionTitle
+    expandRow = async item => {
+        const findingId = item.findingId.toString()
+        state.triageLoaders[findingId] = true
+        try {
+            const { data } = await axios.get(`/enrich/${findingId}`)
+            state.triageLoaders[findingId] = false
+            if (data.ok) {
+                if (data?.finding) {
+                    state.results.forEach((result, index) => {
+                        if (result.findingId === findingId) {
+                            state.results[index] = data.finding
+                        }
+                    })
+                }
+            } else if (typeof data === "string" && !isJSON(data)) {
+                return
+            } else if (data?.error?.message) {
+                state.error = data.error.message
+                return
+            } else if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
+                state.info = data.result
+                setTimeout(() => router.push('/logout'), 2000)
+                return
+            }
+        } catch (e) {
+            console.error(e)
+            state.error = `${e.code} ${e.message}`
+            state.triageLoaders[findingId] = false
+        }
     }
 }
 
@@ -135,7 +164,7 @@ const controller = reactive(new Controller())
     />
     <VCard flat>
         <VCardTitle class="d-flex align-center pe-2">
-            {{ state.sca.length }} Findings
+            {{ state.results.length }} Findings
             <VSpacer></VSpacer>
             <VTextField
                 v-model="Preferences.scaFilter"
@@ -152,53 +181,58 @@ const controller = reactive(new Controller())
         <VDataTable
             v-model:expanded="expanded"
             v-model:search="Preferences.scaFilter"
-            :items="state.sca"
+            :items="state.results"
             item-value="findingId"
             :headers="scaHeadings"
             :sort-by="[{ key: 'modifiedAt', order: 'desc' }, { key: 'detectionTitle', order: 'asc' }]"
             multi-sort
             hover
-            expand-on-click
-            @click:row="controller.expandRow"
             :loading="state.loading"
         >
             <template v-slot:expanded-row="{ item, columns }">
                 <tr>
                     <td :colspan="columns.length">
                         <VList lines="two">
-                            <template
-                                v-for="(triage, key) in item.triage"
-                                :key="key"
+                            <VListItem
+                                v-if="item.triage.analysisState"
+                                :subtitle="item.triage.analysisState"
+                                title="Analysis State"
                             >
-                                <VListItem
-                                    v-if="triage.cvssVector"
-                                    title="cvssVector"
-                                >
-                                    {{ triage.cvssVector }} ({{ triage.cvssScore }})</VListItem>
-                                <VListItem
-                                    v-if="triage.epssScore"
-                                    title="epssScore"
-                                >
-                                    {{ triage.epssScore }} ({{ epssPercentile }})
-                                </VListItem>
-                                <VListItem
-                                    v-if="triage.ssvc"
-                                    :subtitle="triage.ssvc"
-                                    title="ssvc"
-                                >
-                                </VListItem>
-                                <VListItem
-                                    v-if="triage.lastObserved"
-                                    :subtitle="new Date(triage.lastObserved).toLocaleDateString()"
-                                    title="lastObserved"
-                                >
-                                </VListItem>
-                            </template>
+                            </VListItem>
+                            <VListItem
+                                v-if="item.triage.cvssVector"
+                                title="CVSS"
+                            >
+                                {{ item.triage.cvssVector }} ({{ item.triage.cvssScore }})</VListItem>
+                            <VListItem
+                                v-if="item.triage.epssScore"
+                                title="EPSS"
+                            >
+                                {{ item.triage.epssScore }} ({{ item.triage.epssPercentile }})
+                            </VListItem>
+                            <VListItem
+                                v-if="item.triage.ssvc"
+                                :subtitle="item.triage.ssvc"
+                                title="SSVC"
+                            >
+                            </VListItem>
+                            <VListItem
+                                v-if="item.triage.lastObserved"
+                                :subtitle="new Date(item.triage.lastObserved).toLocaleDateString()"
+                                title="Last Observed"
+                            >
+                            </VListItem>
                         </VList>
                     </td>
                 </tr>
             </template>
-
+            <template v-slot:item.seen="{ item }">
+                <VIcon
+                    :icon="item.triage.seen === 1 ? 'tabler-eye-check' : 'mdi-eye-off-outline'"
+                    :color="item.triage.seen === 1 ? 'success' : 'warning'"
+                    size="23"
+                />
+            </template>
             <template v-slot:item.source="{ item }">
                 <div class="text-end">
                     <VChip
@@ -230,11 +264,22 @@ const controller = reactive(new Controller())
             <template v-slot:item.spdxVersion="{ item }">
                 <div
                     class="text-end"
-                    v-if="item.spdx.spdxVersion"
+                    v-if="item?.cdx?.cdxVersion"
                 >
                     <VChip
-                        :color="item.spdx.spdxVersion === 'SPDX-2.3' ? 'success' : ''"
-                        :text="item.spdx.spdxVersion"
+                        color="info"
+                        :text="item?.cdx?.cdxVersion"
+                        size="small"
+                        label
+                    ></VChip>
+                </div>
+                <div
+                    class="text-end"
+                    v-if="item?.spdx?.spdxVersion"
+                >
+                    <VChip
+                        color="secondary"
+                        :text="item?.spdx?.spdxVersion"
                         size="small"
                         label
                     ></VChip>
@@ -270,11 +315,20 @@ const controller = reactive(new Controller())
                             size="small"
                             text="More"
                             v-bind="activatorProps"
+                            @click="controller.expandRow(item)"
                         ></VBtn>
                     </template>
 
                     <VCard>
                         <VToolbar color="#000">
+                            <VProgressLinear
+                                :active="!!state.triageLoaders[item.findingId]"
+                                :indeterminate="!!state.triageLoaders[item.findingId]"
+                                color="primary"
+                                absolute
+                                bottom
+                            >
+                            </VProgressLinear>
                             <VBtn
                                 icon="mdi-close"
                                 color="#FFF"
@@ -315,7 +369,7 @@ const controller = reactive(new Controller())
                                         title="SPDX Identifier"
                                     ></VListItem>
                                     <VListItem
-                                        v-if="item.cdxId"
+                                        v-if="item?.cdxId"
                                         :subtitle="item.cdxId"
                                         title="CycloneDX Identifier"
                                     ></VListItem>
@@ -371,7 +425,7 @@ const controller = reactive(new Controller())
                                         :title="`${item.spdx?.repo?.source} Repository`"
                                     >
                                         <a
-                                            v-if="item.spdx.repo.source === 'GitHub'"
+                                            v-if="item?.spdx?.repo?.source === 'GitHub'"
                                             :href="`https://github.com/${item.spdx.repoName}`"
                                             target="_blank"
                                         >
@@ -381,29 +435,29 @@ const controller = reactive(new Controller())
                                     </VListItem>
                                     <VListItem
                                         class="text-capitalize"
-                                        v-if="item.spdx?.repo.defaultBranch"
-                                        :subtitle="item.spdx?.repo.defaultBranch"
+                                        v-if="item.spdx?.repo?.defaultBranch"
+                                        :subtitle="item.spdx?.repo?.defaultBranch"
                                         title="Default Branch"
                                     ></VListItem>
                                     <VListItem
-                                        v-if="item.spdx?.repo.licenseName"
-                                        :subtitle="item.spdx?.repo.licenseName"
+                                        v-if="item.spdx?.repo?.licenseName"
+                                        :subtitle="item.spdx?.repo?.licenseName"
                                         title="License"
                                     >
                                     </VListItem>
                                     <VListItem
                                         class="text-capitalize"
-                                        v-if="item.spdx?.repo.visibility"
-                                        :subtitle="item.spdx?.repo.visibility"
+                                        v-if="item.spdx?.repo?.visibility"
+                                        :subtitle="item.spdx?.repo?.visibility"
                                         title="Visibility"
                                     ></VListItem>
                                     <VListItem
-                                        :subtitle="item.spdx?.repo.archived ? 'Archived' : item.spdx?.repo.fork ? 'Forked' : item.spdx?.repo.template ? 'Template' : 'Source'"
+                                        :subtitle="item.spdx?.repo?.archived ? 'Archived' : item.spdx?.repo?.fork ? 'Forked' : item.spdx?.repo?.template ? 'Template' : 'Source'"
                                         title="Type"
                                     ></VListItem>
                                     <VListItem
-                                        v-if="item.spdx?.repo.pushedAt"
-                                        :subtitle="(new Date(item.spdx?.repo.pushedAt)).toLocaleDateString()"
+                                        v-if="item.spdx?.repo?.pushedAt"
+                                        :subtitle="(new Date(item.spdx?.repo?.pushedAt)).toLocaleDateString()"
                                         title="Last Pushed"
                                     >
                                     </VListItem>
@@ -413,76 +467,74 @@ const controller = reactive(new Controller())
                                 <VList
                                     lines="two"
                                     subheader
-                                    v-for="(vex, key) in item.triage"
-                                    :key="key"
                                 >
                                     <VListItemTitle>Triage Detail</VListItemTitle>
                                     <VListItem
-                                        :subtitle="(new Date(vex.createdAt)).toISOString()"
+                                        :subtitle="(new Date(item.triage.createdAt)).toISOString()"
                                         title="Created"
                                     ></VListItem>
                                     <VListItem
-                                        :subtitle="(new Date(vex.lastObserved)).toISOString()"
+                                        :subtitle="(new Date(item.triage.lastObserved)).toISOString()"
                                         title="Last Observed"
                                     >
                                     </VListItem>
                                     <VListItem
-                                        v-if="vex.seenAt"
-                                        :subtitle="(new Date(vex.seenAt)).toISOString()"
+                                        v-if="item.triage.seenAt"
+                                        :subtitle="(new Date(item.triage.seenAt)).toISOString()"
                                         title="Manually Triaged"
                                     >
                                     </VListItem>
                                     <VListItem
                                         v-else
-                                        :subtitle="(new Date(vex.lastObserved)).toISOString()"
+                                        :subtitle="(new Date(item.triage.lastObserved)).toISOString()"
                                         title="Auto Triage"
                                     >
                                     </VListItem>
                                     <VListItem
-                                        v-if="vex.cvssVector"
-                                        :subtitle="vex.cvssVector"
+                                        v-if="item.triage.cvssVector"
+                                        :subtitle="item.triage.cvssVector"
                                         title="CVSS Vector"
                                     >
                                     </VListItem>
                                     <VListItem
-                                        v-if="vex.cvssScore"
-                                        :subtitle="vex.cvssScore"
+                                        v-if="item.triage.cvssScore"
+                                        :subtitle="item.triage.cvssScore"
                                         title="CVSS Score"
                                     >
                                     </VListItem>
                                     <VListItem
-                                        v-if="vex.epssScore"
-                                        :subtitle="vex.epssScore"
+                                        v-if="item.triage.epssScore"
+                                        :subtitle="item.triage.epssScore"
                                         title="EPSS Score"
                                     >
                                     </VListItem>
                                     <VListItem
-                                        v-if="vex.epssPercentile"
-                                        :subtitle="vex.epssPercentile"
+                                        v-if="item.triage.epssPercentile"
+                                        :subtitle="item.triage.epssPercentile"
                                         title="EPSS Percentile"
                                     >
                                     </VListItem>
                                     <VListItem
-                                        v-if="vex.ssvc"
-                                        :subtitle="vex.ssvc"
+                                        v-if="item.triage.ssvc"
+                                        :subtitle="item.triage.ssvc"
                                         title="SSVC Outcome"
                                     >
                                     </VListItem>
                                     <VListItem
-                                        v-if="vex.remediation"
-                                        :subtitle="vex.remediation"
+                                        v-if="item.triage.remediation"
+                                        :subtitle="item.triage.remediation"
                                         title="Remediation"
                                     >
                                     </VListItem>
                                     <VListItem
-                                        v-if="vex.analysisJustification"
-                                        :subtitle="vex.analysisJustification"
+                                        v-if="item.triage.analysisJustification"
+                                        :subtitle="item.triage.analysisJustification"
                                         title="Analysis Justification"
                                     >
                                     </VListItem>
                                     <VListItem
-                                        v-if="vex.analysisDetail"
-                                        :subtitle="vex.analysisDetail"
+                                        v-if="item.triage.analysisDetail"
+                                        :subtitle="item.triage.analysisDetail"
                                         title="Analysis Detail"
                                     >
                                     </VListItem>

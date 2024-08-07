@@ -154,6 +154,57 @@ export class OSV {
     }
 }
 
+export class EPSS {
+    constructor() {
+        this.headers = {
+            'User-Agent': 'Vulnetix',
+        }
+        this.baseUrl = "https://api.first.org/data/v1"
+    }
+    async fetchJSON(url, body = null, method = 'POST') {
+        try {
+            if (method === 'POST' && typeof body !== "string") {
+                body = JSON.stringify(body)
+            }
+            const response = await fetch(url, { headers: this.headers, method, body })
+            const respText = await response.text()
+            if (!response.ok) {
+                console.error(`${method} ${url}`)
+                console.error(`req headers=${JSON.stringify(this.headers, null, 2)}`)
+                console.error(`resp headers=${JSON.stringify(response.headers, null, 2)}`)
+                console.error(respText)
+                console.error(`EPSS error! status: ${response.status} ${response.statusText}`)
+            }
+            const content = JSON.parse(respText)
+            return { ok: response.ok, status: response.status, statusText: response.statusText, content, url }
+        } catch (e) {
+            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
+            console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
+
+            return { url, status: 500, error: { message: e.message, lineno, colno } }
+        }
+    }
+    async query(prisma, memberEmail, cve) {
+        // https://google.github.io/osv.dev/get-v1-vulns/
+        const url = `${this.baseUrl}/epss?cve=${cve}`
+        const resp = await this.fetchJSON(url, null, "GET")
+        if (resp?.content) {
+            const createLog = await prisma.integration_usage_log.create({
+                data: {
+                    memberEmail,
+                    source: 'first',
+                    request: JSON.stringify({ method: "GET", url }).trim(),
+                    response: JSON.stringify({ body: resp.content, status: resp.status }).trim(),
+                    statusCode: resp?.status || 500,
+                    createdAt: (new Date()).getTime(),
+                }
+            })
+            console.log(`epss.query()`, createLog)
+            return resp.content.data.filter(d => d.cve === cve).pop()
+        }
+    }
+}
+
 export class VulnCheck {
     // if (!vulncheck) {
     //     continue
