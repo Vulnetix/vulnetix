@@ -39,7 +39,7 @@ export async function onRequestPost(context) {
     delete tokenInfo.secret
     console.log(`/github/pat github_pat label=${body.label}`, tokenInfo)
     const gh = new GitHub(body.token)
-    const { content, error, tokenExpiry } = await gh.getUser()
+    const { content, error, tokenExpiry } = await gh.getUser(prisma, session.memberEmail)
     if (error?.message) {
         return Response.json({ error })
     }

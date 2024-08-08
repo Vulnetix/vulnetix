@@ -38,7 +38,7 @@ export async function onRequestGet(context) {
             throw new Error('github_apps invalid')
         }
         const gh = new GitHub(app.accessToken)
-        const { content, error } = await gh.getRepos()
+        const { content, error } = await gh.getRepos(prisma, session.memberEmail)
         if (error?.message) {
             if ("Bad credentials" === error.message) {
                 app.expires = (new Date()).getTime()
@@ -76,7 +76,7 @@ export async function onRequestGet(context) {
     })
     for (const memberKey of memberKeys) {
         const gh = new GitHub(memberKey.secret)
-        const { content, error } = await gh.getRepos()
+        const { content, error } = await gh.getRepos(prisma, session.memberEmail)
         if (error?.message) {
             return Response.json({ error, app: { login: memberKey.keyLabel } })
         }

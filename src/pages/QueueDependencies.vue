@@ -19,8 +19,8 @@ const scaHeadings = [
     { title: 'Package', key: 'packageName', align: 'end' },
     { title: 'Version', key: 'packageVersion', align: 'start' },
     { title: 'License', key: 'packageLicense' },
-    { title: 'Repository', key: 'triage_repoName', align: 'start' },
-    { title: 'BOM Version', key: 'spdxVersion' },
+    { title: 'Repository', key: 'spdx_repoName', align: 'start' },
+    { title: 'BOM Version', key: 'spdx_spdxVersion' },
     { title: '', key: 'actions', align: 'end' },
 ]
 
@@ -224,25 +224,25 @@ const controller = reactive(new Controller())
                     {{ new Date(item.triage_lastObserved).toLocaleDateString() }}
                 </div>
             </template>
-            <template v-slot:item?.spdxVersion="{ item }">
+            <template v-slot:item.spdx_spdxVersion="{ item }">
                 <div
                     class="text-end"
-                    v-if="item?.cdx?.cdxVersion"
+                    v-if="item?.cdx_cdxVersion"
                 >
                     <VChip
                         color="info"
-                        :text="item?.cdx?.cdxVersion"
+                        :text="item?.cdx_cdxVersion"
                         size="small"
                         label
                     ></VChip>
                 </div>
                 <div
                     class="text-end"
-                    v-if="item?.spdx?.spdxVersion"
+                    v-if="item?.spdx_spdxVersion"
                 >
                     <VChip
                         color="secondary"
-                        :text="item?.spdx?.spdxVersion"
+                        :text="item?.spdx_spdxVersion"
                         size="small"
                         label
                     ></VChip>
@@ -257,18 +257,18 @@ const controller = reactive(new Controller())
                     label
                 ></VChip>
             </template>
-            <template v-slot:item.repoName="{ item }">
+            <template v-slot:item.spdx_repoName="{ item }">
                 <a
-                    v-if="item.spdx?.repo?.source === 'GitHub'"
-                    :href="`https://github.com/${item?.spdx?.repoName}`"
+                    v-if="item.spdx_repo_source === 'GitHub'"
+                    :href="`https://github.com/${item?.spdx_repoName}`"
                     target="_blank"
                 >
-                    {{ item?.spdx?.repoName }}
+                    {{ item?.spdx_repoName }}
                 </a>
             </template>
             <template v-slot:item.actions="{ item }">
                 <VDialog
-                    v-model="dialogs[item.findingId]"
+                    v-model="dialogs[item.findingId.toString()]"
                     transition="dialog-bottom-transition"
                     fullscreen
                 >
@@ -310,11 +310,11 @@ const controller = reactive(new Controller())
                         <VRow>
                             <VCol cols="12">
                                 <VAlert
-                                    v-if="item?.spdx?.comment"
+                                    v-if="item?.spdx_comment"
                                     color="info"
                                     icon="$info"
                                     title="Information"
-                                    :text="item?.spdx?.comment"
+                                    :text="item?.spdx_comment"
                                     border="start"
                                     variant="tonal"
                                 />
@@ -382,51 +382,51 @@ const controller = reactive(new Controller())
                                         title="Squatted Package"
                                     ></VListItem>
                                     <VListItem
-                                        v-if="item?.spdx?.toolName"
-                                        :subtitle="item.spdx.toolName"
+                                        v-if="item?.spdx_toolName"
+                                        :subtitle="item.spdx_toolName"
                                         title="Source"
                                     ></VListItem>
 
                                     <VListItemTitle>Source Code</VListItemTitle>
 
                                     <VListItem
-                                        v-if="item?.spdx?.repoName"
-                                        :title="`${item.spdx?.repo?.source} Repository`"
+                                        v-if="item?.spdx_repoName"
+                                        :title="`${item.spdx_repo_source} Repository`"
                                     >
                                         <a
-                                            v-if="item?.spdx?.repo?.source === 'GitHub'"
-                                            :href="`https://github.com/${item.spdx.repoName}`"
+                                            v-if="item?.spdx_repo_source === 'GitHub'"
+                                            :href="`https://github.com/${item.spdx_repoName}`"
                                             target="_blank"
                                         >
-                                            {{ item.spdx.repoName }}
+                                            {{ item.spdx_repoName }}
                                         </a>
 
                                     </VListItem>
                                     <VListItem
                                         class="text-capitalize"
-                                        v-if="item.spdx?.repo?.defaultBranch"
-                                        :subtitle="item.spdx?.repo?.defaultBranch"
+                                        v-if="item.spdx_repo_defaultBranch"
+                                        :subtitle="item.spdx_repo_defaultBranch"
                                         title="Default Branch"
                                     ></VListItem>
                                     <VListItem
-                                        v-if="item.spdx?.repo?.licenseName"
-                                        :subtitle="item.spdx?.repo?.licenseName"
+                                        v-if="item.spdx_repo_licenseName"
+                                        :subtitle="item.spdx_repo_licenseName"
                                         title="License"
                                     >
                                     </VListItem>
                                     <VListItem
                                         class="text-capitalize"
-                                        v-if="item.spdx?.repo?.visibility"
-                                        :subtitle="item.spdx?.repo?.visibility"
+                                        v-if="item.spdx_repo_visibility"
+                                        :subtitle="item.spdx_repo_visibility"
                                         title="Visibility"
                                     ></VListItem>
                                     <VListItem
-                                        :subtitle="item.spdx?.repo?.archived ? 'Archived' : item.spdx?.repo?.fork ? 'Forked' : item.spdx?.repo?.template ? 'Template' : 'Source'"
+                                        :subtitle="item.spdx_repo_archived ? 'Archived' : item.spdx_repo_fork ? 'Forked' : item.spdx_repo_template ? 'Template' : 'Source'"
                                         title="Type"
                                     ></VListItem>
                                     <VListItem
-                                        v-if="item.spdx?.repo?.pushedAt"
-                                        :subtitle="(new Date(item.spdx?.repo?.pushedAt)).toLocaleDateString()"
+                                        v-if="item.spdx_repo_pushedAt"
+                                        :subtitle="(new Date(item.spdx_repo_pushedAt)).toLocaleDateString()"
                                         title="Last Pushed"
                                     >
                                     </VListItem>
