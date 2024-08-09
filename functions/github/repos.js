@@ -113,28 +113,28 @@ const store = async (prisma, session, repo) => {
     }
     try {
         await prisma.git_repos.findUniqueOrThrow({ where })
-        const info = await prisma.git_repos.update({
-            where, data: {
-                fullName: data.fullName,
-                updatedAt: data.updatedAt,
-                pushedAt: data.pushedAt,
-                defaultBranch: data.defaultBranch,
-                ownerId: data.ownerId,
-                licenseSpdxId: data.licenseSpdxId,
-                licenseName: data.licenseName,
-                fork: data.fork,
-                template: data.template,
-                archived: data.archived,
-                visibility: data.visibility,
-                avatarUrl: data.avatarUrl,
-            }
-        })
-        console.log(`/github/repos git_repos ${data.fullName} kid=${session.kid}`, info)
-        return data
     } catch (_) {
         const info = await prisma.git_repos.create({ data })
 
         console.log(`/github/repos git_repos ${data.fullName} kid=${session.kid}`, info)
         return data
     }
+    const info = await prisma.git_repos.update({
+        where,
+        data: {
+            updatedAt: data.updatedAt,
+            pushedAt: data.pushedAt,
+            defaultBranch: data.defaultBranch,
+            ownerId: data.ownerId,
+            licenseSpdxId: data.licenseSpdxId,
+            licenseName: data.licenseName,
+            fork: data.fork,
+            template: data.template,
+            archived: data.archived,
+            visibility: data.visibility,
+            avatarUrl: data.avatarUrl,
+        }
+    })
+    console.log(`/github/repos git_repos ${data.fullName} kid=${session.kid}`, info)
+    return data
 }
