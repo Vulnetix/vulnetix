@@ -125,7 +125,7 @@ export async function onRequestGet(context) {
         }
         try {
             await prisma.github_apps.findUniqueOrThrow({ where: { login: appData.login } })
-            const GHAppInfo = await prisma.git_repos.update({
+            const GHAppInfo = await prisma.github_apps.update({
                 where: { login: appData.login },
                 data: {
                     accessToken: appData.accessToken,

@@ -108,8 +108,9 @@ const store = async (prisma, session, repo) => {
         avatarUrl: repo.owner.avatar_url,
     }
     const where = {
-        fullName: create.fullName,
-        AND: [{ memberEmail: create.memberEmail }],
+        fullName_memberEmail: {
+            AND: [create.fullName, create.memberEmail]
+        }
     }
     const info = await prisma.git_repos.upsert({
         where,

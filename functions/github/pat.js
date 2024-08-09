@@ -27,8 +27,16 @@ export async function onRequestPost(context) {
     if (!body.token.startsWith('github_pat_')) {
         return Response.json({ error: { message: `Invalid PAT provided, expected "github_pat_" prefix.` } })
     }
-    const tokenInfo = await prisma.member_keys.create({
-        data: {
+    const tokenInfo = await prisma.member_keys.upsert({
+        where: {
+            memberEmail_secret: {
+                AND: [body.token, session.memberEmail]
+            }
+        },
+        update: {
+            keyLabel: body.label,
+        },
+        create: {
             memberEmail: session.memberEmail,
             keyLabel: body.label,
             keyType: 'github_pat',
