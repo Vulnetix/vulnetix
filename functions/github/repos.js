@@ -108,6 +108,7 @@ const store = async (prisma, session, repo) => {
         avatarUrl: repo.owner.avatar_url,
     }
     const where = {
+        fullName: create.fullName,
         fullName_memberEmail: {
             AND: [create.fullName, create.memberEmail]
         }
