@@ -89,7 +89,7 @@ export async function onRequestGet(context) {
     return Response.json({ githubApps, gitRepos })
 }
 const store = async (prisma, session, repo) => {
-    const data = {
+    const create = {
         fullName: repo.full_name,
         ghid: repo.ghid,
         source: "GitHub",
@@ -108,33 +108,23 @@ const store = async (prisma, session, repo) => {
         avatarUrl: repo.owner.avatar_url,
     }
     const where = {
-        fullName: data.fullName,
-        AND: [{ memberEmail: data.memberEmail }],
+        fullName: create.fullName,
+        AND: [{ memberEmail: create.memberEmail }],
     }
-    try {
-        await prisma.git_repos.findUniqueOrThrow({ where })
-    } catch (_) {
-        const info = await prisma.git_repos.create({ data })
-
-        console.log(`/github/repos git_repos ${data.fullName} kid=${session.kid}`, info)
-        return data
-    }
-    const info = await prisma.git_repos.update({
+    const info = await prisma.git_repos.upsert({
         where,
-        data: {
-            updatedAt: data.updatedAt,
-            pushedAt: data.pushedAt,
-            defaultBranch: data.defaultBranch,
-            ownerId: data.ownerId,
-            licenseSpdxId: data.licenseSpdxId,
-            licenseName: data.licenseName,
-            fork: data.fork,
-            template: data.template,
-            archived: data.archived,
-            visibility: data.visibility,
-            avatarUrl: data.avatarUrl,
-        }
+        create,
+        update: {
+            pushedAt: create.pushedAt,
+            defaultBranch: create.defaultBranch,
+            licenseSpdxId: create.licenseSpdxId,
+            licenseName: create.licenseName,
+            archived: create.archived,
+            visibility: create.visibility,
+            avatarUrl: create.avatarUrl,
+        },
     })
-    console.log(`/github/repos git_repos ${data.fullName} kid=${session.kid}`, info)
+    console.log(`/github/repos git_repos ${create.fullName} kid=${session.kid}`, info)
+
     return data
 }
