@@ -30,7 +30,8 @@ export async function onRequestPost(context) {
     const tokenInfo = await prisma.member_keys.upsert({
         where: {
             memberEmail_secret: {
-                AND: [body.token, session.memberEmail]
+                memberEmail: session.memberEmail,
+                secret: body.token,
             }
         },
         update: {
@@ -58,8 +59,15 @@ export async function onRequestPost(context) {
         created: content?.created_at ? (new Date(content.created_at)).getTime() : (new Date()).getTime(),
         avatarUrl: content?.avatar_url,
     }
-    const patInfo = await prisma.github_pat.create({
-        data: tokenInfo.githubPat
+    const patInfo = await prisma.github_pat.upsert({
+        where: {
+            keyId: tokenInfo.githubPat.keyId,
+        },
+        update: {
+            expires: tokenInfo.githubPat.expires,
+            avatarUrl: tokenInfo.githubPat.avatarUrl,
+        },
+        create: tokenInfo.githubPat,
     })
     console.log(`/github/pat github_pat label=${body.label}`, patInfo)
 

@@ -111,7 +111,7 @@ const store = async (prisma, session, repo) => {
     const where = {
         fullName_memberEmail: {
             fullName: create.fullName,
-            AND: [create.fullName, create.memberEmail]
+            memberEmail: create.memberEmail,
         }
     }
     const info = await prisma.git_repos.upsert({
@@ -129,5 +129,5 @@ const store = async (prisma, session, repo) => {
     })
     console.log(`/github/repos git_repos ${create.fullName} kid=${session.kid}`, info)
 
-    return data
+    return create
 }
