@@ -92,7 +92,7 @@ const store = async (prisma, session, repo) => {
     console.log('store repo', repo)
     const create = {
         fullName: repo.full_name,
-        ghid: repo.ghid,
+        ghid: repo.id,
         source: "GitHub",
         createdAt: (new Date(repo.created_at)).getTime(),
         updatedAt: (new Date(repo.updated_at)).getTime(),
@@ -114,20 +114,24 @@ const store = async (prisma, session, repo) => {
             memberEmail: create.memberEmail,
         }
     }
-    const info = await prisma.git_repos.upsert({
-        where,
-        create,
-        update: {
-            pushedAt: create.pushedAt,
-            defaultBranch: create.defaultBranch,
-            licenseSpdxId: create.licenseSpdxId,
-            licenseName: create.licenseName,
-            archived: create.archived,
-            visibility: create.visibility,
-            avatarUrl: create.avatarUrl,
-        },
-    })
-    console.log(`/github/repos git_repos ${create.fullName} kid=${session.kid}`, info)
+    try {
+        const info = await prisma.git_repos.upsert({
+            where,
+            create,
+            update: {
+                pushedAt: create.pushedAt,
+                defaultBranch: create.defaultBranch,
+                licenseSpdxId: create.licenseSpdxId,
+                licenseName: create.licenseName,
+                archived: create.archived,
+                visibility: create.visibility,
+                avatarUrl: create.avatarUrl,
+            },
+        })
+        console.log(`/github/repos git_repos ${create.fullName} kid=${session.kid}`, info)
+    } catch (err) {
+        console.error(err)
+    }
 
     return create
 }
