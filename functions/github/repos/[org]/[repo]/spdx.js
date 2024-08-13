@@ -64,7 +64,7 @@ export async function onRequestGet(context) {
             console.log('content', content)
             continue
         }
-        const { spdxId, spdxStr } = await process(prisma, session, repoName, content)
+        const { spdxId, spdxStr, findingIds } = await process(prisma, session, repoName, content)
         const objectPrefix = `github/${app.installationId}/repos/${repoName}/sbom/`
         console.log(`${repoName}/sbom/${spdxId}.json`, await env.r2icache.put(`${objectPrefix}${spdxId}.json`, spdxStr, putOptions))
         files.push(content)
@@ -95,11 +95,10 @@ export async function onRequestGet(context) {
         files.push({ spdx: content, errors })
     }
 
-    return Response.json(files)
+    return Response.json({ok: true, files, findingIds})
 }
 
 const process = async (prisma, session, repoName, content) => {
-    console.log('process', repoName, content)
     const spdx = content.sbom
     const spdxStr = JSON.stringify(spdx)
     const spdxId = await hex(spdxStr)
@@ -119,6 +118,7 @@ const process = async (prisma, session, repoName, content) => {
         relationshipsJSON: JSON.stringify(spdx.relationships),
         comment: spdx.creationInfo?.comment || '',
     }
+    const findingIds = []
 
     const info = await prisma.spdx.upsert({
         where: {
@@ -178,6 +178,7 @@ const process = async (prisma, session, repoName, content) => {
                 }
             })
             console.log(`findings SCA`, finding)
+            findingIds.push(findingId)
             const vex = await prisma.triage_activity.upsert({
                 where: {
                     findingId,
@@ -199,5 +200,5 @@ const process = async (prisma, session, repoName, content) => {
         i++
     }
 
-    return { spdxId, spdxStr }
+    return { spdxId, spdxStr, findingIds }
 }

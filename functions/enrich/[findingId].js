@@ -2,14 +2,6 @@ import { App, AuthResult, EPSS, OSV } from "@/utils";
 import { CVSS30, CVSS31, CVSS40 } from '@pandatix/js-cvss';
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
-import {
-    Decision,
-    Methodology,
-    Exploitation,
-    TechnicalImpact,
-    Automatable,
-    MissionWellbeingImpact,
-} from "ssvc";
 
 export async function onRequestGet(context) {
     const {
@@ -119,8 +111,8 @@ export async function onRequestGet(context) {
         // TechnicalImpact
         // Automatable
         // MissionWellbeingImpact        
-        const vexData = finding.triage
-        let { analysisState } = vexData
+
+        let { analysisState } = finding.triage
         if (
             cvssVector && (
                 ['E:U', 'E:P', 'E:F', 'E:H'].some(substring => cvss3?.score?.includes(substring)) ||
@@ -129,24 +121,19 @@ export async function onRequestGet(context) {
         ) {
             analysisState = 'exploitable'
         }
+        finding.triage.analysisState = analysisState
+        finding.triage.cvssVector = !!cvss4 ? cvss4.score : !!cvss31 ? cvss31.score : cvss3 ? cvss3.score : null
+        finding.triage.cvssScore = !!cvss4 ? cvssVector.Score().toString() : !!cvss31 ? cvssVector.BaseScore().toString() : cvss3 ? cvssVector.BaseScore().toString() : null
+        finding.triage.epssPercentile = epssPercentile
+        finding.triage.epssScore = epssScore
+        finding.triage.seen = 1
+        finding.triage.seenAt = new Date().getTime()
+
         const vexInfo = await prisma.triage_activity.update({
             where: {
                 findingId,
             },
-            data: {
-                analysisState,
-                cvssVector: !!cvss4 ? cvss4.score : !!cvss31 ? cvss31.score : cvss3 ? cvss3.score : null,
-                cvssScore: !!cvss4 ? cvssVector.Score().toString() : !!cvss31 ? cvssVector.BaseScore().toString() : cvss3 ? cvssVector.BaseScore().toString() : null,
-                epssPercentile,
-                epssScore,
-                seen: 1,
-                seenAt: new Date().getTime(),
-                // ssvc,
-                // remediation,
-                // analysisJustification,
-                // analysisResponse,
-                // analysisDetail,
-            }
+            data: finding.triage
         })
         console.log(`Seen VEX ${finding.detectionTitle}`, vexInfo)
 

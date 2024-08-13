@@ -214,12 +214,10 @@ class Controller {
                 return
             }
             if (alerts === true) {
-                if (!data) {
-                    state.error = "No data retrieved from GitHub. Is this GitHub App installed?"
-                    state.warning = "Please check the GitHub App permissions, they may have been revoked or uninstalled."
-                } else {
-                    state.success = "Refreshed GitHub SPDX"
-                }
+                state.success = "Refreshed GitHub SPDX"
+            }
+            if (data?.findingIds) {
+                console.log(`TODO: enrich OSV data`, data.findingIds)
             }
 
             return
