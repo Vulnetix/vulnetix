@@ -99,8 +99,8 @@ export async function onRequestGet(context) {
             const epss = new EPSS()
             scores = await epss.query(prisma, session.memberEmail, finding.cve)
         }
-        const epssScore = scores?.epss
-        const epssPercentile = scores?.percentile
+        const epssScore = parseFloat(scores.epss)
+        const epssPercentile = parseFloat(scores.percentile)
         const cvss4 = vuln?.severity?.filter(i => i.score.startsWith('CVSS:4/'))?.pop()
         const cvss31 = vuln?.severity?.filter(i => i.score.startsWith('CVSS:3.1/'))?.pop()
         const cvss3 = vuln?.severity?.filter(i => i.score.startsWith('CVSS:3/'))?.pop()
@@ -112,30 +112,40 @@ export async function onRequestGet(context) {
         // Automatable
         // MissionWellbeingImpact        
 
-        let { analysisState } = finding.triage
+        const { searchParams } = new URL(request.url)
+        const seen = parseInt(searchParams.get('seen'), 10) || 1
+        let { analysisState, triageAutomated, triagedAt, seenAt } = finding.triage
         if (
-            cvssVector && (
+            (cvssVector && (
                 ['E:U', 'E:P', 'E:F', 'E:H'].some(substring => cvss3?.score?.includes(substring)) ||
                 ['E:A', 'E:P', 'E:U'].some(substring => cvss4?.score?.includes(substring))
-            )
+            )) || epssPercentile > 0.2
         ) {
             analysisState = 'exploitable'
+            triageAutomated = 1
+            if (!triagedAt) {
+                triagedAt = new Date().getTime()
+            }
+        }
+        if (seen === 1 && !seenAt) {
+            seenAt = new Date().getTime()
         }
         finding.triage.analysisState = analysisState
+        finding.triage.triageAutomated = triageAutomated
+        finding.triage.triagedAt = triagedAt
         finding.triage.cvssVector = !!cvss4 ? cvss4.score : !!cvss31 ? cvss31.score : cvss3 ? cvss3.score : null
         finding.triage.cvssScore = !!cvss4 ? cvssVector.Score().toString() : !!cvss31 ? cvssVector.BaseScore().toString() : cvss3 ? cvssVector.BaseScore().toString() : null
-        finding.triage.epssPercentile = epssPercentile
-        finding.triage.epssScore = epssScore
-        finding.triage.seen = 1
-        finding.triage.seenAt = new Date().getTime()
-
+        finding.triage.epssPercentile = epssPercentile.toString()
+        finding.triage.epssScore = epssScore.toString()
+        finding.triage.seen = seen
+        finding.triage.seenAt = seenAt
         const vexInfo = await prisma.triage_activity.update({
             where: {
                 findingId,
             },
             data: finding.triage
         })
-        console.log(`Seen VEX ${finding.detectionTitle}`, vexInfo)
+        console.log(`Saved VEX ${finding.detectionTitle}`, vexInfo)
 
         return Response.json({ ok: true, finding })
     } catch (err) {

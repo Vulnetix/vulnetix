@@ -493,21 +493,21 @@ const controller = reactive(new Controller())
                                 >
                                     <VListItemTitle>Triage Detail</VListItemTitle>
                                     <VListItem
-                                        v-if="item.triage_lastObserved"
-                                        :subtitle="(new Date(item.triage_lastObserved)).toISOString()"
-                                        title="Last Observed"
-                                    >
-                                    </VListItem>
-                                    <VListItem
-                                        v-if="item.triage_triageAutomated === 1"
-                                        :subtitle="(new Date(item.triage_createdAt)).toISOString()"
+                                        v-if="item.triage_triageAutomated === '1'"
+                                        :subtitle="(new Date(item.triage_triagedAt)).toISOString()"
                                         title="Auto Triage"
                                     >
                                     </VListItem>
                                     <VListItem
-                                        v-else-if="item.triage_seen === 1"
-                                        :subtitle="(new Date(item.triage_seenAt)).toISOString()"
+                                        v-else-if="item.triage_triageAutomated === '0' && item.triage_triagedAt"
+                                        :subtitle="(new Date(item.triage_triagedAt)).toISOString()"
                                         title="Manually Triaged"
+                                    >
+                                    </VListItem>
+                                    <VListItem
+                                        v-else-if="item.triage_seen === '1'"
+                                        :subtitle="(new Date(item.triage_seenAt)).toISOString()"
+                                        title="Queue item first seen"
                                     >
                                     </VListItem>
                                     <VListItem

@@ -27,6 +27,7 @@ export async function onRequestGet(context) {
     const repoName = `${params.org}/${params.repo}`
     const errors = []
     const files = []
+    let findings = []
 
     const githubApps = await prisma.github_apps.findMany({
         where: {
@@ -65,6 +66,7 @@ export async function onRequestGet(context) {
             continue
         }
         const { spdxId, spdxStr, findingIds } = await process(prisma, session, repoName, content)
+        findings = [...findings, ...findingIds]
         const objectPrefix = `github/${app.installationId}/repos/${repoName}/sbom/`
         console.log(`${repoName}/sbom/${spdxId}.json`, await env.r2icache.put(`${objectPrefix}${spdxId}.json`, spdxStr, putOptions))
         files.push(content)
@@ -89,13 +91,14 @@ export async function onRequestGet(context) {
             console.log('content', content)
             continue
         }
-        const { spdxId, spdxStr } = await process(prisma, session, repoName, content)
+        const { spdxId, spdxStr, findingIds } = await process(prisma, session, repoName, content)
+        findings = [...findings, ...findingIds]
         const objectPrefix = `github/pat_${memberKey.id}/repos/${repoName}/sbom/`
         console.log(`${repoName}/sbom/${spdxId}.json`, await env.r2icache.put(`${objectPrefix}${spdxId}.json`, spdxStr, putOptions))
         files.push({ spdx: content, errors })
     }
 
-    return Response.json({ok: true, files, findingIds})
+    return Response.json({ ok: true, files, findings })
 }
 
 const process = async (prisma, session, repoName, content) => {
