@@ -99,7 +99,7 @@ export async function onRequestGet(context) {
             const epss = new EPSS()
             scores = await epss.query(prisma, session.memberEmail, finding.cve)
         }
-        let epssScore, epssPercentile = 0
+        let epssScore, epssPercentile;
         if (scores?.epss) {
             epssScore = parseFloat(scores.epss)
             epssPercentile = parseFloat(scores.percentile)
@@ -138,8 +138,12 @@ export async function onRequestGet(context) {
         finding.triage.triagedAt = triagedAt
         finding.triage.cvssVector = !!cvss4 ? cvss4.score : !!cvss31 ? cvss31.score : cvss3 ? cvss3.score : null
         finding.triage.cvssScore = !!cvss4 ? cvssVector.Score().toString() : !!cvss31 ? cvssVector.BaseScore().toString() : cvss3 ? cvssVector.BaseScore().toString() : null
-        finding.triage.epssPercentile = epssPercentile.toString()
-        finding.triage.epssScore = epssScore.toString()
+        if (epssPercentile) {
+            finding.triage.epssPercentile = epssPercentile.toString()
+        }
+        if (epssScore) {
+            finding.triage.epssScore = epssScore.toString()
+        }
         finding.triage.seen = seen
         finding.triage.seenAt = seenAt
         const vexInfo = await prisma.triage_activity.update({

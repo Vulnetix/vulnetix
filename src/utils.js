@@ -2,10 +2,10 @@
  * Class representing the possible results of an authentication attempt.
  */
 export class AuthResult {
-    static get FORBIDDEN() { return "Forbidden"; }
-    static get REVOKED() { return "Revoked"; }
-    static get EXPIRED() { return "Expired"; }
-    static get AUTHENTICATED() { return "Authenticated"; }
+    static get FORBIDDEN() { return "Forbidden" }
+    static get REVOKED() { return "Revoked" }
+    static get EXPIRED() { return "Expired" }
+    static get AUTHENTICATED() { return "Authenticated" }
 }
 
 /**
@@ -18,8 +18,8 @@ export class App {
      * @param {Object} prisma - The Prisma client instance for database interaction.
      */
     constructor(request, prisma) {
-        this.request = request;
-        this.prisma = prisma;
+        this.request = request
+        this.prisma = prisma
     }
 
     /**
@@ -37,7 +37,7 @@ export class App {
             if (err.name === 'NotFoundError') {
                 return { exists: false }
             }
-            throw err;
+            throw err
         }
     }
 
@@ -47,26 +47,26 @@ export class App {
      */
     async authenticate() {
         try {
-            const token = this.request.headers.get('X-Vulnetix');
+            const token = this.request.headers.get('X-Vulnetix')
 
             if (!token) {
-                return { err: null, result: AuthResult.FORBIDDEN, session: null };
+                return { err: null, result: AuthResult.FORBIDDEN, session: null }
             }
 
             const session = await this.prisma.sessions.findFirstOrThrow({
                 where: { kid: token },
-            });
+            })
 
             if (!session.expiry || session.expiry <= Date.now()) {
-                return { err: null, result: AuthResult.EXPIRED, session: null };
+                return { err: null, result: AuthResult.EXPIRED, session: null }
             }
 
-            return { err: null, result: AuthResult.AUTHENTICATED, session };
+            return { err: null, result: AuthResult.AUTHENTICATED, session }
         } catch (err) {
             if (err.name === 'NotFoundError') {
-                return { err: null, result: AuthResult.REVOKED, session: null };
+                return { err: null, result: AuthResult.REVOKED, session: null }
             }
-            return { err, result: null, session: null };
+            return { err, result: null, session: null }
         }
     }
 }
@@ -96,7 +96,7 @@ export class OSV {
             const content = JSON.parse(respText)
             return { ok: response.ok, status: response.status, statusText: response.statusText, content, url }
         } catch (e) {
-            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
+            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/)
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
             return { url, status: 500, error: { message: e.message, lineno, colno } }
@@ -168,7 +168,7 @@ export class EPSS {
             const content = JSON.parse(respText)
             return { ok: response.ok, status: response.status, statusText: response.statusText, content, url }
         } catch (e) {
-            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
+            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/)
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
             return { url, status: 500, error: { message: e.message, lineno, colno } }
@@ -271,7 +271,7 @@ export class VulnCheck {
             const content = JSON.parse(respText)
             return { ok: response.ok, status: response.status, statusText: response.statusText, content, url }
         } catch (e) {
-            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
+            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/)
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
             return { url, error: { message: e.message, lineno, colno } }
@@ -315,7 +315,7 @@ export class GitHub {
             const content = JSON.parse(respText)
             return { ok: response.ok, status: response.status, statusText: response.statusText, tokenExpiry, error: { message: content?.message }, content, url, raw: respText }
         } catch (e) {
-            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
+            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/)
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
             return { url, error: { message: e.message, lineno, colno } }
@@ -335,7 +335,7 @@ export class GitHub {
             const content = JSON.parse(respText)
             return { ok: response.ok, status: response.status, statusText: response.statusText, tokenExpiry, error: { message: content?.message }, content, url }
         } catch (e) {
-            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
+            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/)
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
             return { url, error: { message: e.message, lineno, colno } }
@@ -501,7 +501,7 @@ export class GitHub {
             console.log(`GitHub.revokeToken()`, createLog)
             return { ok: response.ok, status: response.status, statusText: response.statusText, url }
         } catch (e) {
-            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/);
+            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/)
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
 
             return { url, error: { message: e.message, lineno, colno } }
@@ -649,7 +649,7 @@ export class GitHub {
  * Use await ensureStrReqBody(..) in an async function to get the string
  * @param {Request} request the incoming request to read from
  */
-export async function ensureStrReqBody(request) {
+export const ensureStrReqBody = async (request) => {
     const contentType = request.headers.get("content-type")
     if (contentType.includes("application/json")) {
         return JSON.stringify(await request.json())
@@ -672,7 +672,7 @@ export async function ensureStrReqBody(request) {
     }
 }
 
-export async function pbkdf2Verify(key, password, hashBits = 512) {
+export const pbkdf2Verify = async (key, password, hashBits = 512) => {
     let compositeStr = null                     // composite key is salt, iteration count, and derived key
     try { compositeStr = atob(key) } catch (e) { throw new Error('Invalid key') }                       // decode from base64
     const version = compositeStr.slice(0, 3)    //  3 bytes
@@ -699,7 +699,7 @@ export async function pbkdf2Verify(key, password, hashBits = 512) {
     return keyStrNew === keyStr // test if newly generated key matches stored key
 }
 
-export async function pbkdf2(password, iterations = 1e5, hashBits = 512) {
+export const pbkdf2 = async (password, iterations = 1e5, hashBits = 512) => {
     const pwUtf8 = new TextEncoder().encode(password)                                                   // encode pw as UTF-8
     const pwKey = await crypto.subtle.importKey('raw', pwUtf8, 'PBKDF2', false, ['deriveBits'])         // create pw key
     const saltUint8 = crypto.getRandomValues(new Uint8Array(16))                                        // get random salt
@@ -715,7 +715,7 @@ export async function pbkdf2(password, iterations = 1e5, hashBits = 512) {
     return btoa('v01' + compositeStr)
 }
 
-export function isSPDX(input) {
+export const isSPDX = input => {
     const supportedVersions = ["SPDX-2.3"]
     let spdx
     if (typeof input === "string" && isJSON(input)) {
@@ -787,7 +787,7 @@ function validCdxDependency(o) {
     }
     return true
 }
-export function isCDX(input) {
+export const isCDX = input => {
     const supportedVersions = ["1.5", "1.6"]
     let cdx
     if (typeof input === "string" && isJSON(input)) {
@@ -823,7 +823,7 @@ export function isCDX(input) {
     return true
 }
 
-export function isSARIF(input) {
+export const isSARIF = input => {
     const supportedVersions = ["2.1.0"]
     let sarif
     if (typeof input === "string" && isJSON(input)) {
@@ -887,25 +887,35 @@ export function isSARIF(input) {
 
 export const appExpiryPeriod = (86400000 * 365 * 10)  // 10 years
 
-export function convertIsoDatesToTimestamps(obj) {
-    return Object.fromEntries(
-        Object.entries(obj).map(([key, value]) => {
-            if (typeof value === 'string' && /(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))/.test(value)) {
-                value = new Date(value).getTime()
-            } else if (!!value && typeof value === 'object') {
-                value = convertIsoDatesToTimestamps(value)
-            }
-            return [key, value]
-        })
-    )
+export const convertIsoDatesToTimestamps = obj => {
+    if (Array.isArray(obj)) {
+        return obj.map(item => convertIsoDatesToTimestamps(item))
+    } else if (typeof obj === 'object' && obj !== null) {
+        return Object.fromEntries(
+            Object.entries(obj).map(([key, value]) => {
+                if (typeof value === 'string' && /(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))/.test(value)) {
+                    value = new Date(value).getTime()
+                } else if (!!value && typeof value === 'object') {
+                    value = convertIsoDatesToTimestamps(value)
+                }
+                return [key, value]
+            })
+        )
+    } else {
+        return obj // Handle other data types (e.g., numbers, strings)
+    }
 }
 
-export const flatten = (obj, prefix = '') =>
+export const flatten = (obj, prefix = '', convertDates = false) =>
     Object.entries(obj).reduce((acc, [key, value]) => {
         const newKey = prefix ? `${prefix}_${key}` : key
-        return value && typeof value === 'object'
-            ? { ...acc, ...flatten(value, newKey) }
-            : { ...acc, [newKey]: value }
+        return Array.isArray(value)
+            ? { ...acc, [newKey]: value } // Flatten array directly
+            : value && typeof value === 'object'
+                ? { ...acc, ...flatten(value, newKey, convertDates) } // Handle nested objects
+                : convertDates && typeof value === 'string' && /(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))/.test(value)
+                    ? { ...acc, [newKey]: new Date(value).getTime() } // Convert date to timestamp
+                    : { ...acc, [newKey]: value } // Handle primitives
     }, {})
 
 export async function hex(text, name = "SHA-1") {
@@ -920,7 +930,7 @@ export function UUID() {
 
 export const round = (n, p = 100) => Math.round((n + Number.EPSILON) * p) / p
 
-export function isJSON(str) {
+export const isJSON = str => {
     try {
         return (JSON.parse(str) && !!str)
     } catch (e) {
@@ -928,51 +938,51 @@ export function isJSON(str) {
     }
 }
 
-export function timeAgo(date) {
-    const seconds = Math.floor((new Date() - date) / 1000);
+export const timeAgo = date => {
+    const seconds = Math.floor((new Date() - date) / 1000)
 
-    const interval = Math.floor(seconds / 31536000);
+    const interval = Math.floor(seconds / 31536000)
 
     if (interval > 1) {
-        return interval + " years ago";
+        return interval + " years ago"
     }
     if (interval === 1) {
-        return interval + " year ago";
+        return interval + " year ago"
     }
 
-    const months = Math.floor(seconds / 2628000);
+    const months = Math.floor(seconds / 2628000)
     if (months > 1) {
-        return months + " months ago";
+        return months + " months ago"
     }
     if (months === 1) {
-        return months + " month ago";
+        return months + " month ago"
     }
 
-    const days = Math.floor(seconds / 86400);
+    const days = Math.floor(seconds / 86400)
     if (days > 1) {
-        return days + " days ago";
+        return days + " days ago"
     }
     if (days === 1) {
-        return days + " day ago";
+        return days + " day ago"
     }
 
-    const hours = Math.floor(seconds / 3600);
+    const hours = Math.floor(seconds / 3600)
     if (hours > 1) {
-        return hours + " hours ago";
+        return hours + " hours ago"
     }
     if (hours === 1) {
-        return hours + " hour ago";
+        return hours + " hour ago"
     }
 
-    const minutes = Math.floor(seconds / 60);
+    const minutes = Math.floor(seconds / 60)
     if (minutes > 1) {
-        return minutes + " minutes ago";
+        return minutes + " minutes ago"
     }
     if (minutes === 1) {
-        return minutes + " minute ago";
+        return minutes + " minute ago"
     }
 
-    return "just now";
+    return "just now"
 }
 
 // https://octodex.github.com/images/
