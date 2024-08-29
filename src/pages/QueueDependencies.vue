@@ -235,7 +235,7 @@ onMounted(() => Member.ensureSession().then(controller.refresh))
                 >
                     <VChip
                         color="info"
-                        :text="item?.cdx_cdxVersion"
+                        :text="`CDX ${item?.cdx_cdxVersion}`"
                         size="small"
                         label
                     ></VChip>

@@ -42,11 +42,11 @@ export async function onRequestPost(context) {
                 memberEmail: verificationResult.session.memberEmail,
                 cdxVersion: cdx.specVersion,
                 serialNumber: cdx.serialNumber,
-                name: cdx.metadata.component.name,
-                version: cdx.metadata.component.version,
+                name: cdx.metadata?.component?.name,
+                version: cdx.metadata?.component?.version,
                 createdAt: (new Date(cdx.metadata.timestamp)).getTime(),
                 toolName: cdx.metadata.tools.map(t => `${t?.vendor} ${t?.name} ${t?.version}`.trim()).join(', '),
-                externalReferencesJSON: JSON.stringify(cdx.metadata.component.externalReferences),
+                externalReferencesJSON: JSON.stringify(cdx.metadata.component?.externalReferences || []),
                 componentsJSON: JSON.stringify(cdx.components),
                 dependenciesJSON: JSON.stringify(cdx.dependencies),
             }
@@ -76,7 +76,7 @@ export async function onRequestPost(context) {
                     referenceLocator: decodeURIComponent(component.purl),
                     name: component.name,
                     version: component?.version,
-                    license: component?.licenses?.map(l => l.license.id).join(' '),
+                    license: component?.licenses?.map(l => l.license?.id || '').join(' '),
                 }
             })
             const osv = new OSV()
