@@ -98,7 +98,7 @@ class Controller {
       if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
         state.uploadError = data.result
 
-        return setTimeout(() => router.push('/logout'), 2000)
+        // return setTimeout(() => router.push('/logout'), 2000)
       }
       if (typeof data === "string" && !isJSON(data)) {
         state.uploadError = "CycloneDX data could not be uploaded, please try again later."
