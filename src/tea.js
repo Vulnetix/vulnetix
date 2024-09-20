@@ -28,7 +28,7 @@ export class LinkContent {
     static get PLAIN_XML() { return "PLAIN_XML" }
 }
 
-class LifecycleEvent {
+export class LifecycleEvent {
     static get FIRST_MENTION() { return "FIRST_MENTION" }
     static get ALPHA_TESTING() { return "ALPHA_TESTING" }
     static get BETA_TESTING() { return "BETA_TESTING" }
@@ -54,49 +54,49 @@ class LifecycleEvent {
     }
 }
 
-class Lifecycle {
+export class Lifecycle {
     uuid;
     event;
     date;
 
     constructor(uuid, event, date) {
-        this.setUuid(uuid);
-        this.setEvent(event);
-        this.setDate(date);
+        this.setUuid(uuid)
+        this.setEvent(event)
+        this.setDate(date)
     }
 
     setUuid(uuid) {
         if (!Leaf.isValidUUID(uuid)) {
-            throw new Error('Invalid UUID');
+            throw new Error('Invalid UUID')
         }
-        this.uuid = uuid;
+        this.uuid = uuid
     }
 
     setEvent(event) {
         if (!LifecycleEvent.getAllEvents().includes(event)) {
-            throw new Error('Invalid event');
+            throw new Error('Invalid event')
         }
-        this.event = event;
+        this.event = event
     }
 
     setDate(date) {
         if (!this.isValidISO8601(date)) {
-            throw new Error('Invalid date (not a valid ISO8601 format)');
+            throw new Error('Invalid date (not a valid ISO8601 format)')
         }
-        this.date = date;
+        this.date = date
     }
 
     isValidISO8601(dateString) {
-        const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
+        const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/
         if (!iso8601Regex.test(dateString)) {
-            return false;
+            return false
         }
-        const date = new Date(dateString);
-        return date instanceof Date && !isNaN(date);
+        const date = new Date(dateString)
+        return date instanceof Date && !isNaN(date)
     }
 }
 
-class Link {
+export class Link {
     uri;
     content;
     constructor(uri, content) {
@@ -105,7 +105,7 @@ class Link {
     }
 }
 
-class Artifact {
+export class Artifact {
     uuid;
     displayIdentifier;
     identities = []
@@ -128,7 +128,7 @@ class Artifact {
     }
 }
 
-class Identity {
+export class Identity {
     type;
     identifier;
     constructor(type, identifier) {
@@ -137,7 +137,7 @@ class Identity {
     }
 }
 
-class CollectionEl {
+export class CollectionEl {
     uuid;
     version;
     constructor(uuid, version) {
@@ -146,7 +146,7 @@ class CollectionEl {
     }
 }
 
-class Collection {
+export class Collection {
     uuid;
     identities = []
     version;
@@ -164,58 +164,58 @@ class Collection {
 }
 
 
-class Leaf {
+export class Leaf {
     uuid;
     name;
     tei;
     version;
-    lifecycle = [];
+    lifecycle = []
 
     constructor(uuid, name, tei, version, lifecycle) {
-        this.setUuid(uuid);
-        this.setName(name);
-        this.setTei(tei);
-        this.setVersion(version);
-        this.setLifecycle(lifecycle);
+        this.setUuid(uuid)
+        this.setName(name)
+        this.setTei(tei)
+        this.setVersion(version)
+        this.setLifecycle(lifecycle)
     }
 
     setUuid(uuid) {
         if (!Leaf.isValidUUID(uuid)) {
-            throw new Error('Invalid UUID');
+            throw new Error('Invalid UUID')
         }
-        this.uuid = uuid;
+        this.uuid = uuid
     }
 
     setName(name) {
         if (!Leaf.isSafeString(name)) {
-            throw new Error('Invalid name');
+            throw new Error('Invalid name')
         }
-        this.name = name;
+        this.name = name
     }
 
     setTei(tei) {
         if (!Leaf.isValidURN(tei)) {
-            throw new Error('Invalid TEI URN');
+            throw new Error('Invalid TEI URN')
         }
-        this.tei = tei;
+        this.tei = tei
     }
 
     setVersion(version) {
         if (!semver.valid(version)) {
-            throw new Error('Invalid version (not a valid semver)');
+            throw new Error('Invalid version (not a valid semver)')
         }
-        this.version = version;
+        this.version = version
     }
 
     setLifecycle(lifecycle) {
         if (!Array.isArray(lifecycle) || !lifecycle.every(item => item instanceof Lifecycle)) {
-            throw new Error('Invalid lifecycle (must be an array of Lifecycle objects)');
+            throw new Error('Invalid lifecycle (must be an array of Lifecycle objects)')
         }
-        this.lifecycle = lifecycle;
+        this.lifecycle = lifecycle
     }
 
     static isValidUUID(uuid) {
-        const uuidv4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        const uuidv4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
         return uuidv4Regex.test(uuid)
     }
 
@@ -229,15 +229,52 @@ class Leaf {
     }
 }
 
-class Product {
+export class Product {
     uuid;
     name;
     lifecycle = []
     leafs = []
     constructor(uuid, name, lifecycle, leafs) {
+        this.setUuid(uuid)
+        this.setName(name)
+        this.setLifecycle(lifecycle)
+        this.setLeafs(leafs)
+    }
+
+    setUuid(uuid) {
+        if (!Leaf.isValidUUID(uuid)) {
+            throw new Error('Invalid UUID')
+        }
         this.uuid = uuid
+    }
+
+    setName(name) {
+        if (!Leaf.isSafeString(name)) {
+            throw new Error('Invalid name')
+        }
         this.name = name
+    }
+
+    setLifecycle(lifecycle) {
+        if (!Array.isArray(lifecycle) || !lifecycle.every(item => item instanceof Lifecycle)) {
+            throw new Error('Invalid lifecycle (must be an array of Lifecycle objects)')
+        }
         this.lifecycle = lifecycle
+    }
+
+    setLeafs(leafs) {
+        if (!Array.isArray(leafs) || !leafs.every(item => item instanceof Leaf)) {
+            throw new Error('Invalid leafs (must be an array of Leaf objects)')
+        }
         this.leafs = leafs
+    }
+
+    static isValidUUID(uuid) {
+        const uuidv4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+        return uuidv4Regex.test(uuid)
+    }
+
+    static isSafeString(str) {
+        return typeof str === 'string' && str.length > 0 && !/[<>]/.test(str)
     }
 }
