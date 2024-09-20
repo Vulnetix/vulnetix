@@ -105,16 +105,6 @@ class Link {
     }
 }
 
-class Lifecycle {
-    event;
-    date;
-    constructor(uuid, event, date) {
-        this.uuid = uuid
-        this.event = event
-        this.date = date
-    }
-}
-
 class Artifact {
     uuid;
     displayIdentifier;
