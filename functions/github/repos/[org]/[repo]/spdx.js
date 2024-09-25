@@ -212,7 +212,7 @@ const process = async (prisma, session, repoName, content) => {
                         findingKey: finding.id,
                     },
                     data: {
-                        modifiedAt: vexData.lastObserved
+                        lastObserved: vexData.lastObserved
                     },
                 })
             } else {

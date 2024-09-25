@@ -143,7 +143,7 @@ export async function onRequestPost(context) {
                                 findingKey: finding.id,
                             },
                             data: {
-                                modifiedAt: vexData.lastObserved
+                                lastObserved: vexData.lastObserved
                             },
                         })
                     } else {
