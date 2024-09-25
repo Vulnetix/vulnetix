@@ -107,7 +107,9 @@ export async function onRequestPost(context) {
                     const originalFinding = await prisma.findings.findFirst({
                         where: {
                             findingId,
-                            AND: { spdxId },
+                            AND: {
+                                memberEmail: session.memberEmail
+                            },
                         }
                     })
                     let finding;
