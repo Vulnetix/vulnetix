@@ -1,4 +1,4 @@
-import { AuthResult, hex, isCDX, OSV, Server } from "@/utils";
+import { AuthResult, hex, isCDX, OSV, Server, ensureStrReqBody } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
@@ -28,7 +28,8 @@ export async function onRequestPost(context) {
     const files = []
     let errors = new Set()
     try {
-        const inputs = await request.json()
+        const body = await ensureStrReqBody(request)
+        const inputs = JSON.parse(body)
         for (const cdx of inputs) {
             if (!isCDX(cdx)) {
                 return Response.json({ ok: false, error: { message: 'CDX is missing necessary fields.' } })

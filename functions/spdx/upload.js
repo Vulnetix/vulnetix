@@ -1,4 +1,4 @@
-import { AuthResult, OSV, Server, hex, isSPDX } from "@/utils";
+import { AuthResult, OSV, Server, hex, isSPDX, ensureStrReqBody } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
@@ -27,7 +27,8 @@ export async function onRequestPost(context) {
     const files = []
     let errors = new Set()
     try {
-        const inputs = await request.json()
+        const body = await ensureStrReqBody(request)
+        const inputs = JSON.parse(body)
         for (const spdx of inputs) {
             if (!isSPDX(spdx)) {
                 return Response.json({ ok: false, error: { message: 'SPDX is missing necessary fields.' } })
