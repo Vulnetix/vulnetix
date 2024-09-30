@@ -24,7 +24,7 @@ export async function onRequestGet(context) {
         if (!verificationResult.isValid) {
             return Response.json({ ok: false, result: verificationResult.message })
         }
-        const member = await prisma.members.findFirst({
+        const member = await prisma.Member.findFirst({
             where: {
                 email: verificationResult.session.memberEmail,
             },
@@ -68,7 +68,7 @@ export async function onRequestPost(context) {
         if (!verificationResult.isValid) {
             return Response.json({ ok: false, result: verificationResult.message })
         }
-        const originalMember = await prisma.members.findFirst({
+        const originalMember = await prisma.Member.findFirst({
             where: {
                 email: verificationResult.session.memberEmail,
             },
@@ -104,14 +104,14 @@ export async function onRequestPost(context) {
             member.alertType = parseInt(data.alertType, 10)
         }
         let updatedOrg = false
-        const originalOrg = await prisma.orgs.findFirst({
+        const originalOrg = await prisma.Org.findFirst({
             where: {
                 uuid: originalMember.orgId,
             },
         })
         if (data?.orgName && originalOrg.name !== data.orgName) {
             //TODO: temp until organisations feature is finished
-            const orgInfo = await prisma.orgs.update({
+            const orgInfo = await prisma.Org.update({
                 where: {
                     uuid: originalMember.orgId,
                 },
@@ -124,7 +124,7 @@ export async function onRequestPost(context) {
         }
 
         if (Object.keys(member).length > 0) {
-            const memberInfo = await prisma.members.update({
+            const memberInfo = await prisma.Member.update({
                 where: {
                     uuid: originalMember.uuid,
                 },

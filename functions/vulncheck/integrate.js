@@ -33,15 +33,15 @@ export async function onRequestPost(context) {
             memberEmail: verificationResult.session.memberEmail,
             keyType: 'vulncheck',
         }
-        const original = await prisma.member_keys.findFirst({ where })
+        const original = await prisma.MemberKey.findFirst({ where })
         if (data.apiKey !== original?.secret) {
             let info
             if (original === null) {
                 const params = Object.assign({}, where)
                 params.secret = data.apiKey
-                info = await prisma.member_keys.create({ data: params })
+                info = await prisma.MemberKey.create({ data: params })
             } else {
-                info = await prisma.member_keys.update({ where, data: { secret: data.apiKey } })
+                info = await prisma.MemberKey.update({ where, data: { secret: data.apiKey } })
             }
 
             return Response.json({ ok: true, info })

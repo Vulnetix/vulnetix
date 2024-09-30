@@ -26,7 +26,7 @@ export async function onRequestGet(context) {
 
     const githubApps = []
     const gitRepos = []
-    const installs = await prisma.github_apps.findMany({
+    const installs = await prisma.GitHubApp.findMany({
         where: {
             memberEmail: verificationResult.session.memberEmail,
             AND: { expires: { gte: (new Date()).getTime(), } }
@@ -38,11 +38,11 @@ export async function onRequestGet(context) {
             throw new Error('github_apps invalid')
         }
         const gh = new GitHub(app.accessToken)
-        const { content, error } = await gh.getRepos(prisma, verificationResult.session.memberEmail)
+        const { content, error } = await gh.getRepos(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail)
         if (error?.message) {
             if ("Bad credentials" === error.message) {
                 app.expires = (new Date()).getTime()
-                await prisma.github_apps.update({
+                await prisma.GitHubApp.update({
                     where: {
                         installationId: parseInt(app.installationId, 10),
                         AND: { memberEmail: app.memberEmail, },
@@ -68,7 +68,7 @@ export async function onRequestGet(context) {
         })
     }
 
-    const memberKeys = await prisma.member_keys.findMany({
+    const memberKeys = await prisma.MemberKey.findMany({
         where: {
             memberEmail: verificationResult.session.memberEmail,
             keyType: 'github_pat',
@@ -76,7 +76,7 @@ export async function onRequestGet(context) {
     })
     for (const memberKey of memberKeys) {
         const gh = new GitHub(memberKey.secret)
-        const { content, error } = await gh.getRepos(prisma, verificationResult.session.memberEmail)
+        const { content, error } = await gh.getRepos(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail)
         if (error?.message) {
             return Response.json({ error, app: { login: memberKey.keyLabel } })
         }
@@ -90,6 +90,7 @@ export async function onRequestGet(context) {
 }
 const store = async (prisma, session, repo) => {
     const create = {
+        orgId: session.orgId,
         fullName: repo.full_name,
         ghid: repo.id,
         source: "GitHub",
@@ -108,13 +109,13 @@ const store = async (prisma, session, repo) => {
         avatarUrl: repo.owner.avatar_url,
     }
     const where = {
-        fullName_memberEmail: {
+        fullName_orgId: {
             fullName: create.fullName,
-            memberEmail: create.memberEmail,
+            orgId: session.orgId,
         }
     }
     try {
-        const info = await prisma.git_repos.upsert({
+        const info = await prisma.GitRepo.upsert({
             where,
             create,
             update: {

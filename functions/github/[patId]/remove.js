@@ -23,13 +23,13 @@ export async function onRequestDelete(context) {
     if (!verificationResult.isValid) {
         return Response.json({ ok: false, result: verificationResult.message })
     }
-    const patInfo = await prisma.github_pat.delete({
+    const patInfo = await prisma.GitHubPAT.delete({
         where: {
             keyId: parseInt(params.patId, 10),
         }
     })
     console.log(`/github/[${params.patId}]/remove github_pat`, patInfo)
-    const tokenInfo = await prisma.member_keys.delete({
+    const tokenInfo = await prisma.MemberKey.delete({
         where: {
             id: parseInt(params.patId, 10),
             memberEmail: verificationResult.session.memberEmail,

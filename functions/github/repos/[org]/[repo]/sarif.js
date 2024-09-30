@@ -24,7 +24,7 @@ export async function onRequestGet(context) {
         return Response.json({ ok: false, result: verificationResult.message })
     }
     const errors = []
-    const githubApps = await prisma.github_apps.findMany({
+    const githubApps = await prisma.GitHubApp.findMany({
         where: {
             memberEmail: verificationResult.session.memberEmail,
         },
@@ -39,11 +39,11 @@ export async function onRequestGet(context) {
         }
         const gh = new GitHub(app.accessToken)
 
-        const { content, error } = await gh.getRepoSarif(prisma, verificationResult.session.memberEmail, repoName)
+        const { content, error } = await gh.getRepoSarif(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail, repoName)
         if (error?.message) {
             if ("Bad credentials" === error.message) {
                 app.expires = (new Date()).getTime()
-                await prisma.github_apps.update({
+                await prisma.GitHubApp.update({
                     where: {
                         installationId: parseInt(app.installationId, 10),
                         AND: { memberEmail: app.memberEmail, },
@@ -67,7 +67,7 @@ export async function onRequestGet(context) {
         }
     }
 
-    const memberKeys = await prisma.member_keys.findMany({
+    const memberKeys = await prisma.MemberKey.findMany({
         where: {
             memberEmail: verificationResult.session.memberEmail,
             keyType: 'github_pat',
@@ -75,13 +75,14 @@ export async function onRequestGet(context) {
     })
     for (const memberKey of memberKeys) {
         const gh = new GitHub(memberKey.secret)
-        const { content, error } = await gh.getRepoSarif(prisma, verificationResult.session.memberEmail, repoName)
+        const { content, error } = await gh.getRepoSarif(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail, repoName)
         if (error?.message) {
             errors.push({ error, app: { login: memberKey.keyLabel } })
             continue
         }
         for (const data of content) {
-            const objectPrefix = `github/pat_${memberKey.id}/repos/${repoName}/code-scanning/`
+
+            const objectPath = await saveArtefact(env.r2artefact,)
             const reportInfo = await env.r2artefact.put(`${objectPrefix}${data.report.id}.json`, JSON.stringify(data.report), putOptions)
             console.log(`${repoName}/code-scanning/${data.report.id}.json`, reportInfo)
             const sarifInfo = await env.r2artefact.put(`${objectPrefix}${data.report.id}_${data.report.sarif_id}.json`, JSON.stringify(data.sarif), putOptions)
@@ -93,9 +94,16 @@ export async function onRequestGet(context) {
     return Response.json({ sarif: files, errors })
 }
 
+const saveArtefact = async (r2adapter, orgId, jsonData, artefactUuid, artefactType) => {
+    const objectPath = `${orgId}/${artefactType}/${artefactUuid}.json`
+    const reportInfo = await r2adapter.put(objectPath, JSON.stringify(jsonData), putOptions)
+    console.log(objectPath, reportInfo)
+    return objectPath
+}
+
 const process = async (prisma, session, data, fullName) => {
     const sarifId = data.report.sarif_id
-    const info = await prisma.sarif.upsert({
+    const info = await prisma.SARIFInfo.upsert({
         where: {
             sarifId,
         },
@@ -114,6 +122,7 @@ const process = async (prisma, session, data, fullName) => {
             reportId: data.report.id.toString(),
             fullName,
             source: 'GitHub',
+            orgId: session.orgId,
             memberEmail: session.memberEmail,
             commitSha: data.report.commit_sha,
             ref: data.report.ref,
@@ -172,7 +181,7 @@ const process = async (prisma, session, data, fullName) => {
                 resultData.precision,
                 resultData.tags
             )
-            const reportInfo = await prisma.sarif_results.upsert({
+            const reportInfo = await prisma.SarifResults.upsert({
                 where: {
                     guid: resultData.guid,
                 },

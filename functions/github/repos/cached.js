@@ -23,7 +23,7 @@ export async function onRequestGet(context) {
     if (!verificationResult.isValid) {
         return Response.json({ ok: false, result: verificationResult.message })
     }
-    const githubApps = await prisma.github_apps.findMany({
+    const githubApps = await prisma.GitHubApp.findMany({
         where: {
             memberEmail: verificationResult.session.memberEmail,
         },
@@ -32,9 +32,9 @@ export async function onRequestGet(context) {
             accessToken: true,
         },
     })
-    const gitRepos = await prisma.git_repos.findMany({
+    const gitRepos = await prisma.GitRepo.findMany({
         where: {
-            memberEmail: verificationResult.session.memberEmail,
+            orgId: verificationResult.session.orgId,
         },
         omit: {
             memberEmail: true,
@@ -44,7 +44,7 @@ export async function onRequestGet(context) {
             createdAt: 'desc',
         },
     })
-    const patTokens = await prisma.member_keys.findMany({
+    const patTokens = await prisma.MemberKey.findMany({
         where: {
             memberEmail: verificationResult.session.memberEmail,
             keyType: 'github_pat',

@@ -26,7 +26,7 @@ export async function onRequestGet(context) {
             },
         })
 
-        const member = await prisma.members.findFirst({
+        const member = await prisma.Member.findFirst({
             where: {
                 email: params.email,
             },
@@ -44,6 +44,7 @@ export async function onRequestGet(context) {
         const secret = await hex(crypto.getRandomValues(new Uint32Array(26)), 'SHA-1')
         response.session = {
             kid: token,
+            orgId: member.orgId,
             memberEmail: member.email,
             expiry,
             issued,
@@ -51,7 +52,7 @@ export async function onRequestGet(context) {
             authn_ip,
             authn_ua
         }
-        const sessionInfo = await prisma.sessions.create({
+        const sessionInfo = await prisma.Session.create({
             data: response.session
         })
         console.log(`/login session kid=${token}`, sessionInfo)

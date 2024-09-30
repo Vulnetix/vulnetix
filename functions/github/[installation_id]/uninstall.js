@@ -29,11 +29,11 @@ export async function onRequestGet(context) {
             memberEmail: verificationResult.session.memberEmail,
             installationId: parseInt(params.installation_id, 10),
         }
-        const app = await prisma.github_apps.findUniqueOrThrow({ where })
+        const app = await prisma.GitHubApp.findUniqueOrThrow({ where })
         const gh = new GitHub(app.accessToken)
-        const result = await gh.revokeToken(prisma, verificationResult.session.memberEmail)
+        const result = await gh.revokeToken(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail)
         if ([204, 401].includes(result.status)) {
-            const response = await prisma.github_apps.delete({ where })
+            const response = await prisma.GitHubApp.delete({ where })
             console.log(`/github/uninstall session kid=${verificationResult.session.token}`, response)
 
             return Response.json(response)

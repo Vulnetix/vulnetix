@@ -1,4 +1,4 @@
-import { Server, hex, isSARIF, ensureStrReqBody } from "@/utils";
+import { Server, ensureStrReqBody, hex, isSARIF } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
@@ -40,6 +40,7 @@ export async function onRequestPost(context) {
                     sarifId,
                     reportId,
                     source: 'upload',
+                    orgId: verificationResult.session.orgId,
                     memberEmail: verificationResult.session.memberEmail,
                     createdAt,
                     resultsCount: run.results.length,
@@ -47,7 +48,7 @@ export async function onRequestPost(context) {
                     toolName: run.tool.driver.name,
                     toolVersion: run.tool.driver.semanticVersion,
                 }
-                const info = await prisma.sarif.upsert({
+                const info = await prisma.SARIFInfo.upsert({
                     where: {
                         reportId,
                     },
@@ -99,7 +100,7 @@ export async function onRequestPost(context) {
                         }
                     }
                     sarifData.results.push(resultData)
-                    const reportInfo = await prisma.sarif_results.upsert({
+                    const reportInfo = await prisma.SarifResults.upsert({
                         where: {
                             guid: resultData.guid,
                         },

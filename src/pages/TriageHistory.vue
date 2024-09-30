@@ -84,7 +84,7 @@ class Controller {
         if (VEvent.isExpanded(VEvent.internalItem)) {
             return
         }
-        const findingId = VEvent.item.id.toString()
+        const findingId = VEvent.item.uuid
         state.triageLoaders[findingId] = true
         try {
             const { data } = await client.get(`/enrich/${findingId}`)

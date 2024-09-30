@@ -26,9 +26,9 @@ export async function onRequestGet(context) {
             return Response.json({ ok: false, result: verificationResult.message })
         }
 
-        const findings = await prisma.findings.findMany({
+        const findings = await prisma.Finding.findMany({
             where: {
-                memberEmail: verificationResult.session.memberEmail,
+                orgId: verificationResult.session.orgId,
             },
             omit: {
                 memberEmail: true,

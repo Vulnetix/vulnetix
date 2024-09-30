@@ -29,7 +29,7 @@ export async function onRequestGet(context) {
     const files = []
     let findings = []
 
-    const githubApps = await prisma.github_apps.findMany({
+    const githubApps = await prisma.GitHubApp.findMany({
         where: {
             memberEmail: verificationResult.session.memberEmail,
         },
@@ -40,11 +40,11 @@ export async function onRequestGet(context) {
             throw new Error('github_apps invalid')
         }
         const gh = new GitHub(app.accessToken)
-        const { content, error } = await gh.getRepoSpdx(prisma, verificationResult.session.memberEmail, repoName)
+        const { content, error } = await gh.getRepoSpdx(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail, repoName)
         if (error?.message) {
             if ("Bad credentials" === error.message) {
                 app.expires = (new Date()).getTime()
-                await prisma.github_apps.update({
+                await prisma.GitHubApp.update({
                     where: {
                         installationId: parseInt(app.installationId, 10),
                         AND: { memberEmail: app.memberEmail, },
@@ -71,7 +71,7 @@ export async function onRequestGet(context) {
         console.log(`${repoName}/sbom/${spdxId}.json`, await env.r2artefact.put(`${objectPrefix}${spdxId}.json`, spdxStr, putOptions))
         files.push(content)
     }
-    const memberKeys = await prisma.member_keys.findMany({
+    const memberKeys = await prisma.MemberKey.findMany({
         where: {
             memberEmail: verificationResult.session.memberEmail,
             keyType: 'github_pat',
@@ -79,7 +79,7 @@ export async function onRequestGet(context) {
     })
     for (const memberKey of memberKeys) {
         const gh = new GitHub(memberKey.secret)
-        const { content, error } = await gh.getRepoSpdx(prisma, verificationResult.session.memberEmail, repoName)
+        const { content, error } = await gh.getRepoSpdx(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail, repoName)
         if (error?.message) {
             errors.push({ error, app: { login: memberKey.keyLabel } })
             continue
@@ -109,6 +109,7 @@ const process = async (prisma, session, repoName, content) => {
     const spdxData = {
         spdxId,
         source: 'GitHub',
+        orgId: session.orgId,
         memberEmail: session.memberEmail,
         repoName,
         spdxVersion: spdx.spdxVersion,
@@ -123,10 +124,10 @@ const process = async (prisma, session, repoName, content) => {
     }
     const findingIds = []
 
-    const info = await prisma.spdx.upsert({
+    const info = await prisma.SPDXInfo.upsert({
         where: {
             spdxId,
-            memberEmail: session.memberEmail,
+            orgId: session.orgId,
         },
         update: {
             createdAt: spdxData.createdAt,
@@ -149,7 +150,7 @@ const process = async (prisma, session, repoName, content) => {
     }).filter(q => q?.purl)
     const osv = new OSV()
     const queries = osvQueries.map(q => ({ package: { purl: q.purl } }))
-    const results = await osv.queryBatch(prisma, session.memberEmail, queries)
+    const results = await osv.queryBatch(prisma, session.orgId, session.memberEmail, queries)
     let i = 0
     for (const result of results) {
         const { purl, name, version, license } = osvQueries[i]
@@ -160,6 +161,7 @@ const process = async (prisma, session, repoName, content) => {
             const findingId = await hex(`${vuln.id}${purl}`)
             const findingData = {
                 findingId,
+                orgId: session.orgId,
                 memberEmail: session.memberEmail,
                 source: 'osv.dev',
                 category: 'sca',
@@ -172,55 +174,56 @@ const process = async (prisma, session, repoName, content) => {
                 packageLicense: license,
                 spdxId
             }
-            const originalFinding = await prisma.findings.findFirst({
+            const originalFinding = await prisma.Finding.findFirst({
                 where: {
                     findingId,
                     AND: {
-                        memberEmail: session.memberEmail
+                        orgId: session.orgId
                     },
                 }
             })
             let finding;
             if (originalFinding) {
-                finding = await prisma.findings.update({
+                finding = await prisma.Finding.update({
                     where: {
-                        id: originalFinding.id,
+                        uuid: originalFinding.uuid,
                     },
                     data: {
                         modifiedAt: findingData.modifiedAt
                     },
                 })
             } else {
-                finding = await prisma.findings.create({ data: findingData })
+                finding = await prisma.Finding.create({ data: findingData })
             }
-            console.log(`findings SCA`, finding)
-            findingIds.push(finding.id)
+            // console.log(`findings SCA`, finding)
+            findingIds.push(finding.uuid)
             const vexData = {
-                findingKey: finding.id,
+                findingUuid: finding.uuid,
                 createdAt: (new Date()).getTime(),
                 lastObserved: (new Date()).getTime(),
                 seen: 0,
                 analysisState: 'in_triage',
             }
-            const originalVex = await prisma.triage_activity.findUnique({
+            const originalVex = await prisma.Triage.findFirst({
                 where: {
-                    findingKey: finding.id,
+                    findingUuid: finding.uuid,
+                    analysisState: 'in_triage',
                 }
             })
             let vex;
             if (originalVex) {
-                vex = await prisma.triage_activity.update({
+                vex = await prisma.Triage.update({
                     where: {
-                        findingKey: finding.id,
+                        uuid: originalVex.uuid,
                     },
                     data: {
                         lastObserved: vexData.lastObserved
                     },
                 })
             } else {
-                vex = await prisma.triage_activity.create({ data: vexData })
+                vex = await prisma.Triage.create({ data: vexData })
             }
-            console.log(`findings VEX`, vex)
+            // console.log(`findings VEX`, vex)
         }
         i++
     }

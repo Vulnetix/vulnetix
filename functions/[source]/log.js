@@ -30,9 +30,9 @@ export async function onRequestGet(context) {
         const { searchParams } = new URL(request.url)
         const take = parseInt(searchParams.get('take'), 10) || 50
         const skip = parseInt(searchParams.get('skip'), 10) || 0
-        const results = await prisma.integration_usage_log.findMany({
+        const results = await prisma.IntegrationUsageLog.findMany({
             where: {
-                memberEmail: verificationResult.session.memberEmail,
+                orgId: verificationResult.session.orgId,
                 source: params?.source,
             },
             take,

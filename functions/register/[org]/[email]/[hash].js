@@ -26,7 +26,7 @@ export async function onRequestGet(context) {
     ) {
         let orgId = crypto.randomUUID()
         if (params?.org) {
-            const originalOrg = await prisma.orgs.findFirst({
+            const originalOrg = await prisma.Org.findFirst({
                 where: {
                     name: params.org
                 }
@@ -34,7 +34,7 @@ export async function onRequestGet(context) {
             if (originalOrg?.uuid) {
                 orgId = originalOrg.uuid
             } else {
-                const orgInfo = await prisma.orgs.create({
+                const orgInfo = await prisma.Org.create({
                     data: {
                         uuid: orgId,
                         name: params.org,
@@ -43,7 +43,7 @@ export async function onRequestGet(context) {
                 console.log(`/register orgId=${orgId}`, orgInfo)
             }
         } else {
-            const orgInfo = await prisma.orgs.create({
+            const orgInfo = await prisma.Org.create({
                 data: {
                     uuid: orgId,
                     name: params.email.toLowerCase(),
@@ -57,7 +57,7 @@ export async function onRequestGet(context) {
             orgId,
             passwordHash: await pbkdf2(params.hash)
         }
-        const info = await prisma.members.create({
+        const info = await prisma.Member.create({
             data: member
         })
         console.log(`/register email=${member.email}`, info)

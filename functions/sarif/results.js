@@ -26,9 +26,9 @@ export async function onRequestGet(context) {
     const { searchParams } = new URL(request.url)
     const take = parseInt(searchParams.get('take'), 10) || 50
     const skip = parseInt(searchParams.get('skip'), 10) || 0
-    const sarif = await prisma.sarif.findMany({
+    const sarif = await prisma.SARIFInfo.findMany({
         where: {
-            memberEmail: verificationResult.session.memberEmail,
+            orgId: verificationResult.session.orgId,
         },
         include: {
             results: true,

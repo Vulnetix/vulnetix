@@ -1,4 +1,4 @@
-import { AuthResult, OSV, Server, hex, isSPDX, ensureStrReqBody } from "@/utils";
+import { AuthResult, OSV, Server, ensureStrReqBody, hex, isSPDX } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
@@ -38,6 +38,7 @@ export async function onRequestPost(context) {
             const spdxData = {
                 spdxId,
                 source: 'upload',
+                orgId: verificationResult.session.orgId,
                 memberEmail: verificationResult.session.memberEmail,
                 repoName: '',
                 spdxVersion: spdx.spdxVersion,
@@ -50,10 +51,10 @@ export async function onRequestPost(context) {
                 packagesCount: spdx.packages.length,
                 comment: spdx.creationInfo?.comment || '',
             }
-            const info = await prisma.spdx.upsert({
+            const info = await prisma.SPDXInfo.upsert({
                 where: {
                     spdxId,
-                    memberEmail: verificationResult.session.memberEmail,
+                    orgId: verificationResult.session.orgId,
                 },
                 update: {
                     createdAt: spdxData.createdAt,
@@ -77,7 +78,7 @@ export async function onRequestPost(context) {
             }).filter(q => q?.referenceLocator)
             const osv = new OSV()
             const queries = osvQueries.map(q => ({ package: { purl: q?.referenceLocator } }))
-            const results = await osv.queryBatch(prisma, verificationResult.session.memberEmail, queries)
+            const results = await osv.queryBatch(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail, queries)
             let i = 0
             for (const result of results) {
                 const { referenceLocator, name, version, license } = osvQueries[i]
@@ -88,6 +89,7 @@ export async function onRequestPost(context) {
                     const findingId = await hex(`${vuln.id}${referenceLocator}`)
                     const findingData = {
                         findingId,
+                        orgId: verificationResult.session.orgId,
                         memberEmail: verificationResult.session.memberEmail,
                         source: 'osv.dev',
                         category: 'sca',
@@ -100,52 +102,53 @@ export async function onRequestPost(context) {
                         packageLicense: license,
                         spdxId
                     }
-                    const originalFinding = await prisma.findings.findFirst({
+                    const originalFinding = await prisma.Finding.findFirst({
                         where: {
                             findingId,
                             AND: {
-                                memberEmail: verificationResult.session.memberEmail
+                                orgId: verificationResult.session.orgId
                             },
                         }
                     })
                     let finding;
                     if (originalFinding) {
-                        finding = await prisma.findings.update({
+                        finding = await prisma.Finding.update({
                             where: {
-                                id: originalFinding.id,
+                                uuid: originalFinding.uuid,
                             },
                             data: {
                                 modifiedAt: findingData.modifiedAt
                             },
                         })
                     } else {
-                        finding = await prisma.findings.create({ data: findingData })
+                        finding = await prisma.Finding.create({ data: findingData })
                     }
                     // console.log(`findings SCA`, finding)
                     const vexData = {
-                        findingKey: finding.id,
+                        findingUuid: finding.uuid,
                         createdAt: (new Date()).getTime(),
                         lastObserved: (new Date()).getTime(),
                         seen: 0,
                         analysisState: 'in_triage'
                     }
-                    const originalVex = await prisma.triage_activity.findUnique({
+                    const originalVex = await prisma.Triage.findFirst({
                         where: {
-                            findingKey: finding.id,
+                            findingUuid: finding.uuid,
+                            analysisState: 'in_triage',
                         }
                     })
                     let vex;
                     if (originalVex) {
-                        vex = await prisma.triage_activity.update({
+                        vex = await prisma.Triage.update({
                             where: {
-                                findingKey: finding.id,
+                                uuid: originalVex.uuid,
                             },
                             data: {
                                 lastObserved: vexData.lastObserved
                             },
                         })
                     } else {
-                        vex = await prisma.triage_activity.create({ data: vexData })
+                        vex = await prisma.Triage.create({ data: vexData })
                     }
                     // console.log(`findings VEX`, vex)
                 }

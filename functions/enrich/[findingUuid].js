@@ -25,10 +25,10 @@ export async function onRequestGet(context) {
         if (!verificationResult.isValid) {
             return Response.json({ ok: false, result: verificationResult.message })
         }
-        const { findingKey } = params
-        const originalFinding = await prisma.findings.findUnique({
+        const { findingUuid } = params
+        const originalFinding = await prisma.Finding.findUnique({
             where: {
-                id: parseInt(findingKey, 10),
+                uuid: findingUuid,
             },
             omit: {
                 memberEmail: true,
@@ -54,9 +54,8 @@ export async function onRequestGet(context) {
             referencesJSON: JSON.parse(originalFinding.referencesJSON ?? '[]'),
         }
 
-        finding.fullName = finding.cdx?.repo?.fullName || finding.spdx?.repo?.fullName || 'Others'
         const osv = new OSV()
-        const vuln = await osv.query(prisma, verificationResult.session.memberEmail, finding.detectionTitle)
+        const vuln = await osv.query(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail, finding.detectionTitle)
         finding.modifiedAt = (new Date(vuln.modified)).getTime()
         finding.publishedAt = (new Date(vuln.published)).getTime()
         finding.databaseReviewed = vuln?.database_specific?.github_reviewed ? 1 : 0
@@ -69,9 +68,9 @@ export async function onRequestGet(context) {
         finding.vulnerableVersionRange = vuln.affected.map(affected => affected.database_specific.last_known_affected_version_range).pop()
         finding.fixAutomatable = !!finding.vulnerableVersionRange && !!finding.fixVersion ? 1 : 0
         finding.referencesJSON = JSON.stringify(vuln.references.map(reference => reference.url))
-        const info = await prisma.findings.update({
+        const info = await prisma.Finding.update({
             where: {
-                id: finding.id,
+                uuid: finding.uuid,
             },
             data: {
                 modifiedAt: finding.modifiedAt,
@@ -92,7 +91,7 @@ export async function onRequestGet(context) {
         let scores
         if (finding.cve) {
             const epss = new EPSS()
-            scores = await epss.query(prisma, verificationResult.session.memberEmail, finding.cve)
+            scores = await epss.query(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail, finding.cve)
         }
         let epssScore, epssPercentile;
         if (scores?.epss) {
@@ -128,34 +127,42 @@ export async function onRequestGet(context) {
         if (seen === 1) {
             seenAt = new Date().getTime()
         }
-        if (!finding?.triage) {
-            finding.triage = {
-                findingKey: finding.id,
+        let vexExist = true
+        if (!finding.triage.some(t => t.analysisState === analysisState)) {
+            vexExist = false
+            finding.triage.push({
+                analysisState,
+                findingUuid: finding.uuid,
                 createdAt: new Date().getTime(),
                 lastObserved: new Date().getTime(),
-            }
+            })
         }
-        finding.triage.analysisState = analysisState
-        finding.triage.triageAutomated = triageAutomated
-        finding.triage.triagedAt = triagedAt
-        finding.triage.cvssVector = !!cvss4 ? cvss4.score : !!cvss31 ? cvss31.score : cvss3 ? cvss3.score : null
-        finding.triage.cvssScore = !!cvss4 ? cvssVector.Score().toString() : !!cvss31 ? cvssVector.BaseScore().toString() : cvss3 ? cvssVector.BaseScore().toString() : null
+        let vexData = finding.triage.filter(t => t.analysisState === analysisState).pop()
+        vexData.triageAutomated = triageAutomated
+        vexData.triagedAt = triagedAt
+        vexData.cvssVector = !!cvss4 ? cvss4.score : !!cvss31 ? cvss31.score : cvss3 ? cvss3.score : null
+        vexData.cvssScore = !!cvss4 ? cvssVector.Score().toString() : !!cvss31 ? cvssVector.BaseScore().toString() : cvss3 ? cvssVector.BaseScore().toString() : null
         if (epssPercentile) {
-            finding.triage.epssPercentile = epssPercentile.toString()
+            vexData.epssPercentile = epssPercentile.toString()
         }
         if (epssScore) {
-            finding.triage.epssScore = epssScore.toString()
+            vexData.epssScore = epssScore.toString()
         }
-        finding.triage.seen = seen
-        finding.triage.seenAt = seenAt
-        const vexInfo = await prisma.triage_activity.upsert({
-            where: {
-                findingKey: finding.id,
-            },
-            update: finding.triage,
-            create: finding.triage,
-        })
-        console.log(`Saved VEX ${finding.detectionTitle}`, vexInfo)
+        vexData.seen = seen
+        vexData.seenAt = seenAt
+        if (vexExist) {
+            const vexInfo = await prisma.Triage.update({
+                where: {
+                    uuid: vexData.uuid,
+                },
+                data: vexData,
+            })
+            // console.log(`Updated VEX ${finding.detectionTitle}`, vexInfo)
+        } else {
+            vexData = await prisma.Triage.create({ data: vexData })
+        }
+        finding.triage = finding.triage.filter(f => f.uuid != vexData.uuid)
+        finding.triage.push(vexData)
 
         return Response.json({ ok: true, finding })
     } catch (err) {

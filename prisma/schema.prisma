@@ -1,5 +1,3 @@
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters", "omitApi"]
@@ -10,10 +8,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model sessions {
+model Session {
   kid         String  @unique
+  orgId       String
+  org         Org     @relation(fields: [orgId], references: [uuid])
   memberEmail String
-  member      members @relation(fields: [memberEmail], references: [email])
+  member      Member  @relation(fields: [memberEmail], references: [email])
   expiry      Int
   issued      Int
   secret      String?
@@ -21,63 +21,70 @@ model sessions {
   authn_ua    String?
 }
 
-model orgs {
-  uuid    String    @id @default(uuid())
-  name    String
-  members members[]
+model Org {
+  uuid                  String                @id @default(uuid())
+  name                  String
+  members               Member[]
+  sessions              Session[]
+  git_repos             GitRepo[]
+  integration_usage_log IntegrationUsageLog[]
+  findings              Finding[]
+  SARIFInfo             SARIFInfo[]
+  CycloneDXInfo         CycloneDXInfo[]
+  SPDXInfo              SPDXInfo[]
 }
 
-model members {
-  uuid                  String                  @id @default(uuid())
-  email                 String                  @unique
-  orgId                 String?
-  org                   orgs?                   @relation(fields: [orgId], references: [uuid])
+model Member {
+  uuid                  String                @id @default(uuid())
+  email                 String                @unique
+  orgId                 String
+  org                   Org                   @relation(fields: [orgId], references: [uuid])
   passwordHash          String
   avatarUrl             String?
   firstName             String?
   lastName              String?
-  alertNews             Int                     @default(0)
-  alertOverdue          Int                     @default(0)
-  alertFindings         Int                     @default(0)
-  alertType             Int                     @default(0)
-  sarif                 sarif[]
-  github_apps           github_apps[]
-  repos                 git_repos[]
-  member_keys           member_keys[]
-  sessions              sessions[]
-  spdx                  spdx[]
-  integration_usage_log integration_usage_log[]
-  findings              findings[]
-  triage_activity       triage_activity[]
-  cdx                   cdx[]
+  alertNews             Int                   @default(0)
+  alertOverdue          Int                   @default(0)
+  alertFindings         Int                   @default(0)
+  alertType             Int                   @default(0)
+  sarif                 SARIFInfo[]
+  github_apps           GitHubApp[]
+  repos                 GitRepo[]
+  member_keys           MemberKey[]
+  sessions              Session[]
+  spdx                  SPDXInfo[]
+  integration_usage_log IntegrationUsageLog[]
+  findings              Finding[]
+  triage_activity       Triage[]
+  cdx                   CycloneDXInfo[]
 }
 
-model member_keys {
-  id          Int         @id @default(autoincrement())
+model MemberKey {
+  id          Int        @id @default(autoincrement())
   memberEmail String
   keyLabel    String?
   keyType     String
-  member      members     @relation(fields: [memberEmail], references: [email])
+  member      Member     @relation(fields: [memberEmail], references: [email])
   secret      String
-  suspend     Int         @default(0)
-  githubPat   github_pat?
+  suspend     Int        @default(0)
+  githubPat   GitHubPAT?
 
   @@unique([memberEmail, secret])
 }
 
-model github_pat {
-  keyId     Int         @unique
-  memberKey member_keys @relation(fields: [keyId], references: [id])
+model GitHubPAT {
+  keyId     Int       @unique
+  memberKey MemberKey @relation(fields: [keyId], references: [id])
   login     String
   expires   Int
   created   Int
   avatarUrl String?
 }
 
-model github_apps {
+model GitHubApp {
   installationId Int     @unique
   memberEmail    String
-  member         members @relation(fields: [memberEmail], references: [email])
+  member         Member  @relation(fields: [memberEmail], references: [email])
   accessToken    String
   login          String?
   created        Int
@@ -85,8 +92,10 @@ model github_apps {
   avatarUrl      String?
 }
 
-model git_repos {
+model GitRepo {
   fullName      String
+  orgId         String
+  org           Org             @relation(fields: [orgId], references: [uuid])
   ghid          Int?
   source        String
   createdAt     Int
@@ -95,29 +104,32 @@ model git_repos {
   defaultBranch String
   ownerId       Int
   memberEmail   String
-  member        members @relation(fields: [memberEmail], references: [email])
+  member        Member          @relation(fields: [memberEmail], references: [email])
   licenseSpdxId String?
   licenseName   String?
-  fork          Int     @default(0)
-  template      Int     @default(0)
-  archived      Int     @default(0)
+  fork          Int             @default(0)
+  template      Int             @default(0)
+  archived      Int             @default(0)
   visibility    String
   avatarUrl     String?
-  sarif         sarif[]
-  spdx          spdx[]
-  cdx           cdx[]
+  sarif         SARIFInfo[]
+  spdx          SPDXInfo[]
+  cdx           CycloneDXInfo[]
+  Finding       Finding[]
 
-  @@id([fullName, memberEmail])
+  @@id([fullName, orgId])
 }
 
-model sarif {
-  sarifId      String          @unique
-  reportId     String          @id
+model SARIFInfo {
+  sarifId      String         @unique
+  reportId     String         @id
   fullName     String?
-  repo         git_repos?      @relation(fields: [fullName, memberEmail], references: [fullName, memberEmail])
+  repo         GitRepo?       @relation(fields: [fullName, orgId], references: [fullName, orgId])
+  orgId        String
+  org          Org            @relation(fields: [orgId], references: [uuid])
   source       String
   memberEmail  String
-  member       members         @relation(fields: [memberEmail], references: [email])
+  member       Member         @relation(fields: [memberEmail], references: [email])
   commitSha    String?
   ref          String?
   createdAt    Int
@@ -127,13 +139,13 @@ model sarif {
   toolVersion  String?
   analysisKey  String?
   warning      String?
-  results      sarif_results[]
+  results      SarifResults[]
 }
 
-model sarif_results {
-  guid                String  @unique
+model SarifResults {
+  guid                String    @unique
   reportId            String
-  sarif               sarif   @relation(fields: [reportId], references: [reportId])
+  sarif               SARIFInfo @relation(fields: [reportId], references: [reportId])
   messageText         String
   ruleId              String
   locations           String?
@@ -147,13 +159,15 @@ model sarif_results {
   tags                String?
 }
 
-model cdx {
-  cdxId                   String     @unique
+model CycloneDXInfo {
+  cdxId                   String   @unique
   source                  String
   memberEmail             String
-  member                  members    @relation(fields: [memberEmail], references: [email])
+  member                  Member   @relation(fields: [memberEmail], references: [email])
+  orgId                   String
+  org                     Org      @relation(fields: [orgId], references: [uuid])
   repoName                String?
-  repo                    git_repos? @relation(fields: [repoName, memberEmail], references: [fullName, memberEmail])
+  repo                    GitRepo? @relation(fields: [repoName, orgId], references: [fullName, orgId])
   cdxVersion              String
   serialNumber            String?
   name                    String?
@@ -164,16 +178,18 @@ model cdx {
   componentsCount         Int
   dependenciesCount       Int
 
-  findings findings[]
+  findings Finding[]
 }
 
-model spdx {
-  spdxId            String     @unique
+model SPDXInfo {
+  spdxId            String    @unique
   source            String
   memberEmail       String
-  member            members    @relation(fields: [memberEmail], references: [email])
+  member            Member    @relation(fields: [memberEmail], references: [email])
+  orgId             String
+  org               Org       @relation(fields: [orgId], references: [uuid])
   repoName          String?
-  repo              git_repos? @relation(fields: [repoName, memberEmail], references: [fullName, memberEmail])
+  repo              GitRepo?  @relation(fields: [repoName, orgId], references: [fullName, orgId])
   spdxVersion       String
   dataLicense       String?
   name              String?
@@ -183,25 +199,31 @@ model spdx {
   documentDescribes String?
   packagesCount     Int
   comment           String?
-  findings          findings[]
+  findings          Finding[]
 }
 
-model integration_usage_log {
+model IntegrationUsageLog {
+  orgId       String
+  org         Org     @relation(fields: [orgId], references: [uuid])
   id          Int     @id @default(autoincrement())
   memberEmail String
   source      String
-  member      members @relation(fields: [memberEmail], references: [email])
+  member      Member  @relation(fields: [memberEmail], references: [email])
   request     String
   response    String?
   statusCode  Int
   createdAt   Int
 }
 
-model findings {
-  id                         Int              @id @default(autoincrement())
+model Finding {
+  uuid                       String         @unique @default(uuid())
   findingId                  String
+  orgId                      String
+  org                        Org            @relation(fields: [orgId], references: [uuid])
   memberEmail                String
-  member                     members          @relation(fields: [memberEmail], references: [email])
+  member                     Member         @relation(fields: [memberEmail], references: [email])
+  repoName                   String?
+  repo                       GitRepo?       @relation(fields: [repoName, memberEmail], references: [fullName, orgId])
   source                     String
   category                   String
   createdAt                  Int
@@ -233,15 +255,16 @@ model findings {
   squattedPackage            String?
   referencesJSON             String?
   spdxId                     String?
-  spdx                       spdx?            @relation(fields: [spdxId], references: [spdxId])
+  spdx                       SPDXInfo?      @relation(fields: [spdxId], references: [spdxId])
   cdxId                      String?
-  cdx                        cdx?             @relation(fields: [cdxId], references: [cdxId])
-  triage                     triage_activity? @relation(fields: [id], references: [findingKey])
+  cdx                        CycloneDXInfo? @relation(fields: [cdxId], references: [cdxId])
+  triage                     Triage[]
 }
 
-model triage_activity {
-  findingKey            Int       @id
-  finding               findings?
+model Triage {
+  uuid                  String  @unique @default(uuid())
+  findingUuid           String
+  finding               Finding @relation(fields: [findingUuid], references: [uuid])
   createdAt             Int
   triagedAt             Int?
   lastObserved          Int
@@ -257,9 +280,9 @@ model triage_activity {
   analysisJustification String?
   analysisResponse      String?
   analysisDetail        String?
-  triageAutomated       Int       @default(0)
+  triageAutomated       Int     @default(0)
   memberEmail           String?
-  member                members?  @relation(fields: [memberEmail], references: [email])
+  member                Member? @relation(fields: [memberEmail], references: [email])
 }
 
 // model Lifecycle {
@@ -274,27 +297,27 @@ model triage_activity {
 //   productUuid    String?
 // }
 
-// model Link {
-//   id           Int       @id @default(autoincrement())
-//   uri          String
-//   content      String // list enum String
-//   Artifact     Artifact? @relation(fields: [artifactUuid], references: [uuid])
-//   artifactUuid String?
-// }
+model Link {
+  id           Int      @id @default(autoincrement())
+  url          String
+  contentType  String // OCI PLAIN_JSON OCTET_STREAM PLAIN_XML
+  Artifact     Artifact @relation(fields: [artifactUuid], references: [uuid])
+  artifactUuid String
+}
 
-// model Artifact {
-//   uuid              String      @id @default(uuid())
-//   displayIdentifier String
-//   type              String // list enum String
-//   version           String
-//   date              Int
-//   bomFormat         String
-//   downloadLinks     Link[]
-//   inventoryTypes    String // list enum String
-//   identities        Identity[]
-//   Collection        Collection? @relation(fields: [collectionUuid], references: [uuid])
-//   collectionUuid    String?
-// }
+model Artifact {
+  uuid              String @id @default(uuid())
+  displayIdentifier String
+  type              String // list enum String
+  version           String
+  date              Int
+  bomFormat         String
+  downloadLinks     Link[]
+  inventoryTypes    String // SOFTWARE HARDWARE CRYPTOGRAPHY SERVICE VULNERABILITY
+  // identities        Identity[]
+  // Collection        Collection? @relation(fields: [collectionUuid], references: [uuid])
+  // collectionUuid    String?
+}
 
 // model Identity {
 //   id             String      @id @default(cuid())

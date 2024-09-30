@@ -24,7 +24,7 @@ export async function onRequestGet(context) {
         if (!verificationResult.isValid) {
             return Response.json({ ok: false, result: verificationResult.message })
         }
-        const keyData = await prisma.member_keys.findFirst({
+        const keyData = await prisma.MemberKey.findFirst({
             where: {
                 memberEmail: verificationResult.session.memberEmail,
                 keyType: 'vulncheck',
@@ -35,9 +35,9 @@ export async function onRequestGet(context) {
             _meta['apiKey'] = mask(keyData.secret)
         }
 
-        const log = await prisma.integration_usage_log.findMany({
+        const log = await prisma.IntegrationUsageLog.findMany({
             where: {
-                memberEmail: verificationResult.session.memberEmail,
+                orgId: verificationResult.session.orgId,
                 source: 'vulncheck',
             },
             take: 1000,
