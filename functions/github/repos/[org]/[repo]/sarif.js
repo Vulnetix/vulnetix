@@ -31,7 +31,6 @@ export async function onRequestGet(context) {
     })
     const repoName = `${params.org}/${params.repo}`
     const files = []
-    const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
     for (const app of githubApps) {
         if (!app.accessToken) {
             console.error(`Invalid github_apps kid=${verificationResult.session.kid} installationId=${app.installationId}`)
@@ -58,11 +57,8 @@ export async function onRequestGet(context) {
             continue
         }
         for (const data of content) {
-            const objectPrefix = `github/${app.installationId}/repos/${repoName}/code-scanning/`
-            const reportInfo = await env.r2artefact.put(`${objectPrefix}${data.report.id}.json`, JSON.stringify(data.report), putOptions)
-            console.log(`${repoName}/code-scanning/${data.report.id}.json`, reportInfo)
-            const sarifInfo = await env.r2artefact.put(`${objectPrefix}${data.report.id}_${data.report.sarif_id}.json`, JSON.stringify(data.sarif), putOptions)
-            console.log(`${repoName}/code-scanning/${data.report.id}_${data.report.sarif_id}.json`, sarifInfo)
+            const reportObjectPath = await saveArtefact(env.r2artefact, JSON.stringify(data.report), data.report.id, `scan-report`)
+            const sarifObjectPath = await saveArtefact(env.r2artefact, JSON.stringify(data.sarif), crypto.randomUUID(), `sarif`)
             files.push(await process(prisma, verificationResult.session, data, repoName))
         }
     }
@@ -81,12 +77,8 @@ export async function onRequestGet(context) {
             continue
         }
         for (const data of content) {
-
-            const objectPath = await saveArtefact(env.r2artefact,)
-            const reportInfo = await env.r2artefact.put(`${objectPrefix}${data.report.id}.json`, JSON.stringify(data.report), putOptions)
-            console.log(`${repoName}/code-scanning/${data.report.id}.json`, reportInfo)
-            const sarifInfo = await env.r2artefact.put(`${objectPrefix}${data.report.id}_${data.report.sarif_id}.json`, JSON.stringify(data.sarif), putOptions)
-            console.log(`${repoName}/code-scanning/${data.report.id}_${data.report.sarif_id}.json`, sarifInfo)
+            const reportObjectPath = await saveArtefact(env.r2artefact, JSON.stringify(data.report), data.report.id, `scan-report`)
+            const sarifObjectPath = await saveArtefact(env.r2artefact, JSON.stringify(data.sarif), crypto.randomUUID(), `sarif`)
             files.push(await process(prisma, verificationResult.session, data, repoName))
         }
     }
@@ -94,8 +86,9 @@ export async function onRequestGet(context) {
     return Response.json({ sarif: files, errors })
 }
 
-const saveArtefact = async (r2adapter, orgId, jsonData, artefactUuid, artefactType) => {
-    const objectPath = `${orgId}/${artefactType}/${artefactUuid}.json`
+const saveArtefact = async (r2adapter, jsonData, artefactUuid, artefactType) => {
+    const objectPath = `${artefactType}/${artefactUuid}.json`
+    const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
     const reportInfo = await r2adapter.put(objectPath, JSON.stringify(jsonData), putOptions)
     console.log(objectPath, reportInfo)
     return objectPath
