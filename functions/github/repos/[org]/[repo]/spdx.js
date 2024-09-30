@@ -65,10 +65,9 @@ export async function onRequestGet(context) {
             console.log('content', content)
             continue
         }
-        const { spdxId, spdxStr, findingIds } = await process(prisma, verificationResult.session, repoName, content)
+        const { spdxStr, findingIds } = await process(prisma, verificationResult.session, repoName, content)
         findings = [...findings, ...findingIds]
-        const objectPrefix = `github/${app.installationId}/repos/${repoName}/sbom/`
-        console.log(`${repoName}/sbom/${spdxId}.json`, await env.r2artefact.put(`${objectPrefix}${spdxId}.json`, spdxStr, putOptions))
+        const spdxObjectPath = await saveArtefact(env.r2artefact, spdxStr, crypto.randomUUID(), `spdx`)
         files.push(content)
     }
     const memberKeys = await prisma.MemberKey.findMany({
@@ -91,14 +90,21 @@ export async function onRequestGet(context) {
             console.log('content', content)
             continue
         }
-        const { spdxId, spdxStr, findingIds } = await process(prisma, verificationResult.session, repoName, content)
+        const { spdxStr, findingIds } = await process(prisma, verificationResult.session, repoName, content)
         findings = [...findings, ...findingIds]
-        const objectPrefix = `github/pat_${memberKey.id}/repos/${repoName}/sbom/`
-        console.log(`${repoName}/sbom/${spdxId}.json`, await env.r2artefact.put(`${objectPrefix}${spdxId}.json`, spdxStr, putOptions))
+        const spdxObjectPath = await saveArtefact(env.r2artefact, spdxStr, crypto.randomUUID(), `spdx`)
         files.push({ spdx: content, errors })
     }
 
     return Response.json({ ok: true, files, findings })
+}
+
+const saveArtefact = async (r2adapter, strContent, artefactUuid, artefactType) => {
+    const objectPath = `${artefactType}/${artefactUuid}.json`
+    const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
+    const reportInfo = await r2adapter.put(objectPath, strContent, putOptions)
+    console.log(objectPath, reportInfo)
+    return objectPath
 }
 
 const process = async (prisma, session, repoName, content) => {

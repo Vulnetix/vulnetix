@@ -86,10 +86,10 @@ export async function onRequestGet(context) {
     return Response.json({ sarif: files, errors })
 }
 
-const saveArtefact = async (r2adapter, jsonData, artefactUuid, artefactType) => {
+const saveArtefact = async (r2adapter, strContent, artefactUuid, artefactType) => {
     const objectPath = `${artefactType}/${artefactUuid}.json`
     const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
-    const reportInfo = await r2adapter.put(objectPath, JSON.stringify(jsonData), putOptions)
+    const reportInfo = await r2adapter.put(objectPath, strContent, putOptions)
     console.log(objectPath, reportInfo)
     return objectPath
 }
