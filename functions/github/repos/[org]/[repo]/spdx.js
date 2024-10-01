@@ -1,4 +1,4 @@
-import { GitHub, hex, isSPDX, OSV, Server } from "@/utils";
+import { GitHub, hex, isSPDX, OSV, saveArtifact, Server } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
@@ -65,10 +65,22 @@ export async function onRequestGet(context) {
             console.log('content', content)
             continue
         }
-        const { spdxStr, findingIds } = await process(prisma, verificationResult.session, repoName, content)
+        const spdx = content.sbom
+        const spdxId = await makeId(spdx)
+        const originalSpdx = await prisma.SPDXInfo.findFirst({
+            where: {
+                spdxId,
+                orgId: verificationResult.session.orgId,
+            }
+        })
+        let artifact;
+        if (!originalSpdx) {
+            const spdxStr = JSON.stringify(spdx)
+            artifact = await saveArtifact(prisma, env.r2artifacts, spdxStr, crypto.randomUUID(), `spdx`)
+        }
+        const findingIds = await process(prisma, verificationResult.session, repoName, spdx, spdxId, originalSpdx?.artifactUuid || artifact?.uuid)
         findings = [...findings, ...findingIds]
-        const spdxObjectPath = await saveArtefact(env.r2artefact, spdxStr, crypto.randomUUID(), `spdx`)
-        files.push(content)
+        files.push({ spdx, errors })
     }
     const memberKeys = await prisma.MemberKey.findMany({
         where: {
@@ -90,30 +102,36 @@ export async function onRequestGet(context) {
             console.log('content', content)
             continue
         }
-        const { spdxStr, findingIds } = await process(prisma, verificationResult.session, repoName, content)
+        const spdx = content.sbom
+        const spdxId = await makeId(spdx)
+        const originalSpdx = await prisma.SPDXInfo.findFirst({
+            where: {
+                spdxId,
+                orgId: verificationResult.session.orgId,
+            }
+        })
+        let artifact;
+        if (!originalSpdx) {
+            const spdxStr = JSON.stringify(spdx)
+            artifact = await saveArtifact(prisma, env.r2artifacts, spdxStr, crypto.randomUUID(), `spdx`)
+        }
+        const findingIds = await process(prisma, verificationResult.session, repoName, spdx, spdxId, originalSpdx?.artifactUuid || artifact?.uuid)
         findings = [...findings, ...findingIds]
-        const spdxObjectPath = await saveArtefact(env.r2artefact, spdxStr, crypto.randomUUID(), `spdx`)
-        files.push({ spdx: content, errors })
+        files.push({ spdx, errors })
     }
 
     return Response.json({ ok: true, files, findings })
 }
 
-const saveArtefact = async (r2adapter, strContent, artefactUuid, artefactType) => {
-    const objectPath = `${artefactType}/${artefactUuid}.json`
-    const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
-    const reportInfo = await r2adapter.put(objectPath, strContent, putOptions)
-    console.log(objectPath, reportInfo)
-    return objectPath
+const makeId = async spdx => {
+    const packages = JSON.stringify(spdx.packages)
+    return hex(spdx.name + packages)
 }
 
-const process = async (prisma, session, repoName, content) => {
-    const spdx = content.sbom
-    const packages = JSON.stringify(spdx.packages)
-    const spdxStr = JSON.stringify(spdx)
-    const spdxId = await hex(spdx.name + packages)
+const process = async (prisma, session, repoName, spdx, spdxId, artifactUuid) => {
     const spdxData = {
         spdxId,
+        artifactUuid,
         source: 'GitHub',
         orgId: session.orgId,
         memberEmail: session.memberEmail,
@@ -136,7 +154,6 @@ const process = async (prisma, session, repoName, content) => {
             orgId: session.orgId,
         },
         update: {
-            createdAt: spdxData.createdAt,
             comment: spdxData.comment
         },
         create: spdxData,
@@ -234,5 +251,5 @@ const process = async (prisma, session, repoName, content) => {
         i++
     }
 
-    return { spdxId, spdxStr, findingIds }
+    return findingIds
 }

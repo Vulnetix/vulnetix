@@ -1386,6 +1386,43 @@ export const isSARIF = input => {
     return true
 }
 
+export const saveArtifact = async (prisma, r2adapter, strContent, artifactUuid, artifactType) => {
+    const objectPath = `${artifactType}/${artifactUuid}.json`
+    const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
+    const reportInfo = await r2adapter.put(objectPath, strContent, putOptions)
+    const link = {
+        url: `https://artifacts.vulnetix.app/${objectPath}`,
+        contentType: 'application/json',
+        artifactUuid
+    }
+    const artifact = {
+        uuid: artifactUuid,
+        type: 'OTHER',
+        date: new Date().getTime(),
+        bomFormat: '',
+    }
+    if (['cyclonedx', 'spdx'].includes(artifactType.toLowerCase())) {
+        artifact.type = 'BOM'
+        if ('cyclonedx' === artifactType.toLowerCase()) {
+            artifact.bomFormat = 'CycloneDX'
+            link.contentType = 'application/vnd.cyclonedx+json'
+        } else if ('spdx' === artifactType.toLowerCase()) {
+            artifact.bomFormat = 'SPDX'
+            link.contentType = 'application/spdx+json'
+        }
+    } else if (['vex', 'vdr'].includes(artifactType.toLowerCase())) {
+        artifact.bomFormat = artifactType.toUpperCase()
+        link.contentType = 'application/vnd.cyclonedx+json'
+    } else if ('sarif' === artifactType.toLowerCase()) {
+        link.contentType = 'application/sarif+json'
+    }
+    const linkInfo = await prisma.Link.create({ data: link })
+    const artifactInfo = await prisma.Artifact.create({ data: artifact })
+    console.log(objectPath, reportInfo, linkInfo, artifactInfo)
+    artifact.downloadLinks = [linkInfo]
+    return artifact
+}
+
 export const appExpiryPeriod = (86400000 * 365 * 10)  // 10 years
 
 /**

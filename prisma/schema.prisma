@@ -9,7 +9,7 @@ datasource db {
 }
 
 model Session {
-  kid         String  @unique
+  kid         String  @id
   orgId       String
   org         Org     @relation(fields: [orgId], references: [uuid])
   memberEmail String
@@ -73,7 +73,7 @@ model MemberKey {
 }
 
 model GitHubPAT {
-  keyId     Int       @unique
+  keyId     Int       @id
   memberKey MemberKey @relation(fields: [keyId], references: [id])
   login     String
   expires   Int
@@ -82,7 +82,7 @@ model GitHubPAT {
 }
 
 model GitHubApp {
-  installationId Int     @unique
+  installationId Int     @id
   memberEmail    String
   member         Member  @relation(fields: [memberEmail], references: [email])
   accessToken    String
@@ -121,8 +121,8 @@ model GitRepo {
 }
 
 model SARIFInfo {
-  sarifId      String         @unique
   reportId     String         @id
+  sarifId      String
   fullName     String?
   repo         GitRepo?       @relation(fields: [fullName, orgId], references: [fullName, orgId])
   orgId        String
@@ -130,6 +130,8 @@ model SARIFInfo {
   source       String
   memberEmail  String
   member       Member         @relation(fields: [memberEmail], references: [email])
+  artifactUuid String
+  artifact     Artifact       @relation(fields: [artifactUuid], references: [uuid])
   commitSha    String?
   ref          String?
   createdAt    Int
@@ -143,7 +145,7 @@ model SARIFInfo {
 }
 
 model SarifResults {
-  guid                String    @unique
+  guid                String    @id
   reportId            String
   sarif               SARIFInfo @relation(fields: [reportId], references: [reportId])
   messageText         String
@@ -160,7 +162,7 @@ model SarifResults {
 }
 
 model CycloneDXInfo {
-  cdxId                   String   @unique
+  cdxId                   String   @id
   source                  String
   memberEmail             String
   member                  Member   @relation(fields: [memberEmail], references: [email])
@@ -168,6 +170,8 @@ model CycloneDXInfo {
   org                     Org      @relation(fields: [orgId], references: [uuid])
   repoName                String?
   repo                    GitRepo? @relation(fields: [repoName, orgId], references: [fullName, orgId])
+  artifactUuid            String
+  artifact                Artifact @relation(fields: [artifactUuid], references: [uuid])
   cdxVersion              String
   serialNumber            String?
   name                    String?
@@ -182,7 +186,7 @@ model CycloneDXInfo {
 }
 
 model SPDXInfo {
-  spdxId            String    @unique
+  spdxId            String    @id
   source            String
   memberEmail       String
   member            Member    @relation(fields: [memberEmail], references: [email])
@@ -190,6 +194,8 @@ model SPDXInfo {
   org               Org       @relation(fields: [orgId], references: [uuid])
   repoName          String?
   repo              GitRepo?  @relation(fields: [repoName, orgId], references: [fullName, orgId])
+  artifactUuid      String
+  artifact          Artifact  @relation(fields: [artifactUuid], references: [uuid])
   spdxVersion       String
   dataLicense       String?
   name              String?
@@ -203,9 +209,9 @@ model SPDXInfo {
 }
 
 model IntegrationUsageLog {
+  id          Int     @id @default(autoincrement())
   orgId       String
   org         Org     @relation(fields: [orgId], references: [uuid])
-  id          Int     @id @default(autoincrement())
   memberEmail String
   source      String
   member      Member  @relation(fields: [memberEmail], references: [email])
@@ -216,7 +222,7 @@ model IntegrationUsageLog {
 }
 
 model Finding {
-  uuid                       String         @unique @default(uuid())
+  uuid                       String         @id @default(uuid())
   findingId                  String
   orgId                      String
   org                        Org            @relation(fields: [orgId], references: [uuid])
@@ -262,9 +268,11 @@ model Finding {
 }
 
 model Triage {
-  uuid                  String  @unique @default(uuid())
+  uuid                  String    @id @default(uuid())
+  artifactUuid          String?
+  artifact              Artifact? @relation(fields: [artifactUuid], references: [uuid])
   findingUuid           String
-  finding               Finding @relation(fields: [findingUuid], references: [uuid])
+  finding               Finding   @relation(fields: [findingUuid], references: [uuid])
   createdAt             Int
   triagedAt             Int?
   lastObserved          Int
@@ -280,15 +288,15 @@ model Triage {
   analysisJustification String?
   analysisResponse      String?
   analysisDetail        String?
-  triageAutomated       Int     @default(0)
+  triageAutomated       Int       @default(0)
   memberEmail           String?
-  member                Member? @relation(fields: [memberEmail], references: [email])
+  member                Member?   @relation(fields: [memberEmail], references: [email])
 }
 
 // model Lifecycle {
-//   uuid           String      @id @default(uuid())
-//   event          String // list enum String
-//   date           DateTime
+//   uuid  String   @id @default(uuid())
+//   event String // list enum String
+//   date  DateTime
 //   Collection     Collection? @relation(fields: [collectionUuid], references: [uuid])
 //   collectionUuid String?
 //   Leaf           Leaf?       @relation(fields: [leafUuid], references: [uuid])
@@ -298,25 +306,28 @@ model Triage {
 // }
 
 model Link {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   url          String
   contentType  String // OCI PLAIN_JSON OCTET_STREAM PLAIN_XML
-  Artifact     Artifact @relation(fields: [artifactUuid], references: [uuid])
-  artifactUuid String
+  Artifact     Artifact? @relation(fields: [artifactUuid], references: [uuid])
+  artifactUuid String?
 }
 
 model Artifact {
-  uuid              String @id @default(uuid())
-  displayIdentifier String
-  type              String // list enum String
-  version           String
-  date              Int
-  bomFormat         String
-  downloadLinks     Link[]
-  inventoryTypes    String // SOFTWARE HARDWARE CRYPTOGRAPHY SERVICE VULNERABILITY
+  uuid          String          @id @default(uuid())
+  // displayIdentifier String
+  type          String // BOM ATTESTATION VDR VEX OTHER
+  date          Int
+  bomFormat     String
+  downloadLinks Link[]
+  // inventoryTypes    String // SOFTWARE HARDWARE CRYPTOGRAPHY SERVICE VULNERABILITY
   // identities        Identity[]
   // Collection        Collection? @relation(fields: [collectionUuid], references: [uuid])
   // collectionUuid    String?
+  sarif         SARIFInfo[]
+  cdx           CycloneDXInfo[]
+  spdx          SPDXInfo[]
+  vex           Triage[]
 }
 
 // model Identity {

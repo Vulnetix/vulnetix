@@ -24,11 +24,18 @@ export async function onRequestGet(context) {
         return Response.json({ ok: false, result: verificationResult.message })
     }
     const { searchParams } = new URL(request.url)
-    const take = parseInt(searchParams.get('take'), 10) || 50
+    const take = parseInt(searchParams.get('take'), 10) || 25
     const skip = parseInt(searchParams.get('skip'), 10) || 0
     const spdx = await prisma.SPDXInfo.findMany({
         where: {
             orgId: verificationResult.session.orgId,
+        },
+        include: {
+            artifact: {
+                include: {
+                    downloadLinks: true
+                }
+            }
         },
         omit: {
             memberEmail: true,

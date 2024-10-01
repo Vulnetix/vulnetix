@@ -1,4 +1,4 @@
-import { GitHub, Server } from "@/utils";
+import { GitHub, Server, saveArtifact } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
@@ -57,8 +57,7 @@ export async function onRequestGet(context) {
             continue
         }
         for (const data of content) {
-            const reportObjectPath = await saveArtefact(env.r2artefact, JSON.stringify(data.report), data.report.id, `scan-report`)
-            const sarifObjectPath = await saveArtefact(env.r2artefact, JSON.stringify(data.sarif), crypto.randomUUID(), `sarif`)
+            const artifact = await saveArtifact(prisma, env.r2artifacts, JSON.stringify(data.sarif), crypto.randomUUID(), `sarif`)
             files.push(await process(prisma, verificationResult.session, data, repoName))
         }
     }
@@ -77,8 +76,7 @@ export async function onRequestGet(context) {
             continue
         }
         for (const data of content) {
-            const reportObjectPath = await saveArtefact(env.r2artefact, JSON.stringify(data.report), data.report.id, `scan-report`)
-            const sarifObjectPath = await saveArtefact(env.r2artefact, JSON.stringify(data.sarif), crypto.randomUUID(), `sarif`)
+            await saveArtifact(prisma, env.r2artifacts, JSON.stringify(data.sarif), data.report.sarif_id, `sarif`)
             files.push(await process(prisma, verificationResult.session, data, repoName))
         }
     }
@@ -86,19 +84,11 @@ export async function onRequestGet(context) {
     return Response.json({ sarif: files, errors })
 }
 
-const saveArtefact = async (r2adapter, strContent, artefactUuid, artefactType) => {
-    const objectPath = `${artefactType}/${artefactUuid}.json`
-    const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
-    const reportInfo = await r2adapter.put(objectPath, strContent, putOptions)
-    console.log(objectPath, reportInfo)
-    return objectPath
-}
-
 const process = async (prisma, session, data, fullName) => {
     const sarifId = data.report.sarif_id
     const info = await prisma.SARIFInfo.upsert({
         where: {
-            sarifId,
+            reportId: data.report.id.toString(),
         },
         update: {
             commitSha: data.report.commit_sha,
@@ -113,6 +103,7 @@ const process = async (prisma, session, data, fullName) => {
         create: {
             sarifId,
             reportId: data.report.id.toString(),
+            artifactUuid: sarifId,
             fullName,
             source: 'GitHub',
             orgId: session.orgId,
@@ -213,6 +204,7 @@ const process = async (prisma, session, data, fullName) => {
     const result = {
         sarifId,
         reportId: data.report.id.toString(),
+        artifactUuid: sarifId,
         fullName,
         memberEmail: session.memberEmail,
         commitSha: data.report.commit_sha,

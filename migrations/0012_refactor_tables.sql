@@ -1,12 +1,13 @@
-DROP INDEX "cdx_cdxId_key";
-DROP INDEX "github_apps_installationId_key";
-DROP INDEX "github_pat_keyId_key";
-DROP INDEX "member_keys_memberEmail_secret_key";
-DROP INDEX "members_email_key";
-DROP INDEX "sarif_sarifId_key";
-DROP INDEX "sarif_results_guid_key";
-DROP INDEX "sessions_kid_key";
-DROP INDEX "spdx_spdxId_key";
+DROP INDEX IF EXISTS "cdx_cdxId_key";
+DROP INDEX IF EXISTS "github_apps_installationId_key";
+DROP INDEX IF EXISTS "github_pat_keyId_key";
+DROP INDEX IF EXISTS "member_keys_memberEmail_secret_key";
+DROP INDEX IF EXISTS "members_email_key";
+DROP INDEX IF EXISTS "sarif_sarifId_key";
+DROP INDEX IF EXISTS "sarif_results_guid_key";
+DROP INDEX IF EXISTS "sessions_kid_key";
+DROP INDEX IF EXISTS "spdx_spdxId_key";
+DROP TABLE IF EXISTS "Org";
 CREATE TABLE "Org" (
     "uuid" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT NOT NULL
@@ -15,7 +16,8 @@ INSERT INTO "Org" ("uuid", "name")
 SELECT "uuid",
     "name"
 FROM "orgs";
-DROP TABLE "orgs";
+DROP TABLE IF EXISTS "orgs";
+DROP TABLE IF EXISTS "Member";
 CREATE TABLE "Member" (
     "uuid" TEXT NOT NULL PRIMARY KEY,
     "email" TEXT NOT NULL,
@@ -54,7 +56,8 @@ SELECT "uuid",
     "alertFindings",
     "alertType"
 FROM "members";
-DROP TABLE "members";
+DROP TABLE IF EXISTS "members";
+DROP TABLE IF EXISTS "MemberKey";
 CREATE TABLE "MemberKey" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "memberEmail" TEXT NOT NULL,
@@ -78,9 +81,10 @@ SELECT "id",
     "secret",
     "suspend"
 FROM "member_keys";
-DROP TABLE "member_keys";
+DROP TABLE IF EXISTS "member_keys";
+DROP TABLE IF EXISTS "GitHubPAT";
 CREATE TABLE "GitHubPAT" (
-    "keyId" INTEGER NOT NULL,
+    "keyId" INTEGER NOT NULL PRIMARY KEY,
     "login" TEXT NOT NULL,
     "expires" INTEGER NOT NULL,
     "created" INTEGER NOT NULL,
@@ -99,9 +103,10 @@ SELECT "keyId",
     "created",
     "avatarUrl"
 FROM "github_pat";
-DROP TABLE "github_pat";
+DROP TABLE IF EXISTS "github_pat";
+DROP TABLE IF EXISTS "GitHubApp";
 CREATE TABLE "GitHubApp" (
-    "installationId" INTEGER NOT NULL,
+    "installationId" INTEGER NOT NULL PRIMARY KEY,
     "memberEmail" TEXT NOT NULL,
     "accessToken" TEXT NOT NULL,
     "login" TEXT,
@@ -126,18 +131,19 @@ SELECT "installationId",
     "expires",
     "avatarUrl"
 FROM "github_apps";
-DROP TABLE "github_apps";
-DROP TABLE "cdx";
-DROP TABLE "findings";
-DROP TABLE "git_repos";
-DROP TABLE "integration_usage_log";
-DROP TABLE "sarif";
-DROP TABLE "sarif_results";
-DROP TABLE "spdx";
-DROP TABLE "triage_activity";
-DROP TABLE "sessions";
+DROP TABLE IF EXISTS "github_apps";
+DROP TABLE IF EXISTS "cdx";
+DROP TABLE IF EXISTS "findings";
+DROP TABLE IF EXISTS "git_repos";
+DROP TABLE IF EXISTS "integration_usage_log";
+DROP TABLE IF EXISTS "sarif";
+DROP TABLE IF EXISTS "sarif_results";
+DROP TABLE IF EXISTS "spdx";
+DROP TABLE IF EXISTS "triage_activity";
+DROP TABLE IF EXISTS "sessions";
+DROP TABLE IF EXISTS "Session";
 CREATE TABLE "Session" (
-    "kid" TEXT NOT NULL,
+    "kid" TEXT NOT NULL PRIMARY KEY,
     "orgId" TEXT NOT NULL,
     "memberEmail" TEXT NOT NULL,
     "expiry" INTEGER NOT NULL,
@@ -146,6 +152,7 @@ CREATE TABLE "Session" (
     "authn_ip" TEXT,
     "authn_ua" TEXT
 );
+DROP TABLE IF EXISTS "GitRepo";
 CREATE TABLE "GitRepo" (
     "orgId" TEXT NOT NULL,
     "fullName" TEXT NOT NULL,
@@ -166,9 +173,11 @@ CREATE TABLE "GitRepo" (
     "avatarUrl" TEXT,
     PRIMARY KEY ("fullName", "orgId")
 );
+DROP TABLE IF EXISTS "SARIFInfo";
 CREATE TABLE "SARIFInfo" (
-    "sarifId" TEXT NOT NULL,
     "reportId" TEXT NOT NULL PRIMARY KEY,
+    "sarifId" TEXT NOT NULL,
+    "artifactUuid" TEXT NOT NULL,
     "fullName" TEXT,
     "source" TEXT NOT NULL,
     "orgId" TEXT NOT NULL,
@@ -183,8 +192,9 @@ CREATE TABLE "SARIFInfo" (
     "analysisKey" TEXT,
     "warning" TEXT
 );
+DROP TABLE IF EXISTS "SarifResults";
 CREATE TABLE "SarifResults" (
-    "guid" TEXT NOT NULL,
+    "guid" TEXT NOT NULL PRIMARY KEY,
     "reportId" TEXT NOT NULL,
     "messageText" TEXT NOT NULL,
     "ruleId" TEXT NOT NULL,
@@ -198,11 +208,13 @@ CREATE TABLE "SarifResults" (
     "precision" TEXT,
     "tags" TEXT
 );
+DROP TABLE IF EXISTS "CycloneDXInfo";
 CREATE TABLE "CycloneDXInfo" (
-    "cdxId" TEXT NOT NULL,
+    "cdxId" TEXT NOT NULL PRIMARY KEY,
     "source" TEXT NOT NULL,
     "orgId" TEXT NOT NULL,
     "memberEmail" TEXT NOT NULL,
+    "artifactUuid" TEXT NOT NULL,
     "repoName" TEXT,
     "cdxVersion" TEXT NOT NULL,
     "serialNumber" TEXT,
@@ -214,11 +226,13 @@ CREATE TABLE "CycloneDXInfo" (
     "componentsCount" INTEGER NOT NULL,
     "dependenciesCount" INTEGER NOT NULL
 );
+DROP TABLE IF EXISTS "SPDXInfo";
 CREATE TABLE "SPDXInfo" (
-    "spdxId" TEXT NOT NULL,
+    "spdxId" TEXT NOT NULL PRIMARY KEY,
     "source" TEXT NOT NULL,
     "orgId" TEXT NOT NULL,
     "memberEmail" TEXT NOT NULL,
+    "artifactUuid" TEXT NOT NULL,
     "repoName" TEXT,
     "spdxVersion" TEXT NOT NULL,
     "dataLicense" TEXT,
@@ -230,9 +244,10 @@ CREATE TABLE "SPDXInfo" (
     "packagesCount" INTEGER NOT NULL,
     "comment" TEXT
 );
+DROP TABLE IF EXISTS "IntegrationUsageLog";
 CREATE TABLE "IntegrationUsageLog" (
-    "orgId" TEXT NOT NULL,
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "orgId" TEXT NOT NULL,
     "memberEmail" TEXT NOT NULL,
     "source" TEXT NOT NULL,
     "request" TEXT NOT NULL,
@@ -240,8 +255,9 @@ CREATE TABLE "IntegrationUsageLog" (
     "statusCode" INTEGER NOT NULL,
     "createdAt" INTEGER NOT NULL
 );
+DROP TABLE IF EXISTS "Finding";
 CREATE TABLE "Finding" (
-    "uuid" TEXT NOT NULL,
+    "uuid" TEXT NOT NULL PRIMARY KEY,
     "findingId" TEXT NOT NULL,
     "orgId" TEXT NOT NULL,
     "memberEmail" TEXT NOT NULL,
@@ -279,9 +295,11 @@ CREATE TABLE "Finding" (
     "spdxId" TEXT,
     "cdxId" TEXT
 );
+DROP TABLE IF EXISTS "Triage";
 CREATE TABLE "Triage" (
-    "uuid" TEXT NOT NULL,
+    "uuid" TEXT NOT NULL PRIMARY KEY,
     "findingUuid" TEXT NOT NULL,
+    "artifactUuid" TEXT,
     "createdAt" INTEGER NOT NULL,
     "triagedAt" INTEGER,
     "lastObserved" INTEGER NOT NULL,
@@ -303,29 +321,16 @@ CREATE TABLE "Triage" (
 DROP TABLE IF EXISTS "Artifact";
 CREATE TABLE "Artifact" (
     "uuid" TEXT NOT NULL PRIMARY KEY,
-    "displayIdentifier" TEXT NOT NULL,
     "type" TEXT NOT NULL,
-    "version" TEXT NOT NULL,
     "date" INTEGER NOT NULL,
-    "bomFormat" TEXT NOT NULL,
-    "inventoryTypes" TEXT NOT NULL
+    "bomFormat" TEXT NOT NULL
 );
 DROP TABLE IF EXISTS "Link";
 CREATE TABLE "Link" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "url" TEXT NOT NULL,
     "contentType" TEXT NOT NULL,
-    "artifactUuid" TEXT NOT NULL,
-    CONSTRAINT "Link_artifactUuid_fkey" FOREIGN KEY ("artifactUuid") REFERENCES "Artifact" ("uuid") ON DELETE RESTRICT ON UPDATE CASCADE
+    "artifactUuid" TEXT
 );
-CREATE UNIQUE INDEX "Session_kid_key" ON "Session"("kid");
 CREATE UNIQUE INDEX "Member_email_key" ON "Member"("email");
 CREATE UNIQUE INDEX "MemberKey_memberEmail_secret_key" ON "MemberKey"("memberEmail", "secret");
-CREATE UNIQUE INDEX "GitHubPAT_keyId_key" ON "GitHubPAT"("keyId");
-CREATE UNIQUE INDEX "GitHubApp_installationId_key" ON "GitHubApp"("installationId");
-CREATE UNIQUE INDEX "SARIFInfo_sarifId_key" ON "SARIFInfo"("sarifId");
-CREATE UNIQUE INDEX "SarifResults_guid_key" ON "SarifResults"("guid");
-CREATE UNIQUE INDEX "CycloneDXInfo_cdxId_key" ON "CycloneDXInfo"("cdxId");
-CREATE UNIQUE INDEX "SPDXInfo_spdxId_key" ON "SPDXInfo"("spdxId");
-CREATE UNIQUE INDEX "Finding_uuid_key" ON "Finding"("uuid");
-CREATE UNIQUE INDEX "Triage_uuid_key" ON "Triage"("uuid");
