@@ -61,7 +61,7 @@ class Controller {
           }
           break
         }
-        if (data.spdx.length < pageSize) {
+        if (data.cdx.length < pageSize) {
           hasMore = false
           if (initial !== true) {
             state.info = "Refreshed CycloneDX"

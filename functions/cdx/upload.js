@@ -1,4 +1,4 @@
-import { AuthResult, ensureStrReqBody, hex, isCDX, OSV, Server } from "@/utils";
+import { AuthResult, ensureStrReqBody, hex, isCDX, OSV, saveArtifact, Server } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
@@ -34,11 +34,25 @@ export async function onRequestPost(context) {
             if (!isCDX(cdx)) {
                 return Response.json({ ok: false, error: { message: 'CDX is missing necessary fields.' } })
             }
-            // const cdxStr = JSON.stringify(cdx) //TODO: Add to TEA
             const componentsJSON = JSON.stringify(cdx.components)
             const cdxId = await hex(cdx.metadata?.component?.name + componentsJSON)
+
+            const originalCdx = await prisma.CycloneDXInfo.findFirst({
+                where: {
+                    cdxId,
+                    orgId: verificationResult.session.orgId,
+                }
+            })
+            let artifact;
+            const artifactUuid = originalCdx?.artifactUuid || cdx.serialNumber.startsWith('urn:uuid:') ? cdx.serialNumber.substring(9) : crypto.randomUUID()
+            if (!originalCdx) {
+                const cdxStr = JSON.stringify(cdx)
+                artifact = await saveArtifact(prisma, env.r2artifacts, cdxStr, artifactUuid, `cyclonedx`)
+            }
+
             const cdxData = {
                 cdxId,
+                artifactUuid,
                 source: 'upload',
                 orgId: verificationResult.session.orgId,
                 memberEmail: verificationResult.session.memberEmail,

@@ -1,4 +1,4 @@
-import { AuthResult, OSV, Server, ensureStrReqBody, hex, isSPDX } from "@/utils";
+import { AuthResult, OSV, Server, ensureStrReqBody, hex, isSPDX, saveArtifact } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
@@ -33,10 +33,22 @@ export async function onRequestPost(context) {
             if (!isSPDX(spdx)) {
                 return Response.json({ ok: false, error: { message: 'SPDX is missing necessary fields.' } })
             }
-            const spdxStr = JSON.stringify(spdx)
-            const spdxId = await hex(spdxStr)
+            const spdxId = await makeId(spdx)
+            const originalSpdx = await prisma.SPDXInfo.findFirst({
+                where: {
+                    spdxId,
+                    orgId: verificationResult.session.orgId,
+                }
+            })
+            let artifact;
+            if (!originalSpdx) {
+                const spdxStr = JSON.stringify(spdx)
+                artifact = await saveArtifact(prisma, env.r2artifacts, spdxStr, crypto.randomUUID(), `spdx`)
+            }
+            const artifactUuid = originalSpdx?.artifactUuid || artifact?.uuid
             const spdxData = {
                 spdxId,
+                artifactUuid,
                 source: 'upload',
                 orgId: verificationResult.session.orgId,
                 memberEmail: verificationResult.session.memberEmail,
@@ -167,4 +179,9 @@ export async function onRequestPost(context) {
     }
 
     return Response.json({ ok: true, files, error: { message: errors } })
+}
+
+const makeId = async spdx => {
+    const packages = JSON.stringify(spdx.packages)
+    return hex(spdx.name + packages)
 }
