@@ -159,8 +159,8 @@ function groupedByOrg() {
 
         if (!group) {
             group = {
-                orgName: orgName,
-                avatarUrl: spdx?.repo?.avatarUrl,
+                orgName,
+                avatarUrl: spdx?.avatarUrl,
                 spdx: []
             };
             acc.push(group)
@@ -169,7 +169,14 @@ function groupedByOrg() {
         return acc
     }, [])
 }
-
+function downloadArtifact(record, event) {
+    console.log(record)
+    event.preventDefault()
+}
+function deleteArtifact(record, isActive) {
+    console.log(record)
+    isActive.value = false
+}
 const controller = reactive(new Controller())
 </script>
 
@@ -333,13 +340,103 @@ const controller = reactive(new Controller())
                         v-for="(group, k) in groupedByOrg()"
                         :key="k"
                     >
-                        <VExpansionPanelTitle class="text-subtitle-1">
-                            <img
-                                :src="group.avatarUrl"
-                                width="25"
-                                class="me-3"
-                            >{{ group.orgName }} ({{ group.spdx.length }}
-                            results)
+                        <VExpansionPanelTitle
+                            v-slot="{ expanded }"
+                            class="text-subtitle-1"
+                            v-if="group.spdx.length"
+                        >
+                            <VRow no-gutters>
+                                <VCol
+                                    class="d-flex justify-start"
+                                    cols="10"
+                                >
+                                    <img
+                                        :src="group.avatarUrl"
+                                        width="25"
+                                        height="25"
+                                        class="me-3"
+                                    >
+                                    <span>{{ group.orgName }}&nbsp;
+                                        <span v-if="!expanded">({{ group.spdx.length }} results)</span>
+                                    </span>
+                                </VCol>
+                                <VCol
+                                    class="text--secondary"
+                                    cols="2"
+                                >
+                                    <VFadeTransition leave-absolute>
+                                        <VRow
+                                            style="width: 100%"
+                                            no-gutters
+                                        >
+                                            <VCol
+                                                class="d-flex justify-end"
+                                                cols="12"
+                                            >
+                                                <VTooltip
+                                                    text="Download"
+                                                    location="left"
+                                                >
+                                                    <template v-slot:activator="{ props }">
+                                                        <VBtn
+                                                            v-bind="props"
+                                                            variant="plain"
+                                                            icon="line-md:cloud-alt-download-filled-loop"
+                                                            density="comfortable"
+                                                            color="secondary"
+                                                            @click="downloadArtifact(group.spdx, $event)"
+                                                        >
+                                                        </VBtn>
+                                                    </template>
+                                                </VTooltip>
+                                                <VDialog
+                                                    persistent
+                                                    :activator="`#spdx${k}`"
+                                                    max-width="340"
+                                                >
+                                                    <template v-slot:default="{ isActive }">
+                                                        <VCard
+                                                            prepend-icon="weui:delete-on-filled"
+                                                            text="This will delete the SPDX Artifact permanantly, it cannot be undone."
+                                                            title="Delete Artifact?"
+                                                        >
+                                                            <template v-slot:actions>
+                                                                <VBtn
+                                                                    class="ml-auto"
+                                                                    text="Close"
+                                                                    @click="isActive.value = false"
+                                                                ></VBtn>
+                                                                <VBtn
+                                                                    color="error"
+                                                                    variant="tonal"
+                                                                    text="Delete"
+                                                                    @click="deleteArtifact(group.spdx, isActive)"
+                                                                ></VBtn>
+                                                            </template>
+                                                        </VCard>
+                                                    </template>
+                                                </VDialog>
+                                                <VTooltip
+                                                    text="Delete"
+                                                    location="left"
+                                                >
+                                                    <template v-slot:activator="{ props }">
+                                                        <VBtn
+                                                            v-bind="props"
+                                                            :id="`spdx${k}`"
+                                                            variant="plain"
+                                                            icon="weui:delete-on-filled"
+                                                            density="comfortable"
+                                                            color="error"
+                                                        >
+                                                        </VBtn>
+                                                    </template>
+                                                </VTooltip>
+                                            </VCol>
+                                        </VRow>
+                                    </VFadeTransition>
+                                </VCol>
+                            </VRow>
                         </VExpansionPanelTitle>
                         <VExpansionPanelText>
                             <VSkeletonLoader
@@ -473,6 +570,8 @@ const controller = reactive(new Controller())
                             <th>
                                 Created Date
                             </th>
+                            <th>
+                            </th>
                         </tr>
                     </thead>
 
@@ -521,6 +620,67 @@ const controller = reactive(new Controller())
                                         >
                                             {{ timeAgo(new Date(spdx.createdAt)) }}
                                         </time>
+                                    </template>
+                                </VTooltip>
+                            </td>
+                            <td>
+                                <VTooltip
+                                    text="Download"
+                                    location="left"
+                                >
+                                    <template v-slot:activator="{ props }">
+                                        <VBtn
+                                            v-bind="props"
+                                            variant="plain"
+                                            icon="line-md:cloud-alt-download-filled-loop"
+                                            density="comfortable"
+                                            color="secondary"
+                                            @click="downloadArtifact(result, $event)"
+                                        >
+                                        </VBtn>
+                                    </template>
+                                </VTooltip>
+                                <VDialog
+                                    persistent
+                                    :activator="`#spdx${i}`"
+                                    max-width="340"
+                                >
+                                    <template v-slot:default="{ isActive }">
+                                        <VCard
+                                            prepend-icon="weui:delete-on-filled"
+                                            text="This will delete the SPDX Artifact permanantly, it cannot be undone."
+                                            title="Delete Artifact?"
+                                        >
+                                            <template v-slot:actions>
+                                                <VBtn
+                                                    class="ml-auto"
+                                                    text="Close"
+                                                    @click="isActive.value = false"
+                                                ></VBtn>
+                                                <VBtn
+                                                    color="error"
+                                                    variant="tonal"
+                                                    text="Delete"
+                                                    @click="deleteArtifact(result, isActive)"
+                                                ></VBtn>
+                                            </template>
+                                        </VCard>
+                                    </template>
+                                </VDialog>
+                                <VTooltip
+                                    text="Delete"
+                                    location="left"
+                                >
+                                    <template v-slot:activator="{ props }">
+                                        <VBtn
+                                            v-bind="props"
+                                            :id="`spdx${i}`"
+                                            variant="plain"
+                                            icon="weui:delete-on-filled"
+                                            density="comfortable"
+                                            color="error"
+                                        >
+                                        </VBtn>
                                     </template>
                                 </VTooltip>
                             </td>

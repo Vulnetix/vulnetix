@@ -24,7 +24,7 @@ export async function onRequestGet(context) {
         return Response.json({ ok: false, result: verificationResult.message })
     }
     const { searchParams } = new URL(request.url)
-    const take = parseInt(searchParams.get('take'), 10) || 25
+    const take = parseInt(searchParams.get('take'), 10) || 50
     const skip = parseInt(searchParams.get('skip'), 10) || 0
     const cdx = await prisma.CycloneDXInfo.findMany({
         where: {

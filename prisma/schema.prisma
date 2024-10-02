@@ -309,7 +309,7 @@ model Link {
   id           Int       @id @default(autoincrement())
   url          String
   contentType  String // OCI PLAIN_JSON OCTET_STREAM PLAIN_XML
-  Artifact     Artifact? @relation(fields: [artifactUuid], references: [uuid])
+  artifact     Artifact? @relation(fields: [artifactUuid], references: [uuid])
   artifactUuid String?
 }
 

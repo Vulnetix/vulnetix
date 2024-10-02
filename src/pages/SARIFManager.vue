@@ -451,13 +451,13 @@ const controller = reactive(new Controller())
                                             </VTooltip>
                                             <VDialog
                                                 persistent
-                                                :activator="`#spdx${i}`"
+                                                :activator="`#sarif${i}`"
                                                 max-width="340"
                                             >
                                                 <template v-slot:default="{ isActive }">
                                                     <VCard
                                                         prepend-icon="weui:delete-on-filled"
-                                                        text="This will delete the SPDX Artifact permanantly, it cannot be undone."
+                                                        text="This will delete the SARIF Artifact permanantly, it cannot be undone."
                                                         title="Delete Artifact?"
                                                     >
                                                         <template v-slot:actions>
@@ -483,7 +483,7 @@ const controller = reactive(new Controller())
                                                 <template v-slot:activator="{ props }">
                                                     <VBtn
                                                         v-bind="props"
-                                                        :id="`spdx${i}`"
+                                                        :id="`sarif${i}`"
                                                         variant="plain"
                                                         icon="weui:delete-on-filled"
                                                         density="comfortable"
@@ -565,13 +565,13 @@ const controller = reactive(new Controller())
                                                 </VTooltip>
                                                 <VDialog
                                                     persistent
-                                                    :activator="`#spdx${k}`"
+                                                    :activator="`#sarif${k}`"
                                                     max-width="340"
                                                 >
                                                     <template v-slot:default="{ isActive }">
                                                         <VCard
                                                             prepend-icon="weui:delete-on-filled"
-                                                            text="This will delete the SPDX Artifact permanantly, it cannot be undone."
+                                                            text="This will delete the SARIF Artifact permanantly, it cannot be undone."
                                                             title="Delete Artifact?"
                                                         >
                                                             <template v-slot:actions>
@@ -597,7 +597,7 @@ const controller = reactive(new Controller())
                                                     <template v-slot:activator="{ props }">
                                                         <VBtn
                                                             v-bind="props"
-                                                            :id="`spdx${k}`"
+                                                            :id="`sarif${k}`"
                                                             variant="plain"
                                                             icon="weui:delete-on-filled"
                                                             density="comfortable"
