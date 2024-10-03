@@ -1436,7 +1436,15 @@ export const saveArtifact = async (prisma, r2adapter, strContent, artifactUuid, 
         link.contentType = 'application/sarif+json'
     }
     const linkInfo = await prisma.Link.create({ data: link })
-    const artifactInfo = await prisma.Artifact.create({ data: artifact })
+    const artifactInfo = await prisma.Artifact.upsert({
+        where: { uuid: artifactUuid },
+        update: {
+            date: artifact.date,
+            type: artifact.type,
+            bomFormat: artifact.bomFormat,
+        },
+        create: artifact
+    })
     console.log(objectPath, reportInfo, linkInfo, artifactInfo)
     artifact.downloadLinks = [linkInfo]
     return artifact

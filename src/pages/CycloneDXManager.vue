@@ -145,10 +145,6 @@ function clearAlerts() {
     state.success = ''
     state.info = ''
 }
-function downloadArtifact(record, event) {
-    console.log(record)
-    event.preventDefault()
-}
 function deleteArtifact(record, isActive) {
     console.log(record)
     isActive.value = false
@@ -395,6 +391,7 @@ const controller = reactive(new Controller())
                             </td>
                             <td>
                                 <VTooltip
+                                    v-if="cdx.downloadLink"
                                     text="Download"
                                     location="left"
                                 >
@@ -405,7 +402,9 @@ const controller = reactive(new Controller())
                                             icon="line-md:cloud-alt-download-filled-loop"
                                             density="comfortable"
                                             color="secondary"
-                                            @click="downloadArtifact(result, $event)"
+                                            target="_blank"
+                                            :title="cdx.downloadLink"
+                                            :href="cdx.downloadLink"
                                         >
                                         </VBtn>
                                     </template>

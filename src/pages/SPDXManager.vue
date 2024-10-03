@@ -160,6 +160,7 @@ function groupedByOrg() {
         if (!group) {
             group = {
                 orgName,
+                downloadLink: spdx?.downloadLink,
                 avatarUrl: spdx?.avatarUrl,
                 spdx: []
             };
@@ -168,10 +169,6 @@ function groupedByOrg() {
         group.spdx.push({ ...spdx, orgName, repoName })
         return acc
     }, [])
-}
-function downloadArtifact(record, event) {
-    console.log(record)
-    event.preventDefault()
 }
 function deleteArtifact(record, isActive) {
     console.log(record)
@@ -374,6 +371,7 @@ const controller = reactive(new Controller())
                                                 cols="12"
                                             >
                                                 <VTooltip
+                                                    v-if="group.downloadLink"
                                                     text="Download"
                                                     location="left"
                                                 >
@@ -384,7 +382,9 @@ const controller = reactive(new Controller())
                                                             icon="line-md:cloud-alt-download-filled-loop"
                                                             density="comfortable"
                                                             color="secondary"
-                                                            @click="downloadArtifact(group.spdx, $event)"
+                                                            target="_blank"
+                                                            :title="group.downloadLink"
+                                                            :href="group.downloadLink"
                                                         >
                                                         </VBtn>
                                                     </template>
@@ -625,6 +625,7 @@ const controller = reactive(new Controller())
                             </td>
                             <td>
                                 <VTooltip
+                                    v-if="spdx.downloadLink"
                                     text="Download"
                                     location="left"
                                 >
@@ -635,7 +636,9 @@ const controller = reactive(new Controller())
                                             icon="line-md:cloud-alt-download-filled-loop"
                                             density="comfortable"
                                             color="secondary"
-                                            @click="downloadArtifact(result, $event)"
+                                            target="_blank"
+                                            :title="spdx.downloadLink"
+                                            :href="spdx.downloadLink"
                                         >
                                         </VBtn>
                                     </template>

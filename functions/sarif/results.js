@@ -26,7 +26,7 @@ export async function onRequestGet(context) {
     const { searchParams } = new URL(request.url)
     const take = parseInt(searchParams.get('take'), 10) || 50
     const skip = parseInt(searchParams.get('skip'), 10) || 0
-    const sarif = await prisma.SARIFInfo.findMany({
+    let sarif = await prisma.SARIFInfo.findMany({
         where: {
             orgId: verificationResult.session.orgId,
         },
@@ -47,6 +47,16 @@ export async function onRequestGet(context) {
         orderBy: {
             createdAt: 'desc',
         },
+    })
+    sarif = sarif.map(item => {
+        let updatedItem = { ...item }
+        if (item.artifact && item.artifact.downloadLinks && item.artifact.downloadLinks.length) {
+            updatedItem.downloadLink = item.artifact.downloadLinks?.pop()?.url
+            // updatedItem.downloadLink = item.artifact.downloadLinks.filter(l => l.contentType === 'application/json')?.pop()?.url
+        }
+        // delete updatedItem.artifact
+
+        return updatedItem
     })
 
     return Response.json({ ok: true, sarif })

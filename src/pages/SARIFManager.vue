@@ -163,6 +163,7 @@ function groupedByOrg() {
         if (!group) {
             group = {
                 orgName: orgName,
+                downloadLink: sarif?.downloadLink,
                 avatarUrl: sarif?.repo?.avatarUrl,
                 sarif: []
             };
@@ -171,10 +172,6 @@ function groupedByOrg() {
         group.sarif.push({ ...sarif, orgName, repoName })
         return acc
     }, [])
-}
-function downloadArtifact(record, event) {
-    console.log(record)
-    event.preventDefault()
 }
 function deleteArtifact(record, isActive) {
     console.log(record)
@@ -342,13 +339,106 @@ const controller = reactive(new Controller())
                         v-for="(group, k) in groupedByOrg()"
                         :key="k"
                     >
-                        <VExpansionPanelTitle class="text-subtitle-1">
-                            <img
-                                :src="group.avatarUrl"
-                                width="25"
-                                class="me-3"
-                            >{{ group.orgName }} ({{ group.sarif.length }}
-                            results)
+                        <VExpansionPanelTitle
+                            v-if="group.sarif.length"
+                            class="text-subtitle-1"
+                            v-slot="{ expanded }"
+                        >
+                            <VRow no-gutters>
+                                <VCol
+                                    class="d-flex justify-start"
+                                    cols="10"
+                                >
+                                    <img
+                                        :src="group.avatarUrl"
+                                        width="25"
+                                        height="25"
+                                        class="me-3"
+                                    >
+                                    <span>{{ group.orgName }}&nbsp;
+                                        <span v-if="!expanded">({{ group.sarif.length }} results)</span>
+                                    </span>
+                                </VCol>
+                                <VCol
+                                    class="text--secondary"
+                                    cols="2"
+                                >
+                                    <VFadeTransition leave-absolute>
+                                        <VRow
+                                            style="width: 100%"
+                                            no-gutters
+                                        >
+                                            <VCol
+                                                class="d-flex justify-end"
+                                                cols="12"
+                                            >
+                                                <VTooltip
+                                                    v-if="group.downloadLink"
+                                                    text="Download"
+                                                    location="left"
+                                                >
+                                                    <template v-slot:activator="{ props }">
+                                                        <VBtn
+                                                            v-bind="props"
+                                                            variant="plain"
+                                                            icon="line-md:cloud-alt-download-filled-loop"
+                                                            density="comfortable"
+                                                            color="secondary"
+                                                            target="_blank"
+                                                            :title="group.downloadLink"
+                                                            :href="group.downloadLink"
+                                                        >
+                                                        </VBtn>
+                                                    </template>
+                                                </VTooltip>
+                                                <VDialog
+                                                    persistent
+                                                    :activator="`#sarif${k}`"
+                                                    max-width="340"
+                                                >
+                                                    <template v-slot:default="{ isActive }">
+                                                        <VCard
+                                                            prepend-icon="weui:delete-on-filled"
+                                                            text="This will delete the SARIF Artifact permanantly, it cannot be undone."
+                                                            title="Delete Artifact?"
+                                                        >
+                                                            <template v-slot:actions>
+                                                                <VBtn
+                                                                    class="ml-auto"
+                                                                    text="Close"
+                                                                    @click="isActive.value = false"
+                                                                ></VBtn>
+                                                                <VBtn
+                                                                    color="error"
+                                                                    variant="tonal"
+                                                                    text="Delete"
+                                                                    @click="deleteArtifact(group.sarif, isActive)"
+                                                                ></VBtn>
+                                                            </template>
+                                                        </VCard>
+                                                    </template>
+                                                </VDialog>
+                                                <VTooltip
+                                                    text="Delete"
+                                                    location="left"
+                                                >
+                                                    <template v-slot:activator="{ props }">
+                                                        <VBtn
+                                                            v-bind="props"
+                                                            :id="`sarif${k}`"
+                                                            variant="plain"
+                                                            icon="weui:delete-on-filled"
+                                                            density="comfortable"
+                                                            color="error"
+                                                        >
+                                                        </VBtn>
+                                                    </template>
+                                                </VTooltip>
+                                            </VCol>
+                                        </VRow>
+                                    </VFadeTransition>
+                                </VCol>
+                            </VRow>
                         </VExpansionPanelTitle>
                         <VExpansionPanelText>
                             <VSkeletonLoader
@@ -385,8 +475,6 @@ const controller = reactive(new Controller())
                                         </th>
                                         <th>
                                             Created Date
-                                        </th>
-                                        <th>
                                         </th>
                                     </tr>
                                 </thead>
@@ -429,67 +517,6 @@ const controller = reactive(new Controller())
                                                     >
                                                         {{ timeAgo(new Date(result.createdAt)) }}
                                                     </time>
-                                                </template>
-                                            </VTooltip>
-                                        </td>
-                                        <td>
-                                            <VTooltip
-                                                text="Download"
-                                                location="left"
-                                            >
-                                                <template v-slot:activator="{ props }">
-                                                    <VBtn
-                                                        v-bind="props"
-                                                        variant="plain"
-                                                        icon="line-md:cloud-alt-download-filled-loop"
-                                                        density="comfortable"
-                                                        color="secondary"
-                                                        @click="downloadArtifact(result, $event)"
-                                                    >
-                                                    </VBtn>
-                                                </template>
-                                            </VTooltip>
-                                            <VDialog
-                                                persistent
-                                                :activator="`#sarif${i}`"
-                                                max-width="340"
-                                            >
-                                                <template v-slot:default="{ isActive }">
-                                                    <VCard
-                                                        prepend-icon="weui:delete-on-filled"
-                                                        text="This will delete the SARIF Artifact permanantly, it cannot be undone."
-                                                        title="Delete Artifact?"
-                                                    >
-                                                        <template v-slot:actions>
-                                                            <VBtn
-                                                                class="ml-auto"
-                                                                text="Close"
-                                                                @click="isActive.value = false"
-                                                            ></VBtn>
-                                                            <VBtn
-                                                                color="error"
-                                                                variant="tonal"
-                                                                text="Delete"
-                                                                @click="deleteArtifact(result, isActive)"
-                                                            ></VBtn>
-                                                        </template>
-                                                    </VCard>
-                                                </template>
-                                            </VDialog>
-                                            <VTooltip
-                                                text="Delete"
-                                                location="left"
-                                            >
-                                                <template v-slot:activator="{ props }">
-                                                    <VBtn
-                                                        v-bind="props"
-                                                        :id="`sarif${i}`"
-                                                        variant="plain"
-                                                        icon="weui:delete-on-filled"
-                                                        density="comfortable"
-                                                        color="error"
-                                                    >
-                                                    </VBtn>
                                                 </template>
                                             </VTooltip>
                                         </td>
@@ -548,6 +575,7 @@ const controller = reactive(new Controller())
                                                 cols="12"
                                             >
                                                 <VTooltip
+                                                    v-if="sarif.downloadLink"
                                                     text="Download"
                                                     location="left"
                                                 >
@@ -558,7 +586,9 @@ const controller = reactive(new Controller())
                                                             icon="line-md:cloud-alt-download-filled-loop"
                                                             density="comfortable"
                                                             color="secondary"
-                                                            @click="downloadArtifact(sarif, $event)"
+                                                            target="_blank"
+                                                            :title="sarif.downloadLink"
+                                                            :href="sarif.downloadLink"
                                                         >
                                                         </VBtn>
                                                     </template>

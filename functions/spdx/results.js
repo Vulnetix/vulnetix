@@ -44,6 +44,7 @@ export async function onRequestGet(context) {
                 select: {
                     downloadLinks: {
                         select: {
+                            contentType: true,
                             url: true,
                         }
                     }
@@ -74,7 +75,7 @@ export async function onRequestGet(context) {
             updatedItem.avatarUrl = repoMap.get(item.repoName)
         }
         if (item.artifact && item.artifact.downloadLinks && item.artifact.downloadLinks.length) {
-            updatedItem.downloadLink = item.artifact.downloadLinks.pop().url
+            updatedItem.downloadLink = item.artifact.downloadLinks.filter(l => l.contentType === 'application/spdx+json')?.pop()?.url
         }
         delete updatedItem.artifact
 
