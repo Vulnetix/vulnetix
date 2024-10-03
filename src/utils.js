@@ -1386,6 +1386,25 @@ export const isSARIF = input => {
     return true
 }
 
+/**
+ * Saves an artifact to R2 storage and creates corresponding database entries.
+ * 
+ * @async
+ * @param {Object} prisma - Prisma client instance for database operations.
+ * @param {Object} r2adapter - R2 adapter for storage operations.
+ * @param {string} strContent - The content of the artifact to be saved.
+ * @param {string} artifactUuid - Unique identifier (UUIDv4) for the artifact.
+ * @param {string} artifactType - Type of the artifact (e.g., 'cyclonedx', 'spdx', 'vex', 'vdr', 'sarif').
+ * 
+ * @returns {Promise<Object>} The created artifact object with download links.
+ * 
+ * @description
+ * This function performs the following operations:
+ * 1. Saves the artifact content to R2 storage.
+ * 2. Creates a Link entry in the database.
+ * 3. Creates an Artifact entry in the database.
+ * 4. Determines the appropriate content type and BOM format based on the artifact type.
+ */
 export const saveArtifact = async (prisma, r2adapter, strContent, artifactUuid, artifactType) => {
     const objectPath = `${artifactType}/${artifactUuid}.json`
     const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
@@ -1489,7 +1508,22 @@ export async function hex(text, name = "SHA-1") {
     return [...new Uint8Array(await crypto.subtle.digest({ name }, new TextEncoder().encode(text)))].map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
-export const round = (n, p = 100) => Math.round((n + Number.EPSILON) * p) / p
+/**
+ * Rounds a number to a specified number of decimal places.
+ * 
+ * @param {number} n - The number to round.
+ * @param {number} [p=10] - The precision factor. Defaults to 10.
+ *   - p = 10 results in 1 decimal place
+ *   - p = 100 results in 2 decimal places
+ *   - p = 1000 results in 3 decimal places, and so on
+ * 
+ * @returns {number} The rounded number.
+ * 
+ * @example
+ * round(3.14159, 10)  // Returns 3.1
+ * round(3.14159, 100) // Returns 3.14
+ * round(3.14159)      // Returns 3.1 (uses default precision)
+ */export const round = (n, p = 10) => Math.round((n + Number.EPSILON) * p) / p
 
 export const isJSON = str => {
     try {
