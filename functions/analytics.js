@@ -56,7 +56,7 @@ export async function onRequestGet(context) {
                 month_to_date: filterFindingsByPeriod(findings, 'month_to_date'),
                 year_to_date: filterFindingsByPeriod(findings, 'year_to_date'),
                 publishedMonthly: calculateMonthlyCounts(findings, 'publishedAt'),
-                observedMonthly: calculateMonthlyCounts(findings, 'lastObserved'),
+                discoveredMonthly: calculateMonthlyCounts(findings, 'createdAt'),
                 triagedMonthly: calculateMonthlyCounts(findings, 'triagedAt'),
             }
         })
