@@ -62,7 +62,7 @@ export class Server {
         const method = this.request.method.toUpperCase()
         const url = new URL(this.request.url)
         const path = url.pathname + url.search
-        const body = method !== 'GET' ? await ensureStrReqBody(this.request) : null
+        const body = ['GET', 'DELETE'].includes(method.toUpperCase()) ? '' : await ensureStrReqBody(this.request)
 
         // Retrieve signature and timestamp from headers
         const signature = this.request.headers.get('authorization')?.replace('HMAC ', '')
@@ -1037,7 +1037,7 @@ export class GitHub {
  * @param {Request} request the incoming request to read from
  */
 export const ensureStrReqBody = async (request) => {
-    const contentType = request.headers.get("content-type")
+    const contentType = request.headers.get("content-type") || ''
     if (contentType.includes("application/json")) {
         try {
             return JSON.stringify(await request.clone().json())

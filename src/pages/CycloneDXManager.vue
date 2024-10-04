@@ -136,7 +136,54 @@ class Controller {
             state.loading = false
         }
     }
+
+    deleteArtifact = async (record, isActive) => {
+        clearAlerts()
+        state.loading = true
+        try {
+            const { data } = await client.delete(`/cdx/${record.cdxId}`)
+            state.loading = false
+
+            if (!data?.ok) {
+                state.error = data?.error?.message || 'Server error, please try again later.'
+                isActive.value = false
+
+                return
+            }
+            if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
+                state.info = data.result
+                isActive.value = false
+
+                return setTimeout(() => router.push('/logout'), 2000)
+            }
+            if (typeof data === "string" && !isJSON(data)) {
+                state.error = "Data could not be deleted, please try again later."
+                isActive.value = false
+
+                return
+            }
+            if (data) {
+                if (record.source === "upload") {
+                    state.uploads = state.uploads.filter(o => o.cdxId !== record.cdxId)
+                } else if (record.source === "GitHub") {
+                    state.github = state.github.filter(o => o.cdxId !== record.cdxId)
+                }
+                state.success = "Artifact deleted successfully."
+            } else {
+                state.info = data?.result || 'No change'
+            }
+            isActive.value = false
+
+            return
+        } catch (e) {
+            console.error(e)
+            state.error = typeof e === "string" ? e : `${e.code} ${e.message}`
+            state.loading = false
+            isActive.value = false
+        }
+    }
 }
+
 function clearAlerts() {
     state.uploadError = ''
     state.uploadSuccess = ''
@@ -144,10 +191,6 @@ function clearAlerts() {
     state.warning = ''
     state.success = ''
     state.info = ''
-}
-function deleteArtifact(record, isActive) {
-    console.log(record)
-    isActive.value = false
 }
 
 const controller = reactive(new Controller())
@@ -389,7 +432,7 @@ const controller = reactive(new Controller())
                                     </template>
                                 </VTooltip>
                             </td>
-                            <td>
+                            <td class="text-right">
                                 <VTooltip
                                     v-if="cdx.downloadLink"
                                     text="Download"
@@ -411,7 +454,7 @@ const controller = reactive(new Controller())
                                 </VTooltip>
                                 <VDialog
                                     persistent
-                                    :activator="`#cdx${i}`"
+                                    :activator="`#cdx${k}`"
                                     max-width="340"
                                 >
                                     <template v-slot:default="{ isActive }">
@@ -430,7 +473,7 @@ const controller = reactive(new Controller())
                                                     color="error"
                                                     variant="tonal"
                                                     text="Delete"
-                                                    @click="deleteArtifact(result, isActive)"
+                                                    @click="controller.deleteArtifact(cdx, isActive)"
                                                 ></VBtn>
                                             </template>
                                         </VCard>
@@ -443,7 +486,7 @@ const controller = reactive(new Controller())
                                     <template v-slot:activator="{ props }">
                                         <VBtn
                                             v-bind="props"
-                                            :id="`cdx${i}`"
+                                            :id="`cdx${k}`"
                                             variant="plain"
                                             icon="weui:delete-on-filled"
                                             density="comfortable"
