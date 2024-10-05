@@ -212,6 +212,7 @@ const process = async (prisma, session, repoName, spdx, spdxId, artifactUuid) =>
                         uuid: originalFinding.uuid,
                     },
                     data: {
+                        spdxId,
                         modifiedAt: findingData.modifiedAt
                     },
                 })

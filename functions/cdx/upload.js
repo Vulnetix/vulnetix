@@ -130,6 +130,7 @@ export async function onRequestPost(context) {
                                 uuid: originalFinding.uuid,
                             },
                             data: {
+                                cdxId,
                                 modifiedAt: findingData.modifiedAt
                             },
                         })
