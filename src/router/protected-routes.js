@@ -8,59 +8,87 @@ const routes = [
                 component: () => import('../pages/Dashboard.vue'),
             },
             {
-                path: 'account-settings',
-                component: () => import('../pages/AccountSettings.vue'),
+                path: 'artifacts',
+                component: () => import('../pages/Artifacts.vue'),
             },
             {
-                path: 'queue/dependencies',
-                component: () => import('../pages/QueueDependencies.vue'),
-            },
-            {
-                path: 'queue/source-code',
-                component: () => import('../pages/QueueSourceCode.vue'),
-            },
-            {
-                path: 'triage-overdue',
-                component: () => import('../pages/TriageOverdue.vue'),
-            },
-            {
-                path: 'sarif-manager',
+                path: 'artifacts/sarif',
                 component: () => import('../pages/SARIFManager.vue'),
             },
             {
-                path: 'cyclonedx-manager',
+                path: 'artifacts/cyclonedx',
                 component: () => import('../pages/CycloneDXManager.vue'),
             },
             {
-                path: 'spdx-manager',
+                path: 'artifacts/spdx',
                 component: () => import('../pages/SPDXManager.vue'),
             },
             {
-                path: 'vex-manager',
+                path: 'artifacts/vex',
                 component: () => import('../pages/VEXManager.vue'),
             },
             {
-                path: 'triage-history',
+                path: 'artifacts/vdr',
+                component: () => import('../pages/VDRManager.vue'),
+            },
+            {
+                path: 'account',
+                component: () => import('../pages/Profile.vue'),
+            },
+            {
+                path: 'account/settings',
+                component: () => import('../pages/AccountSettings.vue'),
+            },
+            {
+                path: 'account/organisation',
+                component: () => import('../pages/Organisation.vue'),
+            },
+            {
+                path: 'projects',
+                component: () => import('../pages/Projects.vue'),
+            },
+            {
+                path: 'triage',
+                component: () => import('../pages/Tasks.vue'),
+            },
+            {
+                path: 'triage/issues',
+                component: () => import('../pages/TriageIssues.vue'),
+            },
+            {
+                path: 'triage/exploitable',
+                component: () => import('../pages/TriageExploitable.vue'),
+            },
+            {
+                path: 'triage/overdue',
+                component: () => import('../pages/TriageOverdue.vue'),
+            },
+            {
+                path: 'triage/history',
                 component: () => import('../pages/TriageHistory.vue'),
             },
             {
-                path: 'vulncheck-integration',
+                path: 'integrations',
+                component: () => import('../pages/Integrations.vue'),
+            },
+            {
+                path: 'integration/vulncheck',
                 component: () => import('../pages/VulnCheck.vue'),
             },
             {
-                path: 'osv-integration',
+                path: 'integration/osv-dev',
                 component: () => import('../pages/OSV.vue'),
             },
             {
-                path: 'first-org-integration',
+                path: 'integration/first-org',
                 component: () => import('../pages/FirstOrg.vue'),
             },
             {
-                path: 'mend-integration',
+                path: 'integration/mend',
                 component: () => import('../pages/Mend.vue'),
             },
             {
-                path: 'github-integration',
+                path: 'integration/github',
                 component: () => import('../pages/GitHub.vue'),
             },
         ],

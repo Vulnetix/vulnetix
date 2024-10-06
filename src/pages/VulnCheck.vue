@@ -4,6 +4,11 @@ import { reactive } from 'vue';
 import { useTheme } from 'vuetify';
 import router from "../router";
 
+// https://redocly.github.io/redoc/?url=https://api.vulncheck.com/v3/openapi#tag/endpoints/paths/~1cpe/get
+// https://redocly.github.io/redoc/?url=https://api.vulncheck.com/v3/openapi#tag/endpoints/paths/~1purl/get
+// https://vulncheck.com/token/newtoken
+// https://rud.is/b/2024/03/23/vulnchecks-free-community-kev-cve-apis-code-golang-cli-utility/
+//
 // curl 'https://api.vulncheck.com/v3/index/vulncheck-kev' \
 //     -H 'User-Agent: Vulnetix' \
 //     -H 'Accept: application/json' \
