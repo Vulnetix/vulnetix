@@ -116,7 +116,7 @@ class Controller {
             }
             state.results.forEach((result, index) => {
                 state.results.splice(index, 1, result)
-                dialogs[result.uuid.toString()] = result
+                dialogs[result.uuid] = result
             })
             state.loading = false
         } catch (e) {
