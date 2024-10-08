@@ -48,6 +48,10 @@ const routes = [
                 component: () => import('../pages/Projects.vue'),
             },
             {
+                path: 'products',
+                component: () => import('../pages/Products.vue'),
+            },
+            {
                 path: 'triage',
                 component: () => import('../pages/Tasks.vue'),
             },

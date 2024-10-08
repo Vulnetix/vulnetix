@@ -18,18 +18,8 @@ export async function onRequestGet(context) {
             transactionOptions: {
                 maxWait: 1500, // default: 2000
                 timeout: 2000, // default: 5000
-            },
-            log: [
-                {
-                    emit: "event",
-                    level: "query",
-                },
-            ],
+            }
         })
-
-        prisma.$on("query", async (e) => {
-            console.log(`${e.query} ${e.params}`)
-        });
         const verificationResult = await (new Server(request, prisma)).authenticate()
         if (!verificationResult.isValid) {
             return Response.json({ ok: false, result: verificationResult.message })

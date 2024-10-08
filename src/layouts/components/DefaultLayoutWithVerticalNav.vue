@@ -89,6 +89,11 @@ watch(NotificationsStore, () => {
                 icon: 'pajamas:project',
                 to: '/projects',
             }" />
+            <VerticalNavLink :item="{
+                title: 'Products',
+                icon: 'fluent-mdl2:product',
+                to: '/products',
+            }" />
 
             <VerticalNavSectionTitle :item="{
                 heading: 'Triage Queues',
@@ -117,30 +122,6 @@ watch(NotificationsStore, () => {
                 title: 'History',
                 icon: 'mdi-clipboard-text-history',
                 to: '/triage/history',
-            }" />
-
-            <VerticalNavSectionTitle :item="{
-                heading: 'Import Sources',
-            }" />
-            <VerticalNavLink :item="{
-                title: 'SARIF',
-                icon_url: '/sarif-logo.png',
-                to: '/artifacts/sarif',
-            }" />
-            <VerticalNavLink :item="{
-                title: 'CycloneDX',
-                icon_url: '/cyclonedx-logo.png',
-                to: '/artifacts/cyclonedx',
-            }" />
-            <VerticalNavLink :item="{
-                title: 'SPDX',
-                icon_url: '/spdx-logo.png',
-                to: '/artifacts/spdx',
-            }" />
-            <VerticalNavLink :item="{
-                title: 'VEX',
-                icon_url: '/csaf-logo.png',
-                to: '/artifacts/vex',
             }" />
 
             <VerticalNavSectionTitle :item="{
