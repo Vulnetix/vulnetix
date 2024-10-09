@@ -27,7 +27,7 @@ export async function onRequestGet(context) {
         const { searchParams } = new URL(request.url)
         const take = parseInt(searchParams.get('take'), 10) || 50
         const skip = parseInt(searchParams.get('skip'), 10) || 0
-        const artifacts = await prisma.Artifact.findMany({
+        const result = await prisma.Artifact.findMany({
             where: {
                 OR: [
                     {
@@ -65,14 +65,78 @@ export async function onRequestGet(context) {
                     },
                 ]
             },
-            include: {
+            select: {
+                uuid: true,
+                type: true,
+                date: true,
+                bomFormat: true,
                 downloadLinks: true,
+                spdx: {
+                    select: {
+                        source: true,
+                        repoName: true,
+                        spdxVersion: true,
+                        createdAt: true,
+                        packagesCount: true,
+                    },
+                },
+                sarif: {
+                    select: {
+                        source: true,
+                        fullName: true,
+                        toolName: true,
+                        toolVersion: true,
+                        createdAt: true,
+                        resultsCount: true,
+                    },
+                },
+                cdx: {
+                    select: {
+                        source: true,
+                        repoName: true,
+                        cdxVersion: true,
+                        createdAt: true,
+                        dependenciesCount: true,
+                    },
+                },
+                vex: {
+                    select: {
+                        lastObserved: true,
+                        analysisState: true,
+                        analysisJustification: true,
+                        analysisResponse: true,
+                        finding: {
+                            select: {
+                                source: true,
+                                repoName: true,
+                                detectionTitle: true,
+                            }
+                        }
+                    },
+                },
             },
             take,
             skip,
             orderBy: {
                 date: 'desc',
             },
+        })
+
+        const artifacts = result.map(artifact => {
+            artifact.spdx = artifact.spdx.sort((a, b) => b.createdAt - a.createdAt)?.pop()
+            artifact.sarif = artifact.sarif.sort((a, b) => b.createdAt - a.createdAt)?.pop()
+            artifact.cdx = artifact.cdx.sort((a, b) => b.createdAt - a.createdAt)?.pop()
+            const vex = artifact.vex.sort((a, b) => b.lastObserved - a.lastObserved)?.pop()
+            if (vex?.finding) {
+                vex.repoName = vex?.finding?.repoName
+                vex.source = vex?.finding?.source
+                vex.findingTitle = vex?.finding?.detectionTitle
+                delete vex.finding
+            }
+            artifact.vex = vex
+            artifact.downloadLink = artifact.downloadLinks.sort((a, b) => b.id - a.id)?.pop()
+            delete artifact.downloadLinks
+            return artifact
         })
 
         return Response.json({ ok: true, artifacts })

@@ -1,6 +1,6 @@
 <script setup>
 import { useMemberStore } from '@/stores/member';
-import { Client, isCDX, isJSON, isSARIF, isSPDX, timeAgo } from '@/utils';
+import { Client, isCDX, isJSON, isSARIF, isSPDX, timeAgo, VexAnalysisJustification, VexAnalysisResponse, VexAnalysisState } from '@/utils';
 import { reactive, ref } from 'vue';
 import { useTheme } from 'vuetify';
 import { VTreeview } from 'vuetify/labs/VTreeview';
@@ -19,7 +19,6 @@ const initialState = {
     loading: false,
     uploading: false,
     files: [],
-    openedDirs: [],
     artifacts: [
         { title: 'CycloneDX', children: [] },
         { title: 'SPDX', children: [] },
@@ -52,30 +51,64 @@ class Controller {
                 if (data.ok) {
                     if (data?.artifacts) {
                         for (const artifact of data.artifacts) {
-                            const { uuid, downloadLinks, type, bomFormat } = artifact
-                            const { contentType, url } = downloadLinks.sort((a, b) => b.id - a.id).pop()
-                            for (const group of state.artifacts) {
+                            const { uuid, downloadLink, type, bomFormat } = artifact
+                            const { contentType, url } = downloadLink
+                            for (let group of state.artifacts) {
                                 const suffix = contentType?.includes("json") ? 'json' : 'txt'
-                                const file = { title: `${uuid}.${suffix}`, ext: suffix, lastModified: artifact.date, uuid, url }
-                                if (group.title === "SARIF" && contentType?.includes("sarif")) {
-                                    if (!group.children.some(f => f.uuid === file.uuid)) {
-                                        group.children.push(file)
+                                let repoName;
+                                let dependencies;
+                                let results;
+                                let versionInfo;
+                                let findingTitle;
+                                let analysis;
+                                let source;
+                                if (artifact?.cdx) {
+                                    dependencies = artifact.cdx?.dependenciesCount
+                                    repoName = artifact.cdx?.repoName
+                                    source = artifact.cdx?.source
+                                    versionInfo = `CycloneDX-${artifact.cdx?.cdxVersion}`
+                                }
+                                if (artifact?.spdx) {
+                                    dependencies = artifact.spdx?.packagesCount
+                                    repoName = artifact.spdx?.repoName
+                                    source = artifact.spdx?.source
+                                    versionInfo = artifact.spdx?.spdxVersion
+                                }
+                                if (artifact?.sarif) {
+                                    results = artifact.sarif?.resultsCount
+                                    repoName = artifact.sarif?.fullName
+                                    source = artifact.sarif?.source
+                                    versionInfo = artifact.sarif?.toolName
+                                    if (artifact.sarif?.toolVersion) {
+                                        versionInfo = `${versionInfo}-${artifact.sarif?.toolVersion}`
                                     }
+                                }
+                                if (artifact?.vex) {
+                                    findingTitle = artifact.vex?.findingTitle
+                                    source = artifact.vex?.source
+                                    if (artifact.vex?.analysisState) {
+                                        analysis = VexAnalysisState[artifact.vex.analysisState]
+                                    }
+                                    if (artifact.vex?.analysisJustification) {
+                                        analysis = `${analysis}, ${VexAnalysisJustification[artifact.vex.analysisJustification]}`
+                                    }
+                                    if (artifact.vex?.analysisResponse) {
+                                        analysis = `${analysis}, ${VexAnalysisResponse[artifact.vex.analysisResponse]}`
+                                    }
+                                }
+                                const file = { title: `${uuid}.${suffix}`, ext: suffix, lastModified: artifact.date, uuid, source, url, analysis, findingTitle, dependencies, repoName, results, versionInfo }
+
+                                if (group.title === "SARIF" && contentType?.includes("sarif")) {
+                                    group = addFileToSourceSubgroup(group, file)
                                     break
                                 } else if (group.title === "VEX" && type === "VEX") {
-                                    if (!group.children.some(f => f.uuid === file.uuid)) {
-                                        group.children.push(file)
-                                    }
+                                    group = addFileToSourceSubgroup(group, file)
                                     break
                                 } else if (group.title === "VDR" && type === "VDR") {
-                                    if (!group.children.some(f => f.uuid === file.uuid)) {
-                                        group.children.push(file)
-                                    }
+                                    group = addFileToSourceSubgroup(group, file)
                                     break
                                 } else if (group.title === bomFormat) {
-                                    if (!group.children.some(f => f.uuid === file.uuid)) {
-                                        group.children.push(file)
-                                    }
+                                    group = addFileToSourceSubgroup(group, file)
                                     break
                                 }
                             }
@@ -83,9 +116,6 @@ class Controller {
                         for (const group of state.artifacts) {
                             if (group.children.length === 0) {
                                 group.children.push({ isEmpty: true })
-                            }
-                            if (state.openedDirs.length === 0) {
-                                state.openedDirs.push(group.title)
                             }
                         }
                     }
@@ -216,6 +246,26 @@ const files = ref({
     txt: 'mdi-file-document-outline',
     xls: 'mdi-file-excel',
 })
+function addFileToSourceSubgroup(group, file) {
+    console.log(file)
+    if (!file?.source) {
+        group.children.push(file)
+        return group
+    }
+    let sourceSubgroup = group.children.find(child => child.title === file.source)
+
+    if (!sourceSubgroup) {
+        sourceSubgroup = { title: file.source, children: [] }
+        group.children.push(sourceSubgroup)
+    }
+
+    if (!sourceSubgroup.children.some(f => f.uuid === file.uuid)) {
+        delete file.source
+        sourceSubgroup.children.push(file)
+    }
+
+    return group
+}
 </script>
 
 <template>
@@ -359,10 +409,10 @@ const files = ref({
                     </template>
                 </VDialog>
             </VSheet>
-            <VSheet class="me-4 mt-4 pt-2 text-overline">
+            <VSheet class="me-4 mt-4 pt-2 text-overline font-weight-bold">
                 Last Modified
             </VSheet>
-            <VSheet class="me-4 mt-4 pt-2 ps-4 text-overline">
+            <VSheet class="me-4 mt-4 pt-2 ps-4 text-overline font-weight-bold">
                 Actions
             </VSheet>
         </VSheet>
@@ -376,12 +426,10 @@ const files = ref({
         <VTreeview
             v-else
             :items="state.artifacts"
-            :opened="state.openedDirs"
             item-value="title"
+            open-all
             open-on-click
             slim
-            activatable
-            active-strategy="leaf"
             variant="flat"
         >
             <template v-slot:append="{ item }">
@@ -395,7 +443,7 @@ const files = ref({
                     <VTooltip
                         activator="parent"
                         location="left"
-                    >Last Modified {{ new Date(item.lastModified).toISOString() }}</VTooltip>
+                    >{{ new Date(item.lastModified).toISOString() }}</VTooltip>
                 </span>
                 <VTooltip
                     v-if="item?.url"
@@ -462,6 +510,77 @@ const files = ref({
                     </template>
                 </VTooltip>
             </template>
+            <template v-slot:title="{ item, title }">
+                <!-- TODO: launch a VDialog to view details instead of HREF download -->
+                <div
+                    v-if="item?.url"
+                    class="d-flex"
+                >
+                    <div class="mt-2 flex-1-0 justify-start">{{ title }}</div>
+                    <VSheet class="justify-end">
+                        <VChip
+                            class="ma-2"
+                            color="#deb887"
+                            prepend-icon="mdi:source-repository"
+                            v-if="item?.repoName"
+                        >
+                            {{ item.repoName }}
+                        </VChip>
+                        <VChip
+                            class="ma-2"
+                            color="#008080"
+                            prepend-icon="f7:number"
+                            v-if="item?.versionInfo"
+                        >
+                            {{ item.versionInfo }}
+                        </VChip>
+                        <VChip
+                            class="ma-2"
+                            color="#ff8c00"
+                            prepend-icon="tabler:packages"
+                            v-if="item?.dependencies"
+                        >
+                            {{ item.dependencies }}
+                        </VChip>
+                        <VChip
+                            class="ma-2"
+                            color="#7fff00"
+                            prepend-icon="fluent-mdl2:analytics-report"
+                            v-if="item?.results"
+                        >
+                            {{ item.results }}
+                        </VChip>
+                        <VChip
+                            class="ma-2"
+                            color="#ff0"
+                            prepend-icon="ic:outline-bug-report"
+                            v-if="item?.findingTitle"
+                        >
+                            {{ item.findingTitle }}
+                        </VChip>
+                        <VChip
+                            class="ma-2"
+                            color="#ee82ee"
+                            prepend-icon="icon-park-outline:message-success"
+                            v-if="item?.analysis"
+                        >
+                            {{ item.analysis }}
+                        </VChip>
+                    </VSheet>
+                </div>
+                <VAlert
+                    v-else-if="item?.isEmpty"
+                    border="start"
+                    color="secondary"
+                    title="No Files"
+                    variant="tonal"
+                    @click.native.stop
+                ></VAlert>
+                <span
+                    v-else
+                    class="font-weight-bold"
+                >{{ title }}</span>
+            </template>
             <template v-slot:prepend="{ item, isOpen }">
                 <template v-if="item?.isEmpty">
                     <VIcon
@@ -469,13 +588,6 @@ const files = ref({
                         class="me-4"
                         @click.native.stop
                     />
-                    <VAlert
-                        border="start"
-                        color="secondary"
-                        title="No Files"
-                        variant="tonal"
-                        @click.native.stop
-                    ></VAlert>
                 </template>
                 <template v-else-if="!item?.ext">
                     <VIcon>

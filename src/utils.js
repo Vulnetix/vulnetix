@@ -1,3 +1,30 @@
+export class VexAnalysisState {
+    static get resolved() { return "Resolved" }
+    static get resolved_with_pedigree() { return "Resolved With Pedigree" }
+    static get exploitable() { return "Exploitable" }
+    static get in_triage() { return "In Triage" }
+    static get false_positive() { return "False Positive" }
+    static get not_affected() { return "Not Affected" }
+}
+export class VexAnalysisJustification {
+    static get code_not_present() { return "Code Not Present" }
+    static get code_not_reachable() { return "Code Not Reachable" }
+    static get requires_configuration() { return "Requires Configuration" }
+    static get requires_dependency() { return "Requires Dependency" }
+    static get requires_environment() { return "Requires Environment" }
+    static get protected_by_compiler() { return "Protected By Compiler" }
+    static get protected_at_runtime() { return "Protected At Runtime" }
+    static get protected_at_perimeter() { return "Protected At Perimeter" }
+    static get protected_by_mitigating_control() { return "Protected By Mitigating Control" }
+}
+export class VexAnalysisResponse {
+    static get can_not_fix() { return "Can Not Fix" }
+    static get resolved_with_pedigree() { return "Will Not Fix" }
+    static get exploitable() { return "Update" }
+    static get in_triage() { return "Rollback" }
+    static get false_positive() { return "Workaround Available" }
+}
+
 /**
  * Class representing the possible results of an authentication attempt.
  */
