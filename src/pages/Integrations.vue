@@ -114,129 +114,120 @@ const controller = reactive(new Controller())
             />
         </VCol>
     </Vrow>
-    <VCard title="Open Source Vulnerabilities (OSV)">
-        <VSkeletonLoader
-            v-if="state.loading"
-            type="table-row@10"
-        />
-        <VTable
-            class="text-no-wrap"
-            height="40rem"
-            fixed-header
-            v-if="!state.loading && state.log.length"
-        >
-            <thead>
-                <tr>
-                    <th scope="col">
-                        Event Time
-                    </th>
-                    <th scope="col">
-                        URL
-                    </th>
-                    <th scope="col">
-                        Status Code
-                    </th>
-                    <th scope="col">
-                        Request
-                    </th>
-                    <th scope="col">
-                        Response
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr
-                    v-for="(record, i) in state.log"
-                    :key="i"
+    <VCard>
+        <VSheet class="d-flex flex-wrap">
+            <VSkeletonLoader
+                class="ma-2"
+                :loading="state.loading"
+                width="400"
+                height="250"
+                type="image, list-item-two-line"
+            >
+                <VCard
+                    class="mx-auto bg-light-primary"
+                    width="400"
+                    height="250"
                 >
-                    <td>
-                        {{ (new Date(record.createdAt)).toLocaleString() }}
-                    </td>
-                    <td>
-                        {{ JSON.parse(record.request || '')?.url }}
-                    </td>
-                    <td>
-                        <VChip
-                            size="small"
-                            variant="outlined"
-                            :color="record.statusCode.toString()[0] === '2' ? '#35933f' : 'error'"
-                        >
-                            {{ record.statusCode }}
-                        </VChip>
-                    </td>
-                    <td>
-                        <VDialog max-width="800">
-                            <template v-slot:activator="{ props: activatorProps }">
-                                <VBtn
-                                    v-bind="activatorProps"
-                                    :text="JSON.parse(record.request || '')?.queries ? `View JSON (${JSON.parse(record.request || '')?.queries?.length} queries)` : `View JSON`"
-                                    :color="global.name.value === 'dark' ? 'secondary' : 'primary'"
-                                    variant="tonal"
-                                    density="comfortable"
-                                ></VBtn>
-                            </template>
-                            <template v-slot:default="{ isActive }">
-                                <VCard title="Request">
-                                    <VCardText>
-                                        <pre>{{ JSON.stringify(JSON.parse(record.request || ''), null, 2) }}</pre>
-                                    </VCardText>
-                                    <VCardActions>
-                                        <VSpacer></VSpacer>
-                                        <VBtn
-                                            text="Close"
-                                            :color="global.name.value === 'dark' ? '#fff' : '#272727'"
-                                            variant="tonal"
-                                            density="comfortable"
-                                            @click="isActive.value = false"
-                                        ></VBtn>
-                                    </VCardActions>
-                                </VCard>
-                            </template>
-                        </VDialog>
-                    </td>
-                    <td>
-                        <VDialog max-width="800">
-                            <!-- v-if="JSON.parse(record.response || '').body.length > 0" -->
-                            <template v-slot:activator="{ props: activatorProps }">
-                                <VBtn
-                                    v-bind="activatorProps"
-                                    :text="JSON.parse(record.response || '')?.body?.length >= 0 ? `View JSON (${JSON.parse(record.response || '')?.body?.length} results)` : `View JSON`"
-                                    :color="global.name.value === 'dark' ? 'secondary' : 'primary'"
-                                    variant="tonal"
-                                    density="comfortable"
-                                ></VBtn>
-                            </template>
-                            <template v-slot:default="{ isActive }">
-                                <VCard title="Response">
-                                    <VCardText>
-
-                                        <pre>{{ JSON.stringify(JSON.parse(record.response || ''), null, 2) }}</pre>
-                                    </VCardText>
-                                    <VCardActions>
-                                        <VSpacer></VSpacer>
-                                        <VBtn
-                                            text="Close"
-                                            :color="global.name.value === 'dark' ? '#fff' : '#272727'"
-                                            variant="tonal"
-                                            density="comfortable"
-                                            @click="isActive.value = false"
-                                        ></VBtn>
-                                    </VCardActions>
-                                </VCard>
-                            </template>
-                        </VDialog>
-                    </td>
-                </tr>
-            </tbody>
-        </VTable>
-        <VAlert
-            v-else
-            color="primary"
-            icon="pixelarticons-mood-sad"
-            text="No log data to display"
-            variant="tonal"
-        />
-        <VDivider />
+                    <template v-slot:title>
+                        <span class="font-weight-black">GitHub</span>
+                    </template>
+                    <template v-slot:subtitle>
+                        Developer platform
+                    </template>
+                    <template v-slot:prepend>
+                        <VIcon size="50">mdi-github</VIcon>
+                    </template>
+                    <template v-slot:append>
+                        <VSwitch
+                            color="success"
+                            value="github"
+                        ></VSwitch>
+                    </template>
+                    <VCardText class="pt-2">
+                        Provides SPDX via Dependency Graph, SARIF via CodeQL, and Repository source code for remediation
+                        activities including reachability analysis, pull requests, and prioritization information
+                        utilizing
+                        Catalog configurations.
+                    </VCardText>
+                </VCard>
+            </VSkeletonLoader>
+            <VSkeletonLoader
+                class="ma-2"
+                :loading="state.loading"
+                width="400"
+                height="250"
+                type="image, list-item-two-line"
+            >
+                <VCard
+                    class="mx-auto bg-light-primary"
+                    width="400"
+                    height="250"
+                >
+                    <template v-slot:title>
+                        <span class="font-weight-black">OSV.dev</span>
+                    </template>
+                    <template v-slot:subtitle>
+                        Open Source Vulnerabilities
+                    </template>
+                    <template v-slot:prepend>
+                        <VImg
+                            src="/osv-logo.png"
+                            width="50"
+                        ></VImg>
+                    </template>
+                    <template v-slot:append>
+                        <VSwitch
+                            color="success"
+                            :model-value="true"
+                            readonly
+                        ></VSwitch>
+                    </template>
+                    <VCardText class="pt-2">
+                        This infrastructure serves as an aggregator of vulnerability databases that have adopted the OSV
+                        schema,
+                        including GitHub Security Advisories, PyPA, RustSec, and Global Security Database, and more.
+                    </VCardText>
+                </VCard>
+            </VSkeletonLoader>
+            <VSkeletonLoader
+                class="ma-2"
+                :loading="state.loading"
+                width="400"
+                height="250"
+                type="image, list-item-two-line"
+            >
+                <VCard
+                    class="mx-auto bg-light-primary"
+                    width="400"
+                    height="250"
+                >
+                    <template v-slot:title>
+                        <span class="font-weight-black">FIRST.org</span>
+                    </template>
+                    <template v-slot:subtitle>
+                        Standards body for CVSS and EPSS
+                    </template>
+                    <template v-slot:prepend>
+                        <VImg
+                            src="/1st-logo.png"
+                            width="50"
+                        ></VImg>
+                    </template>
+                    <template v-slot:append>
+                        <VSwitch
+                            color="success"
+                            :model-value="true"
+                            readonly
+                        ></VSwitch>
+                    </template>
+                    <VCardText class="pt-2">
+                        Exploit Prediction Scoring System (EPSS) is estimating daily the probability of any exploitation
+                        attempts against a CVE in the next 30 days.
+                        Common Vulnerability Scoring System (CVSS) is “severity” of a vulnerability.
+                    </VCardText>
+                </VCard>
+            </VSkeletonLoader>
+        </VSheet>
     </VCard>
 </template>
 
