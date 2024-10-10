@@ -598,60 +598,6 @@ export class EPSS {
 }
 
 export class VulnCheck {
-    // if (!vulncheck) {
-    //     continue
-    // }
-    // const vc = await vulncheck.getPurl(ref.referenceLocator)
-    // if (vc?.content && vc.content?.errors) {
-    //     vc.content.errors.map(e => errors.add(`VulnCheck error [${vc.url}] ${e}`))
-    // }
-    // if (vc?.status === 402) {
-    //     break vulncheckPackages
-    // }
-    // if (vc?.ok === true) {
-    //     const createLog = await prisma.IntegrationUsageLog.create({
-    //         data: {
-    //             memberEmail: session.memberEmail,
-    //             source: 'vulncheck',
-    //             request: JSON.stringify({ url: vc.url, purl: ref.referenceLocator }),
-    //             response: JSON.stringify(vc.content),
-    //             statusCode: vc?.status ? parseInt(vc.status, 10) : 0,
-    //             createdAt: new Date().getTime(),
-    //         }
-    //     })
-    //     console.log(`vulncheck.getPurl(${ref.referenceLocator})`, createLog)
-    //     for (const vulnerability of vc.content?.data?.vulnerabilities) {
-    //         const createFinding = await prisma.Finding.create({
-    //             data: {
-    //                 findingId: hex(`${session.memberEmail}${vulnerability.detection}${pkg.name}${pkg.versionInfo}`),
-    //                 memberEmail: session.memberEmail,
-    //                 source: 'vulncheck',
-    //                 category: 'sca',
-    //                 createdAt: new Date().getTime(),
-    //                 detectionTitle: vulnerability.detection,
-    //                 purl: ref.referenceLocator,
-    //                 packageName: pkg.name,
-    //                 packageVersion: pkg.versionInfo,
-    //                 licenseDeclared: pkg.licenseDeclared,
-    //                 fixedVersion: vulnerability?.fixed_version,
-    //                 maliciousSource: research_attributes.malicious_source,
-    //                 abandoned: research_attributes.abandoned,
-    //                 squattedPackage: research_attributes.squatted_package,
-    //             }
-    //         })
-    //         console.log(`findings SCA`, createFinding)
-    //     }
-    // }
-    // const keyData = await prisma.MemberKey.findFirst({
-    //     where: {
-    //         memberEmail: session.memberEmail,
-    //         keyType: 'vulncheck',
-    //     }
-    // })
-    // let vulncheck
-    // if (typeof keyData?.secret !== 'undefined') {
-    //     vulncheck = new VulnCheck(keyData.secret)
-    // }
     constructor(BearerToken) {
         this.headers = {
             'Accept': 'application/json',
@@ -681,6 +627,12 @@ export class VulnCheck {
     }
     async getPurl(purl) {
         // https://docs.vulncheck.com/api/purl
+        // for (const vulnerability of vc.content?.data?.vulnerabilities) {
+        //     fixedVersion: vulnerability?.fixed_version,
+        //     maliciousSource: vulnerability?.research_attributes.malicious_source,
+        //     abandoned: vulnerability?.research_attributes.abandoned,
+        //     squattedPackage: vulnerability?.research_attributes.squatted_package,
+        // }
         const url = `${this.baseUrl}/purl?purl=${purl}`
         console.log(`VulnCheck.getPurl(${purl})`)
         return this.fetchJSON(url)
@@ -690,6 +642,22 @@ export class VulnCheck {
         const url = `${this.baseUrl}/cpe?cpe=${cpe}`
         console.log(`VulnCheck.getCPE(${cpe})`)
         return await this.fetchJSON(url)
+    }
+    async getCVE(cve_id) {
+        // https://docs.vulncheck.com/community/nist-nvd/nvd-2
+        const url = `${this.baseUrl}/index/nist-nvd2?cve=${cve_id}`
+        console.log(`VulnCheck.getCVE(${cve_id})`)
+        return await this.fetchJSON(url)
+    }
+    async getNVD() {
+        // https://docs.vulncheck.com/community/nist-nvd/nvd-2
+        const url = `${this.baseUrl}/index/nist-nvd2`
+        // Check hash before downloading
+    }
+    async getKEV() {
+        // https://docs.vulncheck.com/community/vulncheck-kev/schema
+        const url = `${this.baseUrl}/index/vulncheck-kev`
+        // Check hash before downloading
     }
 }
 

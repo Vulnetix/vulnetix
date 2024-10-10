@@ -227,6 +227,82 @@ const controller = reactive(new Controller())
                     </VCardText>
                 </VCard>
             </VSkeletonLoader>
+            <VSkeletonLoader
+                class="ma-2"
+                :loading="state.loading"
+                width="400"
+                height="250"
+                type="image, list-item-two-line"
+            >
+                <VCard
+                    class="mx-auto bg-light-primary"
+                    width="400"
+                    height="250"
+                >
+                    <template v-slot:title>
+                        <span class="font-weight-black">VulnCheck Community</span>
+                    </template>
+                    <template v-slot:subtitle>
+                        VulnCheck KEV and NVD++
+                    </template>
+                    <template v-slot:prepend>
+                        <VImg
+                            src="/vulncheck-logo.png"
+                            width="50"
+                        ></VImg>
+                    </template>
+                    <template v-slot:append>
+                        <VSwitch
+                            color="success"
+                            :model-value="true"
+                            readonly
+                        ></VSwitch>
+                    </template>
+                    <VCardText class="pt-2">
+                        National Institute of Standards (NIST) National Vulnerability Database (NVD) and Cybersecurity
+                        and Infrastructure Security Agency (CISA) Known Exploited Vulnerabilities (KEV) catalog stored
+                        daily to your browser for CVE enrichment.
+                    </VCardText>
+                </VCard>
+            </VSkeletonLoader>
+            <VSkeletonLoader
+                class="ma-2"
+                :loading="state.loading"
+                width="400"
+                height="250"
+                type="image, list-item-two-line"
+            >
+                <VCard
+                    class="mx-auto bg-light-primary"
+                    width="400"
+                    height="250"
+                >
+                    <template v-slot:title>
+                        <span class="font-weight-black">CVE.org</span>
+                    </template>
+                    <template v-slot:subtitle>
+                        MITRE Corporation CVE Program
+                    </template>
+                    <template v-slot:prepend>
+                        <VImg
+                            src="/cve-logo.png"
+                            width="50"
+                        ></VImg>
+                    </template>
+                    <template v-slot:append>
+                        <VSwitch
+                            color="success"
+                            :model-value="true"
+                            readonly
+                        ></VSwitch>
+                    </template>
+                    <VCardText class="pt-2">
+                        CVE Records in CVE JSON 5.0 format is the official data format for CVE Records.
+                        This integration checks one CVE Record for each discovered vulnerability at the stage a VEX is
+                        being produced, or when the discovered issue is checked in the dashboard or queue.
+                    </VCardText>
+                </VCard>
+            </VSkeletonLoader>
         </VSheet>
     </VCard>
 </template>
