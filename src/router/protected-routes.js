@@ -92,8 +92,12 @@ const routes = [
                 component: () => import('../pages/Mend.vue'),
             },
             {
+                path: 'integration/mitre-cve',
+                component: () => import('../pages/MitreCve.vue'),
+            },
+            {
                 path: 'integration/github',
-                component: () => import('../pages/GitHub.vue'),
+                component: () => import('../pages/GitHubLogs.vue'),
             },
         ],
     },

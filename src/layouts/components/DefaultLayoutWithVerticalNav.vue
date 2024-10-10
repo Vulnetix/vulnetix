@@ -142,39 +142,10 @@ watch(NotificationsStore, () => {
                 icon: 'carbon:ibm-cloud-direct-link-2-connect',
                 to: '/integrations',
             }" />
-            <!--
-            <VerticalNavLink :item="{
-                title: 'VulnCheck',
-                icon_url: '/vulncheck-logo.png',
-                to: '/vulncheck-integration',
-            }" />
-            https://docs.mend.io/bundle/mend-api-2-0/page/index.html#tag/General-Info-Vulnerabilities
-            <VerticalNavLink :item="{
-                title: 'Mend.io',
-                icon_url: '/mend-io-logo.png',
-                to: '/mend-integration',
-            }" />
-            <VerticalNavLink :item="{
-                title: 'GitHub',
-                icon: 'mdi-github',
-                to: '/github-integration',
-            }" />
-            <VerticalNavLink :item="{
-                title: 'OSV.dev',
-                icon_url: '/osv-logo.png',
-                to: '/osv-integration',
-            }" />
-            <VerticalNavLink :item="{
-                title: 'First.org',
-                icon_url: '/1st-logo.png',
-                to: '/first-org-integration',
-            }" /> -->
         </template>
 
-        <!-- 👉 Pages -->
         <slot />
 
-        <!-- 👉 Footer -->
         <template #footer>
             <Footer />
         </template>
