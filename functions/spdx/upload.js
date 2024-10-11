@@ -112,6 +112,7 @@ export async function onRequestPost(context) {
                         packageName: name,
                         packageVersion: version,
                         packageLicense: license,
+                        maliciousSource: vuln.id.startsWith("MAL-"),
                         spdxId
                     }
                     const originalFinding = await prisma.Finding.findFirst({

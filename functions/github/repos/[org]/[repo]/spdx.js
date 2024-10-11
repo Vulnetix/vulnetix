@@ -195,6 +195,7 @@ const process = async (prisma, session, repoName, spdx, spdxId, artifactUuid) =>
                 packageName: name,
                 packageVersion: version,
                 packageLicense: license,
+                maliciousSource: vuln.id.startsWith("MAL-"),
                 spdxId
             }
             const originalFinding = await prisma.Finding.findFirst({

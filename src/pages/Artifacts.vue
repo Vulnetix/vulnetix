@@ -1,4 +1,5 @@
 <script setup>
+import router from "@/router";
 import { useMemberStore } from '@/stores/member';
 import { Client, isCDX, isJSON, isSARIF, isSPDX, timeAgo, VexAnalysisJustification, VexAnalysisResponse, VexAnalysisState } from '@/utils';
 import { reactive, ref } from 'vue';
@@ -222,7 +223,7 @@ class Controller {
         if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
             state.uploadError = data.result
 
-            // return setTimeout(() => router.push('/logout'), 2000)
+            return setTimeout(() => router.push('/logout'), 2000)
         }
         if (data?.error?.message) {
             state.uploadError = data?.error?.message
@@ -230,6 +231,47 @@ class Controller {
             return
         }
         return data
+    }
+
+    deleteArtifact = async (artifactUuid, isActive) => {
+        clearAlerts()
+        state.loading = true
+        try {
+            const { data } = await client.delete(`/artifact/${artifactUuid}`)
+            state.loading = false
+
+            if (!data?.ok) {
+                state.error = data?.error?.message || 'Server error, please try again later.'
+                isActive.value = false
+
+                return
+            }
+            if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
+                state.info = data.result
+                isActive.value = false
+
+                return setTimeout(() => router.push('/logout'), 2000)
+            }
+            if (typeof data === "string" && !isJSON(data)) {
+                state.error = "Data could not be deleted, please try again later."
+                isActive.value = false
+
+                return
+            }
+            if (data?.uuid === artifactUuid) {
+                state.success = "Artifact deleted successfully."
+            } else {
+                state.info = data?.result || 'No change'
+            }
+            isActive.value = false
+
+            return
+        } catch (e) {
+            console.error(e)
+            state.error = typeof e === "string" ? e : `${e.code} ${e.message}`
+        }
+        isActive.value = false
+        state.loading = false
     }
 }
 
@@ -247,7 +289,6 @@ const files = ref({
     xls: 'mdi-file-excel',
 })
 function addFileToSourceSubgroup(group, file) {
-    console.log(file)
     if (!file?.source) {
         group.children.push(file)
         return group
@@ -473,7 +514,7 @@ function addFileToSourceSubgroup(group, file) {
                     <template v-slot:default="{ isActive }">
                         <VCard
                             prepend-icon="weui:delete-on-filled"
-                            text="This will delete the SARIF Artifact permanantly, it cannot be undone."
+                            text="This will delete the Artifact permanantly, it cannot be undone."
                             title="Delete Artifact?"
                         >
                             <template v-slot:actions>
@@ -486,7 +527,7 @@ function addFileToSourceSubgroup(group, file) {
                                     color="error"
                                     variant="tonal"
                                     text="Delete"
-                                    @click="controller.deleteArtifact(result, isActive)"
+                                    @click="controller.deleteArtifact(item.uuid, isActive)"
                                 ></VBtn>
                             </template>
                         </VCard>

@@ -77,7 +77,7 @@ export async function onRequestPost(context) {
                 },
                 create: cdxData
             })
-            console.log(`/github/repos/cdx ${cdxId} kid=${verificationResult.session.kid}`, info)
+            console.log(`/upload/cdx ${cdxId} kid=${verificationResult.session.kid}`, info)
             files.push(cdxData)
 
             const osvQueries = cdx.components.map(component => {
@@ -113,6 +113,7 @@ export async function onRequestPost(context) {
                         packageName: name,
                         packageVersion: version,
                         packageLicense: license,
+                        maliciousSource: vuln.id.startsWith("MAL-"),
                         cdxId
                     }
                     const originalFinding = await prisma.Finding.findFirst({
@@ -138,6 +139,7 @@ export async function onRequestPost(context) {
                         finding = await prisma.Finding.create({ data: findingData })
                     }
                     console.log(`findings SCA`, finding)
+                    // TODO lookup EPSS
                     const vexData = {
                         findingUuid: finding.uuid,
                         createdAt: (new Date()).getTime(),

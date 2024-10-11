@@ -1,5 +1,6 @@
 <script setup>
-import { Client } from '@/utils';
+import router from "@/router";
+import { Client, timeAgo } from '@/utils';
 import { reactive } from 'vue';
 import { useTheme } from 'vuetify';
 
@@ -190,7 +191,7 @@ class Controller {
         clearAlerts()
         state.loading = true
         try {
-            const { data } = await client.post(`/vulncheck/integrate`, { apiKey: state.apiKey })
+            const { data } = await client.post(`/vulncheck/integrate`, { apiKey: state.vcApiKey })
             state.loading = false
 
             if (typeof data === "string" && !isJSON(data)) {
@@ -866,31 +867,13 @@ const controller = reactive(new Controller())
                                                         Scheme (PURL)
                                                     </p>
                                                     <VRow>
-                                                        <VCol
-                                                            md="6"
-                                                            cols="12"
-                                                        >
+                                                        <VCol cols="12">
                                                             <VTextField
                                                                 :disabled="state.loading"
                                                                 v-model="state.vcApiKey"
                                                                 placeholder="vulncheck_xxxx...xxxx"
                                                                 label="VulnCheck API Token"
                                                             />
-                                                        </VCol>
-                                                        <VCol
-                                                            md="6"
-                                                            cols="12"
-                                                            class="d-flex flex-wrap gap-4"
-                                                        >
-                                                        </VCol>
-                                                    </VRow>
-                                                    <VRow>
-                                                        <VCol
-                                                            md="6"
-                                                            cols="12"
-                                                            class="d-flex flex-wrap gap-4"
-                                                        >
-                                                            <VBtn @click="controller.saveVcPat">Save</VBtn>
                                                         </VCol>
                                                     </VRow>
                                                 </VForm>
@@ -905,14 +888,12 @@ const controller = reactive(new Controller())
                                                     text="Cancel"
                                                     @click="isActive.value = false"
                                                 ></VBtn>
-
                                                 <VBtn
                                                     class="text-none"
                                                     color="primary"
-                                                    rounded="xl"
                                                     text="Save"
                                                     variant="flat"
-                                                    @click="isActive.value = false"
+                                                    @click="controller.saveVcPat"
                                                 ></VBtn>
                                             </VCardActions>
                                         </VCard>

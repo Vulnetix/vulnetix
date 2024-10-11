@@ -67,6 +67,7 @@ export async function onRequestGet(context) {
         finding.fixVersion = vuln.affected.map(affected => affected.ranges.pop()?.events.pop()?.fixed).pop()
         finding.vulnerableVersionRange = vuln.affected.map(affected => affected.database_specific.last_known_affected_version_range).pop()
         finding.fixAutomatable = !!finding.vulnerableVersionRange && !!finding.fixVersion ? 1 : 0
+        finding.maliciousSource = vuln.id.startsWith("MAL-")
         finding.referencesJSON = JSON.stringify(vuln.references.map(reference => reference.url))
         const info = await prisma.Finding.update({
             where: {
@@ -84,6 +85,7 @@ export async function onRequestGet(context) {
                 fixVersion: finding.fixVersion,
                 vulnerableVersionRange: finding.vulnerableVersionRange,
                 fixAutomatable: finding.fixAutomatable,
+                maliciousSource: finding.maliciousSource,
                 referencesJSON: finding.referencesJSON,
             }
         })
