@@ -73,6 +73,7 @@ export async function onRequestGet(context) {
                 downloadLinks: true,
                 spdx: {
                     select: {
+                        name: true,
                         source: true,
                         repoName: true,
                         spdxVersion: true,
@@ -83,6 +84,9 @@ export async function onRequestGet(context) {
                 sarif: {
                     select: {
                         source: true,
+                        ref: true,
+                        commitSha: true,
+                        analysisKey: true,
                         fullName: true,
                         toolName: true,
                         toolVersion: true,
@@ -92,6 +96,8 @@ export async function onRequestGet(context) {
                 },
                 cdx: {
                     select: {
+                        name: true,
+                        version: true,
                         source: true,
                         repoName: true,
                         cdxVersion: true,

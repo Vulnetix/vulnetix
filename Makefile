@@ -73,8 +73,6 @@ _purge_data: ## FOR DOCO ONLY
 
 _helpers: ## FOR DOCO ONLY
 	npx wrangler d1 execute vulnetix --local --file ./migrations/0001_init.sql
-	npx wrangler d1 execute vulnetix --local --command "PRAGMA table_list;"
-	npx wrangler d1 execute vulnetix --local --command "PRAGMA table_info(Member);"
 	npx wrangler d1 execute vulnetix --local --command "SELECT * FROM Member;"
 	npx prisma migrate diff \
 	--from-empty \

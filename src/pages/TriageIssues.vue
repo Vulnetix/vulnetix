@@ -49,7 +49,7 @@ const normalise = finding => {
     }
     let bomVersion;
     if (finding?.cdx?.cdxVersion) {
-        bomVersion = `CDX-${finding.cdx.cdxVersion}`
+        bomVersion = `CycloneDX-${finding.cdx.cdxVersion}`
     } else if (finding?.spdx?.spdxVersion) {
         bomVersion = finding.spdx.spdxVersion
     }

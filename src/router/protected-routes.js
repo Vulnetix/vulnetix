@@ -12,26 +12,6 @@ const routes = [
                 component: () => import('../pages/Artifacts.vue'),
             },
             {
-                path: 'artifacts/sarif',
-                component: () => import('../pages/SARIFManager.vue'),
-            },
-            {
-                path: 'artifacts/cyclonedx',
-                component: () => import('../pages/CycloneDXManager.vue'),
-            },
-            {
-                path: 'artifacts/spdx',
-                component: () => import('../pages/SPDXManager.vue'),
-            },
-            {
-                path: 'artifacts/vex',
-                component: () => import('../pages/VEXManager.vue'),
-            },
-            {
-                path: 'artifacts/vdr',
-                component: () => import('../pages/VDRManager.vue'),
-            },
-            {
                 path: 'account',
                 component: () => import('../pages/Profile.vue'),
             },

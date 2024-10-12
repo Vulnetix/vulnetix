@@ -25,7 +25,7 @@ const initialState = {
         { title: 'SPDX', children: [] },
         { title: 'SARIF', children: [] },
         { title: 'VEX', children: [] },
-        { title: 'VDR', children: [] },
+        // { title: 'VDR', children: [] },
     ],
 }
 const state = reactive({
@@ -52,10 +52,10 @@ class Controller {
                 if (data.ok) {
                     if (data?.artifacts) {
                         for (const artifact of data.artifacts) {
-                            const { uuid, downloadLink, type, bomFormat } = artifact
+                            const { uuid, downloadLink, type, bomFormat, analysisKey } = artifact
                             const { contentType, url } = downloadLink
                             for (let group of state.artifacts) {
-                                const suffix = contentType?.includes("json") ? 'json' : 'txt'
+                                const ext = contentType?.includes("json") ? 'json' : 'txt'
                                 let repoName;
                                 let dependencies;
                                 let results;
@@ -97,18 +97,22 @@ class Controller {
                                         analysis = `${analysis}, ${VexAnalysisResponse[artifact.vex.analysisResponse]}`
                                     }
                                 }
-                                const file = { title: `${uuid}.${suffix}`, ext: suffix, lastModified: artifact.date, uuid, source, url, analysis, findingTitle, dependencies, repoName, results, versionInfo }
+                                const file = { contentType, ext, lastModified: artifact.date, uuid, source, url, analysis, findingTitle, dependencies, repoName, results, versionInfo }
 
                                 if (group.title === "SARIF" && contentType?.includes("sarif")) {
+                                    file.title = analysisKey || `${uuid}.${ext}`
                                     group = addFileToSourceSubgroup(group, file)
                                     break
                                 } else if (group.title === "VEX" && type === "VEX") {
-                                    group = addFileToSourceSubgroup(group, file)
-                                    break
-                                } else if (group.title === "VDR" && type === "VDR") {
+                                    file.title = artifact.vex.findingTitle
                                     group = addFileToSourceSubgroup(group, file)
                                     break
                                 } else if (group.title === bomFormat) {
+                                    if (bomFormat === "CycloneDX") {
+                                        file.title = [artifact.cdx.name, artifact.cdx.version].filter(a => !!a).join('@')
+                                    } else if (bomFormat === "SPDX") {
+                                        file.title = [artifact.spdx.name, artifact.spdx.version].filter(a => !!a).join('@')
+                                    }
                                     group = addFileToSourceSubgroup(group, file)
                                     break
                                 }
@@ -176,31 +180,33 @@ class Controller {
             }
             let success = false
             if (sarif.length) {
-                const data = await controller._handleUpload(`/sarif/upload`, sarif)
+                const data = await controller._handleUpload(`/sarif`, sarif)
                 if (data?.sarif?.length !== sarif.length) {
                     state.uploadError = "SARIF data upload failed."
                 } else {
                     success = true
+                    updateArtifactsFromFiles(data.sarif)
                 }
             }
             if (spdx.length) {
-                const data = await controller._handleUpload(`/spdx/upload`, spdx)
+                const data = await controller._handleUpload(`/spdx`, spdx)
                 if (data?.files?.length !== spdx.length) {
                     state.uploadError = "SPDX data upload failed."
                 } else {
                     success = true
+                    updateArtifactsFromFiles(data.files)
                 }
             }
             if (cdx.length) {
-                const data = await controller._handleUpload(`/cdx/upload`, cdx)
+                const data = await controller._handleUpload(`/cdx`, cdx)
                 if (data?.files?.length !== cdx.length) {
                     state.uploadError = "CDX data upload failed."
                 } else {
                     success = true
+                    updateArtifactsFromFiles(data.files)
                 }
             }
             if (success) {
-                await controller.refresh()
                 state.uploadSuccess = "Upload succeded, you may close this dialogue now."
             }
 
@@ -260,6 +266,7 @@ class Controller {
             }
             if (data?.uuid === artifactUuid) {
                 state.success = "Artifact deleted successfully."
+                removeByUuid(state.artifacts, artifactUuid)
             } else {
                 state.info = data?.result || 'No change'
             }
@@ -278,6 +285,30 @@ class Controller {
 const controller = reactive(new Controller())
 onMounted(() => Member.ensureSession().then(controller.refresh))
 
+const removeByUuid = (arr, uuidToRemove) => {
+    for (let i = 0; i < arr.length; i++) {
+        const item = arr[i]
+
+        if (item.uuid === uuidToRemove) {
+            arr.splice(i, 1)
+            return true
+        }
+
+        if (item.children && Array.isArray(item.children)) {
+            if (removeByUuid(item.children, uuidToRemove)) {
+                if (item.children.length === 0) {
+                    delete item.children
+                    if (Object.keys(item).length === 1 && 'title' in item) {
+                        item.isEmpty = true
+                    }
+                }
+                return true
+            }
+        }
+    }
+    return false
+}
+
 const files = ref({
     html: 'mdi-language-html5',
     js: 'mdi-nodejs',
@@ -290,6 +321,12 @@ const files = ref({
 })
 function addFileToSourceSubgroup(group, file) {
     if (!file?.source) {
+        if (group.children.length === 1) {
+            const child = group.children.pop()
+            if (child.isEmpty) {
+                group.children = []
+            }
+        }
         group.children.push(file)
         return group
     }
@@ -299,13 +336,79 @@ function addFileToSourceSubgroup(group, file) {
         sourceSubgroup = { title: file.source, children: [] }
         group.children.push(sourceSubgroup)
     }
-
     if (!sourceSubgroup.children.some(f => f.uuid === file.uuid)) {
         delete file.source
+        if (sourceSubgroup.children.length === 1) {
+            const child = sourceSubgroup.children.pop()
+            if (child.isEmpty) {
+                sourceSubgroup.children = []
+            }
+        }
         sourceSubgroup.children.push(file)
     }
 
     return group
+}
+function updateArtifactsFromFiles(files) {
+    for (const fileData of files) {
+        let targetArtifact, artifactType;
+
+        if (fileData?.cdxId) {
+            artifactType = "CycloneDX"
+        } else if (fileData?.spdxId) {
+            artifactType = "SPDX"
+        } else if (fileData?.sarifId) {
+            artifactType = "SARIF"
+        } else {
+            console.warn("Unknown file type:", fileData)
+            return // Skip this file if we can't determine its type
+        }
+        targetArtifact = state.artifacts.find(a => a.title === artifactType)
+
+        if (!targetArtifact) {
+            state.artifacts.push({ title: artifactType, children: [] })
+            targetArtifact = state.artifacts.find(a => a.title === artifactType)
+        }
+
+        // Ensure the 'children' array exists and has an 'upload' object
+        if (!targetArtifact.children.length || !targetArtifact.children.some(child => child.title === "upload")) {
+            targetArtifact.children.push({ title: "upload", children: [] })
+        }
+
+        const uploadObject = targetArtifact.children.find(child => child.title === "upload")
+
+        // Create the new file object
+        const newFile = {
+            title: `${fileData.artifactUuid}.json`,
+            ext: "json", // Assuming all files are JSON
+            lastModified: fileData.createdAt,
+            contentType: fileData.contentType,
+            uuid: fileData.artifactUuid,
+            url: `https://artifacts.vulnetix.app/${artifactType.toLowerCase()}/${fileData.artifactUuid}.json`,
+            dependencies: fileData.dependenciesCount || fileData.packagesCount,
+        }
+
+        // Add type-specific properties
+        if (fileData.cdxId) {
+            newFile.cdxId = fileData.cdxId
+            newFile.versionInfo = `CycloneDX-${fileData.cdxVersion}`
+        } else if (fileData.spdxId) {
+            newFile.spdxId = fileData.spdxId
+            newFile.versionInfo = fileData.spdxVersion
+        } else if (fileData.reportId) {
+            newFile.reportId = fileData.reportId
+            newFile.versionInfo = [fileData.toolName, fileData.toolVersion].filter(a => !!a).join('-')
+            newFile.results = fileData.resultsCount || 0 // Assuming SARIF has a resultsCount
+        }
+
+        // Add the new file to the upload object's children
+        uploadObject.children.push(newFile)
+
+        // Remove the 'isEmpty' property if it exists
+        if (targetArtifact.children[0].isEmpty) {
+            delete targetArtifact.children[0].isEmpty
+        }
+    }
 }
 </script>
 
@@ -450,16 +553,28 @@ function addFileToSourceSubgroup(group, file) {
                     </template>
                 </VDialog>
             </VSheet>
-            <VSheet class="me-4 mt-4 pt-2 text-overline font-weight-bold">
+            <VSheet
+                min-width="235"
+                class="mt-4 pt-2 text-overline font-weight-bold text-right"
+            >
+                Content Type
+            </VSheet>
+            <VSheet
+                min-width="130"
+                class="mt-4 pt-2 text-overline font-weight-bold text-right"
+            >
                 Last Modified
             </VSheet>
-            <VSheet class="me-4 mt-4 pt-2 ps-4 text-overline font-weight-bold">
+            <VSheet
+                min-width="100"
+                class="mt-4 pt-2 pe-4 text-overline font-weight-bold text-right"
+            >
                 Actions
             </VSheet>
         </VSheet>
         <VSkeletonLoader
             v-if="state.loading"
-            class=""
+            class="w-100"
             max-width="380"
             type="avatar, heading@3, avatar, heading@2, avatar, heading@4, avatar, heading@2, avatar, heading@6, avatar, heading@3"
             tile
@@ -474,8 +589,16 @@ function addFileToSourceSubgroup(group, file) {
             variant="flat"
         >
             <template v-slot:append="{ item }">
-                <span
-                    class="mr-4"
+                <div
+                    style="min-width: 235px;"
+                    class="text-right"
+                    v-if="item?.contentType"
+                >
+                    {{ item.contentType }}
+                </div>
+                <div
+                    style="min-width: 130px;"
+                    class="text-right mr-2"
                     v-if="item?.lastModified"
                 >
                     <time :datetime="(new Date(item.lastModified)).toISOString()">
@@ -485,7 +608,7 @@ function addFileToSourceSubgroup(group, file) {
                         activator="parent"
                         location="left"
                     >{{ new Date(item.lastModified).toISOString() }}</VTooltip>
-                </span>
+                </div>
                 <VTooltip
                     v-if="item?.url"
                     text="Download Original"
@@ -610,7 +733,7 @@ function addFileToSourceSubgroup(group, file) {
                     </VSheet>
                 </div>
                 <VAlert
-                    v-else-if="item?.isEmpty"
+                    v-else-if="item?.isEmpty === true"
                     border="start"
                     color="secondary"
                     title="No Files"
@@ -623,7 +746,7 @@ function addFileToSourceSubgroup(group, file) {
                 >{{ title }}</span>
             </template>
             <template v-slot:prepend="{ item, isOpen }">
-                <template v-if="item?.isEmpty">
+                <template v-if="item?.isEmpty === true">
                     <VIcon
                         icon="iconoir:empty-page"
                         class="me-4"
