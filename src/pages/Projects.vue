@@ -322,7 +322,7 @@ const controller = reactive(new Controller())
                         </VExpansionPanelTitle>
                         <VExpansionPanelText>
                             <VTable
-                                height="20rem"
+                                style="height: calc(100vh - 30em);"
                                 fixed-header
                             >
                                 <thead>

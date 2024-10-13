@@ -575,7 +575,6 @@ function updateArtifactsFromFiles(files) {
         <VSkeletonLoader
             v-if="state.loading"
             class="w-100"
-            max-width="380"
             type="avatar, heading@3, avatar, heading@2, avatar, heading@4, avatar, heading@2, avatar, heading@6, avatar, heading@3"
             tile
         ></VSkeletonLoader>

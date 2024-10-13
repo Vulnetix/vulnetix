@@ -30,7 +30,7 @@ export async function onRequestGet(context) {
         const findings = await prisma.Finding.findMany({
             where: {
                 orgId: verificationResult.session.orgId,
-                category: 'sca',
+                // category: 'sca',
             },
             omit: {
                 memberEmail: true,
