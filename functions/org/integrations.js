@@ -44,26 +44,30 @@ export async function onRequestGet(context) {
             memberEmail: true,
         },
     })
-    const vulncheck = await prisma.IntegrationConfig.findFirst({
+    const integrations = await prisma.IntegrationConfig.findMany({
         where: {
-            orgId: verificationResult.session.orgId,
-            AND: { name: 'vulncheck' },
+            orgId: verificationResult.session.orgId
         }
     })
-    if (vulncheck?.configJSON) {
-        vulncheck.config = JSON.parse(vulncheck.configJSON)
-    }
-
-    return Response.json({
+    const result = {
         ok: true,
-        vulncheck_enabled: !vulncheck?.suspend,
-        vulncheck_key: mask(vulncheck?.config?.secret),
         githubApps,
         patTokens: patTokens.map(i => {
             i.secretMasked = mask(i.secret)
             delete i.secret
             return i
         })
-    })
+    }
+    for (const integration of integrations) {
+        if (integration?.configJSON) {
+            integration.config = JSON.parse(integration.configJSON)
+        }
+        if (integration.name === 'vulncheck') {
+            result.vulncheck_key = mask(integration?.config?.secret)
+        }
+        result[`${integration.name.replaceAll('-', '_')}_enabled`] = !integration?.suspend
+    }
+
+    return Response.json(result)
 }
 const mask = s => s.slice(0, 11) + s.slice(10).slice(4, s.length - 4).slice(4, 12).replace(/(.)/g, '*') + s.slice(s.length - 4)

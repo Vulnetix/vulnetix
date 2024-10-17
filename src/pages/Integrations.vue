@@ -14,8 +14,8 @@ const initialState = {
     info: "",
     loading: false,
     github: false,
-    osv: true,
-    first: true,
+    osv: false,
+    first: false,
     vulncheckCommunity: false,
     mitreCve: false,
     vcApiKey: '',
@@ -44,6 +44,18 @@ class Controller {
             const { data } = await client.get(`/org/integrations`)
             state.loading = false
             if (data.ok) {
+                if (data?.osv_enabled) {
+                    state.osv = data.osv_enabled
+                }
+                if (data?.first_enabled) {
+                    state.first = data.first_enabled
+                }
+                if (data?.github_enabled) {
+                    state.github = data.github_enabled
+                }
+                if (data?.mitre_cve_enabled) {
+                    state.mitreCve = data.mitre_cve_enabled
+                }
                 if (data?.vulncheck_enabled) {
                     state.vulncheckCommunity = data.vulncheck_enabled
                 }
@@ -181,6 +193,142 @@ class Controller {
             if (data) {
                 state.githubApps = state.githubApps.filter(o => o.installationId !== installationId)
                 state.success = "Uninstalled successfully."
+            } else {
+                state.info = data?.result || 'No change'
+            }
+
+            return
+        } catch (e) {
+            console.error(e)
+            state.error = typeof e === "string" ? e : `${e.code} ${e.message}`
+            state.loading = false
+        }
+    }
+    suspendGithub = async () => {
+        clearAlerts()
+        state.loading = true
+        try {
+            const { data } = await client.post(`/github/integration`, { suspend: state.github })
+            state.loading = false
+
+            if (typeof data === "string" && !isJSON(data)) {
+                state.error = "Data could not be saved, please try again later."
+
+                return
+            }
+            if (data?.error?.message) {
+                state.error = data?.error?.message
+            }
+            if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
+                state.info = data.result
+
+                return setTimeout(() => router.push('/logout'), 2000)
+            }
+            if (data.ok === true) {
+                state.success = "Saved successfully."
+                state.github = !state.github
+            } else {
+                state.info = data?.result || 'No change'
+            }
+
+            return
+        } catch (e) {
+            console.error(e)
+            state.error = typeof e === "string" ? e : `${e.code} ${e.message}`
+            state.loading = false
+        }
+    }
+    suspendMitreCve = async () => {
+        clearAlerts()
+        state.loading = true
+        try {
+            const { data } = await client.post(`/mitre-cve/integration`, { suspend: state.mitreCve })
+            state.loading = false
+
+            if (typeof data === "string" && !isJSON(data)) {
+                state.error = "Data could not be saved, please try again later."
+
+                return
+            }
+            if (data?.error?.message) {
+                state.error = data?.error?.message
+            }
+            if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
+                state.info = data.result
+
+                return setTimeout(() => router.push('/logout'), 2000)
+            }
+            if (data.ok === true) {
+                state.success = "Saved successfully."
+                state.mitreCve = !state.mitreCve
+            } else {
+                state.info = data?.result || 'No change'
+            }
+
+            return
+        } catch (e) {
+            console.error(e)
+            state.error = typeof e === "string" ? e : `${e.code} ${e.message}`
+            state.loading = false
+        }
+    }
+    suspendOsv = async () => {
+        clearAlerts()
+        state.loading = true
+        try {
+            const { data } = await client.post(`/osv/integration`, { suspend: state.osv })
+            state.loading = false
+
+            if (typeof data === "string" && !isJSON(data)) {
+                state.error = "Data could not be saved, please try again later."
+
+                return
+            }
+            if (data?.error?.message) {
+                state.error = data?.error?.message
+            }
+            if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
+                state.info = data.result
+
+                return setTimeout(() => router.push('/logout'), 2000)
+            }
+            if (data.ok === true) {
+                state.success = "Saved successfully."
+                state.osv = !state.osv
+            } else {
+                state.info = data?.result || 'No change'
+            }
+
+            return
+        } catch (e) {
+            console.error(e)
+            state.error = typeof e === "string" ? e : `${e.code} ${e.message}`
+            state.loading = false
+        }
+    }
+    suspendFirst = async () => {
+        clearAlerts()
+        state.loading = true
+        try {
+            const { data } = await client.post(`/first/integration`, { suspend: state.first })
+            state.loading = false
+
+            if (typeof data === "string" && !isJSON(data)) {
+                state.error = "Data could not be saved, please try again later."
+
+                return
+            }
+            if (data?.error?.message) {
+                state.error = data?.error?.message
+            }
+            if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
+                state.info = data.result
+
+                return setTimeout(() => router.push('/logout'), 2000)
+            }
+            if (data.ok === true) {
+                state.success = "Saved successfully."
+                state.first = !state.first
             } else {
                 state.info = data?.result || 'No change'
             }
@@ -727,7 +875,7 @@ const controller = reactive(new Controller())
                         <VSwitch
                             color="success"
                             :model-value="state.osv"
-                            readonly
+                            @click="controller.suspendOsv"
                         ></VSwitch>
                     </template>
                     <VCardText class="pt-2">
@@ -779,7 +927,7 @@ const controller = reactive(new Controller())
                         <VSwitch
                             color="success"
                             :model-value="state.first"
-                            readonly
+                            @click="controller.suspendFirst"
                         ></VSwitch>
                     </template>
                     <VCardText class="pt-2">
@@ -971,7 +1119,7 @@ const controller = reactive(new Controller())
                         <VSwitch
                             color="success"
                             :model-value="state.mitreCve"
-                            disabled
+                            @click="controller.suspendMitreCve"
                         ></VSwitch>
                     </template>
                     <VCardText class="pt-2">

@@ -12,6 +12,9 @@ export async function onRequestGet(context) {
         data, // arbitrary space for passing data between middlewares
     } = context
     try {
+        if (!['osv', 'first', 'vulncheck', 'github', 'mitre-cve'].includes((params?.source || '').toLowerCase())) {
+            return Response.json({ ok: false, error: { message: `Invalid log source` }, results: [] })
+        }
         const adapter = new PrismaD1(env.d1db)
         const prisma = new PrismaClient({
             adapter,
@@ -23,9 +26,6 @@ export async function onRequestGet(context) {
         const verificationResult = await (new Server(request, prisma)).authenticate()
         if (!verificationResult.isValid) {
             return Response.json({ ok: false, result: verificationResult.message, results: [] })
-        }
-        if (!['osv', 'first', 'vulncheck', 'github', 'mitre-cve'].includes((params?.source || '').toLowerCase())) {
-            return Response.json({ ok: false, error: { message: `Invalid log source` }, results: [] })
         }
         const { searchParams } = new URL(request.url)
         const take = parseInt(searchParams.get('take'), 10) || 50
