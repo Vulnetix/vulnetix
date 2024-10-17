@@ -27,11 +27,23 @@ model Org {
   members               Member[]
   sessions              Session[]
   git_repos             GitRepo[]
+  integrations          IntegrationConfig[]
   integration_usage_log IntegrationUsageLog[]
   findings              Finding[]
-  SARIFInfo             SARIFInfo[]
-  CycloneDXInfo         CycloneDXInfo[]
-  SPDXInfo              SPDXInfo[]
+  sarif                 SARIFInfo[]
+  cdx                   CycloneDXInfo[]
+  spdx                  SPDXInfo[]
+}
+
+model IntegrationConfig {
+  uuid       String  @id @default(uuid())
+  orgId      String
+  org        Org     @relation(fields: [orgId], references: [uuid])
+  name       String
+  label      String?
+  created    Int
+  suspend    Int?    @default(0)
+  configJSON String?
 }
 
 model Member {

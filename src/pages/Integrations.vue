@@ -44,6 +44,12 @@ class Controller {
             const { data } = await client.get(`/org/integrations`)
             state.loading = false
             if (data.ok) {
+                if (data?.vulncheck_enabled) {
+                    state.vulncheckCommunity = data.vulncheck_enabled
+                }
+                if (data?.vulncheck_key) {
+                    state.vcApiKey = data.vulncheck_key
+                }
                 if (data?.patTokens) {
                     state.patTokens = data.patTokens
                 }
@@ -99,7 +105,6 @@ class Controller {
                 state.pat = ''
                 state.patName = ''
                 state.success = "Saved successfully."
-                this.refreshLog()
             } else {
                 state.info = data?.result || 'No change'
             }
@@ -176,6 +181,40 @@ class Controller {
             if (data) {
                 state.githubApps = state.githubApps.filter(o => o.installationId !== installationId)
                 state.success = "Uninstalled successfully."
+            } else {
+                state.info = data?.result || 'No change'
+            }
+
+            return
+        } catch (e) {
+            console.error(e)
+            state.error = typeof e === "string" ? e : `${e.code} ${e.message}`
+            state.loading = false
+        }
+    }
+    suspendVcPat = async () => {
+        clearAlerts()
+        state.loading = true
+        try {
+            const { data } = await client.post(`/vulncheck/integrate`, { suspend: state.vulncheckCommunity })
+            state.loading = false
+
+            if (typeof data === "string" && !isJSON(data)) {
+                state.error = "Data could not be saved, please try again later."
+
+                return
+            }
+            if (data?.error?.message) {
+                state.error = data?.error?.message
+            }
+            if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
+                state.info = data.result
+
+                return setTimeout(() => router.push('/logout'), 2000)
+            }
+            if (data.ok === true) {
+                state.success = "Saved successfully."
+                state.vulncheckCommunity = !state.vulncheckCommunity
             } else {
                 state.info = data?.result || 'No change'
             }
@@ -267,7 +306,7 @@ const controller = reactive(new Controller())
         </VCol>
     </Vrow>
     <VCard>
-        <VSheet class="d-flex flex-wrap">
+        <VSheet class="d-flex flex-wrap justify-center">
             <VSkeletonLoader
                 class="ma-2"
                 :loading="state.loading"
@@ -293,7 +332,7 @@ const controller = reactive(new Controller())
                         <VSwitch
                             color="success"
                             :model-value="state.github"
-                            disabled
+                            @click="controller.suspendGithub"
                         ></VSwitch>
                     </template>
                     <VCardText class="pt-2">
@@ -792,7 +831,7 @@ const controller = reactive(new Controller())
                         <VSwitch
                             color="success"
                             :model-value="state.vulncheckCommunity"
-                            disabled
+                            @click="controller.suspendVcPat"
                         ></VSwitch>
                     </template>
                     <VCardText class="pt-2">

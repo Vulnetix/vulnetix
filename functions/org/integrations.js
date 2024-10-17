@@ -44,10 +44,22 @@ export async function onRequestGet(context) {
             memberEmail: true,
         },
     })
+    const vulncheck = await prisma.IntegrationConfig.findFirst({
+        where: {
+            orgId: verificationResult.session.orgId,
+            AND: { name: 'vulncheck' },
+        }
+    })
+    if (vulncheck?.configJSON) {
+        vulncheck.config = JSON.parse(vulncheck.configJSON)
+    }
 
     return Response.json({
         ok: true,
-        githubApps, patTokens: patTokens.map(i => {
+        vulncheck_enabled: !vulncheck?.suspend,
+        vulncheck_key: mask(vulncheck?.config?.secret),
+        githubApps,
+        patTokens: patTokens.map(i => {
             i.secretMasked = mask(i.secret)
             delete i.secret
             return i

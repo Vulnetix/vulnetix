@@ -26,28 +26,46 @@ export async function onRequestPost(context) {
         }
         const bodyStr = await ensureStrReqBody(request)
         const data = JSON.parse(bodyStr)
-        if (!data.apiKey.startsWith('vulncheck_')) {
+        if (data?.apiKey && !data.apiKey.startsWith('vulncheck_')) {
             return Response.json({ error: { message: `Invalid API Key provided, expected "vulncheck_" prefix.` } })
         }
         const where = {
-            memberEmail: verificationResult.session.memberEmail,
-            keyType: 'vulncheck',
+            orgId: verificationResult.session.orgId,
+            AND: { name: 'vulncheck' },
         }
-        const original = await prisma.MemberKey.findFirst({ where })
-        if (data.apiKey !== original?.secret) {
-            let info
-            if (original === null) {
-                const params = Object.assign({}, where)
-                params.secret = data.apiKey
-                info = await prisma.MemberKey.create({ data: params })
-            } else {
-                info = await prisma.MemberKey.update({ where, data: { secret: data.apiKey } })
+        const original = await prisma.IntegrationConfig.findFirst({ where })
+        if (original === null) {
+            if (data?.apiKey === undefined) {
+                return Response.json({ ok: false, result: 'No Change' })
             }
-
+            const info = await prisma.IntegrationConfig.create({
+                data: {
+                    orgId: verificationResult.session.orgId,
+                    name: 'vulncheck',
+                    created: new Date().getTime(),
+                    configJSON: JSON.stringify({ secret: data.apiKey }),
+                    suspend: data?.suspend === undefined ? 0 : (data.suspend ? 1 : 0),
+                }
+            })
             return Response.json({ ok: true, info })
         }
+        if (original?.configJSON) {
+            original.config = JSON.parse(original.configJSON)
+            if (data?.apiKey === original.config.secret && (data?.suspend ? 1 : 0) === original.suspend) {
+                return Response.json({ ok: false, result: 'No Change' })
+            }
+        }
+        const info = await prisma.IntegrationConfig.update({
+            where: {
+                uuid: original.uuid
+            },
+            data: {
+                configJSON: data?.apiKey === undefined || data.apiKey.includes('****') ? original.configJSON : JSON.stringify({ secret: data.apiKey }),
+                suspend: data?.suspend === undefined ? original.suspend : (data.suspend ? 1 : 0),
+            }
+        })
+        return Response.json({ ok: true, info })
 
-        return Response.json({ ok: false, result: 'No Change' })
     } catch (err) {
         console.error(err)
         return Response.json({ ok: false, error: { message: err }, result: AuthResult.REVOKED })
