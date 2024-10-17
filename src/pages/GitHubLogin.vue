@@ -4,7 +4,6 @@ import { useMemberStore } from '@/stores/member'
 import { Client, isJSON, octodex, timeAgo } from '@/utils'
 import { reactive } from 'vue'
 import { useTheme } from 'vuetify'
-
 //TODO https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#check-if-vulnerability-alerts-are-enabled-for-a-repository
 //TODO https://docs.github.com/en/rest/dependabot/alerts?apiVersion=2022-11-28#list-dependabot-alerts-for-a-repository
 //TODO https://docs.github.com/en/rest/secret-scanning/secret-scanning?apiVersion=2022-11-28#list-secret-scanning-alerts-for-a-repository
@@ -409,46 +408,6 @@ class Controller {
             state.error = typeof e === "string" ? e : `${e.code} ${e.message}`
             state.loading = false
         }
-    }
-    refreshLog = async () => {
-        clearAlerts()
-        state.loadingLog = true
-        try {
-            const limit = 150
-            const pageSize = 20
-            let hasMore = true
-            let skip = 0
-            while (hasMore && skip <= limit) {
-                const { data } = await client.get(`/github/log?take=${pageSize}&skip=${skip}`)
-                if (data.ok) {
-                    if (data?.results) {
-                        data.results.map(r => state.log.push(r))
-                    }
-                } else if (typeof data === "string" && !isJSON(data)) {
-                    break
-                } else if (data?.error?.message) {
-                    state.loadingLog = false
-                    state.error = data.error.message
-                    return
-                } else if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
-                    state.loadingLog = false
-                    state.info = data.result
-                    setTimeout(() => router.push('/logout'), 2000)
-                    return
-                } else {
-                    break
-                }
-                if (Object.keys(data.results).length < pageSize) {
-                    hasMore = false
-                } else {
-                    skip += pageSize
-                }
-            }
-        } catch (e) {
-            console.error(e)
-            state.error = `${e.code} ${e.message}`
-        }
-        state.loadingLog = false
     }
 }
 

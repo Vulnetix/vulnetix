@@ -2,7 +2,7 @@ import { Server } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
-export async function onRequestGet(context) {
+export async function onRequestDelete(context) {
     const {
         request, // same as existing Worker API
         env, // same as existing Worker API
@@ -23,25 +23,25 @@ export async function onRequestGet(context) {
     if (!verificationResult.isValid) {
         return Response.json({ ok: false, result: verificationResult.message })
     }
-    const { searchParams } = new URL(request.url)
-    const take = parseInt(searchParams.get('take'), 10) || 50
-    const skip = parseInt(searchParams.get('skip'), 10) || 0
-    const spdx = await prisma.spdx.findMany({
-        where: {
-            memberEmail: verificationResult.session.memberEmail,
-        },
-        omit: {
-            memberEmail: true,
-            comment: true,
-            documentNamespace: true,
-            documentDescribes: true,
-        },
-        take,
-        skip,
-        orderBy: {
-            createdAt: 'desc',
-        },
+    const sarif = await prisma.SARIFInfo.findFirst({
+        where: { reportId: params.reportId },
+        include: {
+            results: true,
+            artifact: {
+                include: {
+                    downloadLinks: true
+                }
+            },
+        }
     })
-
-    return Response.json({ ok: true, spdx })
+    for (const link of sarif.artifact.downloadLinks) {
+        await prisma.Link.delete({ where: { id: link.id } })
+    }
+    await prisma.Artifact.delete({ where: { uuid: sarif.artifact.uuid } })
+    for (const result of sarif.results) {
+        await prisma.SarifResults.delete({ where: { guid: result.guid } })
+    }
+    const sarifInfo = await prisma.SARIFInfo.delete({ where: { reportId: params.reportId } })
+    console.log(`DELETE /sarif/[${params.reportId}]`, sarifInfo)
+    return Response.json({ ok: true, reportId: params.reportId, artifactUuid: sarif.artifact.uuid })
 }

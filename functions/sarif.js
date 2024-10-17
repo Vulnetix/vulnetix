@@ -1,7 +1,67 @@
-import { Server, hex, isSARIF, ensureStrReqBody } from "@/utils";
+import { Server, ensureStrReqBody, hex, isSARIF, saveArtifact } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
+
+export async function onRequestGet(context) {
+    const {
+        request, // same as existing Worker API
+        env, // same as existing Worker API
+        params, // if filename includes [id] or [[path]]
+        waitUntil, // same as ctx.waitUntil in existing Worker API
+        next, // used for middleware or to fetch assets
+        data, // arbitrary space for passing data between middlewares
+    } = context
+    const adapter = new PrismaD1(env.d1db)
+    const prisma = new PrismaClient({
+        adapter,
+        transactionOptions: {
+            maxWait: 1500, // default: 2000
+            timeout: 2000, // default: 5000
+        },
+    })
+    const verificationResult = await (new Server(request, prisma)).authenticate()
+    if (!verificationResult.isValid) {
+        return Response.json({ ok: false, result: verificationResult.message })
+    }
+    const { searchParams } = new URL(request.url)
+    const take = parseInt(searchParams.get('take'), 10) || 50
+    const skip = parseInt(searchParams.get('skip'), 10) || 0
+    let sarif = await prisma.SARIFInfo.findMany({
+        where: {
+            orgId: verificationResult.session.orgId,
+        },
+        omit: {
+            memberEmail: true,
+        },
+        include: {
+            results: true,
+            artifact: {
+                include: {
+                    downloadLinks: true
+                }
+            },
+            repo: true
+        },
+        take,
+        skip,
+        orderBy: {
+            createdAt: 'desc',
+        },
+    })
+    sarif = sarif.map(item => {
+        let updatedItem = { ...item }
+        if (item.artifact && item.artifact.downloadLinks && item.artifact.downloadLinks.length) {
+            updatedItem.downloadLink = item.artifact.downloadLinks?.pop()?.url
+            // updatedItem.downloadLink = item.artifact.downloadLinks.filter(l => l.contentType === 'application/json')?.pop()?.url
+        }
+        // delete updatedItem.artifact
+
+        return updatedItem
+    })
+
+    return Response.json({ ok: true, sarif })
+}
 
 export async function onRequestPost(context) {
     const {
@@ -32,14 +92,16 @@ export async function onRequestPost(context) {
             if (!isSARIF(sarif)) {
                 return Response.json({ ok: false, error: { message: 'SARIF is missing necessary fields.' } })
             }
-            const sarifId = crypto.randomUUID()
+            const artifact = await saveArtifact(prisma, env.r2artifacts, JSON.stringify(sarif), crypto.randomUUID(), `sarif`)
             const createdAt = (new Date()).getTime()
             for (const run of sarif.runs) {
                 const reportId = await hex(run.tool.driver.name + run.tool.driver.semanticVersion + JSON.stringify(run.results))
                 const sarifData = {
-                    sarifId,
+                    sarifId: artifact.uuid,
+                    artifactUuid: artifact.uuid,
                     reportId,
                     source: 'upload',
+                    orgId: verificationResult.session.orgId,
                     memberEmail: verificationResult.session.memberEmail,
                     createdAt,
                     resultsCount: run.results.length,
@@ -47,7 +109,7 @@ export async function onRequestPost(context) {
                     toolName: run.tool.driver.name,
                     toolVersion: run.tool.driver.semanticVersion,
                 }
-                const info = await prisma.sarif.upsert({
+                const info = await prisma.SARIFInfo.upsert({
                     where: {
                         reportId,
                     },
@@ -56,7 +118,7 @@ export async function onRequestPost(context) {
                     },
                     create: sarifData,
                 })
-                console.log(`/sarif/upload ${sarifId} kid=${verificationResult.session.kid}`, info)
+                console.log(`/sarif/upload ${artifact.uuid} kid=${verificationResult.session.kid}`, info)
                 sarifData.results = []
                 for (const result of run.results) {
                     const locationsJSON = JSON.stringify(result.locations)
@@ -99,7 +161,7 @@ export async function onRequestPost(context) {
                         }
                     }
                     sarifData.results.push(resultData)
-                    const reportInfo = await prisma.sarif_results.upsert({
+                    const reportInfo = await prisma.SarifResults.upsert({
                         where: {
                             guid: resultData.guid,
                         },
@@ -108,7 +170,7 @@ export async function onRequestPost(context) {
                         },
                         create: resultData,
                     })
-                    console.log(`/github/repos/sarif_results ${sarifId} kid=${verificationResult.session.kid}`, reportInfo)
+                    // console.log(`/github/repos/sarif_results ${artifact.uuid} kid=${verificationResult.session.kid}`, reportInfo)
                 }
                 files.push(sarifData)
             }

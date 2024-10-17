@@ -1,3 +1,30 @@
+export class VexAnalysisState {
+    static get resolved() { return "Resolved" }
+    static get resolved_with_pedigree() { return "Resolved With Pedigree" }
+    static get exploitable() { return "Exploitable" }
+    static get in_triage() { return "In Triage" }
+    static get false_positive() { return "False Positive" }
+    static get not_affected() { return "Not Affected" }
+}
+export class VexAnalysisJustification {
+    static get code_not_present() { return "Code Not Present" }
+    static get code_not_reachable() { return "Code Not Reachable" }
+    static get requires_configuration() { return "Requires Configuration" }
+    static get requires_dependency() { return "Requires Dependency" }
+    static get requires_environment() { return "Requires Environment" }
+    static get protected_by_compiler() { return "Protected By Compiler" }
+    static get protected_at_runtime() { return "Protected At Runtime" }
+    static get protected_at_perimeter() { return "Protected At Perimeter" }
+    static get protected_by_mitigating_control() { return "Protected By Mitigating Control" }
+}
+export class VexAnalysisResponse {
+    static get can_not_fix() { return "Can Not Fix" }
+    static get resolved_with_pedigree() { return "Will Not Fix" }
+    static get exploitable() { return "Update" }
+    static get in_triage() { return "Rollback" }
+    static get false_positive() { return "Workaround Available" }
+}
+
 /**
  * Class representing the possible results of an authentication attempt.
  */
@@ -41,7 +68,7 @@ export class Server {
      */
     async memberExists(memberEmail) {
         try {
-            const member = await this.prisma.members.findFirstOrThrow({
+            const member = await this.prisma.Member.findFirstOrThrow({
                 where: { email: memberEmail }
             })
 
@@ -62,7 +89,7 @@ export class Server {
         const method = this.request.method.toUpperCase()
         const url = new URL(this.request.url)
         const path = url.pathname + url.search
-        const body = method !== 'GET' ? await ensureStrReqBody(this.request) : null
+        const body = ['GET', 'DELETE'].includes(method.toUpperCase()) ? '' : await ensureStrReqBody(this.request)
 
         // Retrieve signature and timestamp from headers
         const signature = this.request.headers.get('authorization')?.replace('HMAC ', '')
@@ -102,7 +129,7 @@ export class Server {
             )
         }
         // Retrieve the session key from the database using Prisma
-        const session = await this.prisma.sessions.findFirstOrThrow({
+        const session = await this.prisma.Session.findFirstOrThrow({
             where: { kid }
         })
         if (!session.expiry || session.expiry <= new Date().getTime()) {
@@ -474,15 +501,16 @@ export class OSV {
             return { url, status: 500, error: { message: e.message, lineno, colno } }
         }
     }
-    async queryBatch(prisma, memberEmail, queries) {
+    async queryBatch(prisma, orgId, memberEmail, queries) {
         // https://google.github.io/osv.dev/post-v1-querybatch/
         const url = `${this.baseUrl}/querybatch`
         const resp = await this.fetchJSON(url, { queries })
         if (resp?.content?.results) {
             const results = resp.content.results.map(r => r?.vulns).flat(1).filter(q => q?.id)
-            const createLog = await prisma.integration_usage_log.create({
+            const createLog = await prisma.IntegrationUsageLog.create({
                 data: {
                     memberEmail,
+                    orgId,
                     source: 'osv',
                     request: JSON.stringify({ method: 'POST', url, queries }).trim(),
                     response: JSON.stringify({ body: results.filter(i => !!i).map(i => convertIsoDatesToTimestamps(i)), status: resp.status }).trim(),
@@ -494,15 +522,16 @@ export class OSV {
         }
         return resp?.content?.results || []
     }
-    async query(prisma, memberEmail, vulnId) {
+    async query(prisma, orgId, memberEmail, vulnId) {
         // https://google.github.io/osv.dev/get-v1-vulns/
         const url = `${this.baseUrl}/vulns/${vulnId}`
         const resp = await this.fetchJSON(url, null, "GET")
         if (resp?.content) {
             const result = resp.content
-            const createLog = await prisma.integration_usage_log.create({
+            const createLog = await prisma.IntegrationUsageLog.create({
                 data: {
                     memberEmail,
+                    orgId,
                     source: 'osv',
                     request: JSON.stringify({ method: "GET", url, vulnId }).trim(),
                     response: JSON.stringify({ body: convertIsoDatesToTimestamps(result), status: resp.status }).trim(),
@@ -546,14 +575,15 @@ export class EPSS {
             return { url, status: 500, error: { message: e.message, lineno, colno } }
         }
     }
-    async query(prisma, memberEmail, cve) {
+    async query(prisma, orgId, memberEmail, cve) {
         // https://google.github.io/osv.dev/get-v1-vulns/
         const url = `${this.baseUrl}/epss?cve=${cve}`
         const resp = await this.fetchJSON(url, null, "GET")
         if (resp?.content) {
-            const createLog = await prisma.integration_usage_log.create({
+            const createLog = await prisma.IntegrationUsageLog.create({
                 data: {
                     memberEmail,
+                    orgId,
                     source: 'first',
                     request: JSON.stringify({ method: "GET", url }).trim(),
                     response: JSON.stringify({ body: convertIsoDatesToTimestamps(resp.content), status: resp.status }).trim(),
@@ -568,60 +598,6 @@ export class EPSS {
 }
 
 export class VulnCheck {
-    // if (!vulncheck) {
-    //     continue
-    // }
-    // const vc = await vulncheck.getPurl(ref.referenceLocator)
-    // if (vc?.content && vc.content?.errors) {
-    //     vc.content.errors.map(e => errors.add(`VulnCheck error [${vc.url}] ${e}`))
-    // }
-    // if (vc?.status === 402) {
-    //     break vulncheckPackages
-    // }
-    // if (vc?.ok === true) {
-    //     const createLog = await prisma.integration_usage_log.create({
-    //         data: {
-    //             memberEmail: session.memberEmail,
-    //             source: 'vulncheck',
-    //             request: JSON.stringify({ url: vc.url, purl: ref.referenceLocator }),
-    //             response: JSON.stringify(vc.content),
-    //             statusCode: vc?.status ? parseInt(vc.status, 10) : 0,
-    //             createdAt: new Date().getTime(),
-    //         }
-    //     })
-    //     console.log(`vulncheck.getPurl(${ref.referenceLocator})`, createLog)
-    //     for (const vulnerability of vc.content?.data?.vulnerabilities) {
-    //         const createFinding = await prisma.findings.create({
-    //             data: {
-    //                 findingId: hex(`${session.memberEmail}${vulnerability.detection}${pkg.name}${pkg.versionInfo}`),
-    //                 memberEmail: session.memberEmail,
-    //                 source: 'vulncheck',
-    //                 category: 'sca',
-    //                 createdAt: new Date().getTime(),
-    //                 detectionTitle: vulnerability.detection,
-    //                 purl: ref.referenceLocator,
-    //                 packageName: pkg.name,
-    //                 packageVersion: pkg.versionInfo,
-    //                 licenseDeclared: pkg.licenseDeclared,
-    //                 fixedVersion: vulnerability?.fixed_version,
-    //                 maliciousSource: research_attributes.malicious_source,
-    //                 abandoned: research_attributes.abandoned,
-    //                 squattedPackage: research_attributes.squatted_package,
-    //             }
-    //         })
-    //         console.log(`findings SCA`, createFinding)
-    //     }
-    // }
-    // const keyData = await prisma.member_keys.findFirst({
-    //     where: {
-    //         memberEmail: session.memberEmail,
-    //         keyType: 'vulncheck',
-    //     }
-    // })
-    // let vulncheck
-    // if (typeof keyData?.secret !== 'undefined') {
-    //     vulncheck = new VulnCheck(keyData.secret)
-    // }
     constructor(BearerToken) {
         this.headers = {
             'Accept': 'application/json',
@@ -651,6 +627,12 @@ export class VulnCheck {
     }
     async getPurl(purl) {
         // https://docs.vulncheck.com/api/purl
+        // for (const vulnerability of vc.content?.data?.vulnerabilities) {
+        //     fixedVersion: vulnerability?.fixed_version,
+        //     maliciousSource: vulnerability?.research_attributes.malicious_source,
+        //     abandoned: vulnerability?.research_attributes.abandoned,
+        //     squattedPackage: vulnerability?.research_attributes.squatted_package,
+        // }
         const url = `${this.baseUrl}/purl?purl=${purl}`
         console.log(`VulnCheck.getPurl(${purl})`)
         return this.fetchJSON(url)
@@ -660,6 +642,22 @@ export class VulnCheck {
         const url = `${this.baseUrl}/cpe?cpe=${cpe}`
         console.log(`VulnCheck.getCPE(${cpe})`)
         return await this.fetchJSON(url)
+    }
+    async getCVE(cve_id) {
+        // https://docs.vulncheck.com/community/nist-nvd/nvd-2
+        const url = `${this.baseUrl}/index/nist-nvd2?cve=${cve_id}`
+        console.log(`VulnCheck.getCVE(${cve_id})`)
+        return await this.fetchJSON(url)
+    }
+    async getNVD() {
+        // https://docs.vulncheck.com/community/nist-nvd/nvd-2
+        const url = `${this.baseUrl}/index/nist-nvd2`
+        // Check hash before downloading
+    }
+    async getKEV() {
+        // https://docs.vulncheck.com/community/vulncheck-kev/schema
+        const url = `${this.baseUrl}/index/vulncheck-kev`
+        // Check hash before downloading
     }
 }
 
@@ -713,7 +711,7 @@ export class GitHub {
             return { url, error: { message: e.message, lineno, colno } }
         }
     }
-    async getRepoSarif(prisma, memberEmail, full_name) {
+    async getRepoSarif(prisma, orgId, memberEmail, full_name) {
         // https://docs.github.com/en/rest/code-scanning/code-scanning?apiVersion=2022-11-28#list-code-scanning-analyses-for-a-repository
         const files = []
         const perPage = 100
@@ -723,9 +721,10 @@ export class GitHub {
             const url = `${this.baseUrl}/repos/${full_name}/code-scanning/analyses?per_page=${perPage}&page=${page}`
             console.log(`github.getRepoSarif(${full_name}) ${url}`)
             const data = await this.fetchJSON(url)
-            const createLog0 = await prisma.integration_usage_log.create({
+            const createLog0 = await prisma.IntegrationUsageLog.create({
                 data: {
                     memberEmail,
+                    orgId,
                     source: 'github',
                     request: JSON.stringify({ method: "GET", url }).trim(),
                     response: JSON.stringify({ body: convertIsoDatesToTimestamps(data.content), tokenExpiry: data.tokenExpiry }).trim(),
@@ -741,9 +740,10 @@ export class GitHub {
                 const sarifUrl = `${this.baseUrl}/repos/${full_name}/code-scanning/analyses/${report.id}`
                 console.log(`github.getRepoSarif(${full_name}) ${sarifUrl}`)
                 const sarifData = await this.fetchSARIF(sarifUrl)
-                const createLog = await prisma.integration_usage_log.create({
+                const createLog = await prisma.IntegrationUsageLog.create({
                     data: {
                         memberEmail,
+                        orgId,
                         source: 'github',
                         request: JSON.stringify({ method: "GET", url: sarifUrl }).trim(),
                         response: JSON.stringify({ body: convertIsoDatesToTimestamps(sarifData.content), tokenExpiry: sarifData.tokenExpiry }).trim(),
@@ -775,14 +775,15 @@ export class GitHub {
 
         return { content: files }
     }
-    async getRepoSpdx(prisma, memberEmail, full_name) {
+    async getRepoSpdx(prisma, orgId, memberEmail, full_name) {
         // https://docs.github.com/en/rest/dependency-graph/sboms?apiVersion=2022-11-28#export-a-software-bill-of-materials-sbom-for-a-repository
         const url = `${this.baseUrl}/repos/${full_name}/dependency-graph/sbom`
         console.log(`github.getRepoSpdx(${full_name}) ${url}`)
         const data = await this.fetchJSON(url)
-        const createLog = await prisma.integration_usage_log.create({
+        const createLog = await prisma.IntegrationUsageLog.create({
             data: {
                 memberEmail,
+                orgId,
                 source: 'github',
                 request: JSON.stringify({ method: "GET", url }).trim(),
                 response: JSON.stringify({ body: convertIsoDatesToTimestamps(data.content), tokenExpiry: data.tokenExpiry }).trim(),
@@ -793,15 +794,16 @@ export class GitHub {
         console.log(`GitHub.getRepoSpdx()`, createLog)
         return data
     }
-    async getUserEmails(prisma, memberEmail) {
+    async getUserEmails(prisma, orgId, memberEmail) {
         // https://docs.github.com/en/rest/users/emails?apiVersion=2022-11-28#list-email-addresses-for-the-authenticated-user
         const url = `${this.baseUrl}/user/emails`
         console.log(`github.getUserEmails() ${url}`)
         const data = await this.fetchJSON(url)
-        if (!!prisma && !!memberEmail) {
-            const createLog = await prisma.integration_usage_log.create({
+        if (!!prisma && !!memberEmail && !!orgId) {
+            const createLog = await prisma.IntegrationUsageLog.create({
                 data: {
                     memberEmail,
+                    orgId,
                     source: 'github',
                     request: JSON.stringify({ method: "GET", url }).trim(),
                     response: JSON.stringify({ body: convertIsoDatesToTimestamps(data.content), tokenExpiry: data.tokenExpiry }).trim(),
@@ -813,15 +815,16 @@ export class GitHub {
         }
         return data
     }
-    async getUser(prisma, memberEmail) {
+    async getUser(prisma, orgId, memberEmail) {
         // https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-the-authenticated-user
         const url = `${this.baseUrl}/user`
         console.log(`github.getUser() ${url}`)
         const data = await this.fetchJSON(url)
-        if (!!prisma && !!memberEmail) {
-            const createLog = await prisma.integration_usage_log.create({
+        if (!!prisma && !!memberEmail && !!orgId) {
+            const createLog = await prisma.IntegrationUsageLog.create({
                 data: {
                     memberEmail,
+                    orgId,
                     source: 'github',
                     request: JSON.stringify({ method: "GET", url }).trim(),
                     response: JSON.stringify({ body: convertIsoDatesToTimestamps(data.content), tokenExpiry: data.tokenExpiry }).trim(),
@@ -833,14 +836,15 @@ export class GitHub {
         }
         return data
     }
-    async getInstallations(prisma, memberEmail) {
+    async getInstallations(prisma, orgId, memberEmail) {
         // https://docs.github.com/en/rest/apps/installations?apiVersion=2022-11-28#list-app-installations-accessible-to-the-user-access-token
         const url = `${this.baseUrl}/user/installations`
         console.log(`github.getInstallations() ${url}`)
         const data = await this.fetchJSON(url)
-        const createLog = await prisma.integration_usage_log.create({
+        const createLog = await prisma.IntegrationUsageLog.create({
             data: {
                 memberEmail,
+                orgId,
                 source: 'github',
                 request: JSON.stringify({ method: "GET", url }).trim(),
                 response: JSON.stringify({ body: convertIsoDatesToTimestamps(data.content), tokenExpiry: data.tokenExpiry }).trim(),
@@ -851,7 +855,7 @@ export class GitHub {
         console.log(`GitHub.getInstallations()`, createLog)
         return data
     }
-    async revokeToken(prisma, memberEmail) {
+    async revokeToken(prisma, orgId, memberEmail) {
         const url = `${this.baseUrl}/installation/token`
         try {
             const method = "DELETE"
@@ -860,9 +864,10 @@ export class GitHub {
                 console.error(`req headers=${JSON.stringify(this.headers, null, 2)}`)
                 console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
             }
-            const createLog = await prisma.integration_usage_log.create({
+            const createLog = await prisma.IntegrationUsageLog.create({
                 data: {
                     memberEmail,
+                    orgId,
                     source: 'github',
                     request: JSON.stringify({ method, url }).trim(),
                     response: JSON.stringify({ body: convertIsoDatesToTimestamps(response.content), tokenExpiry: response.tokenExpiry }).trim(),
@@ -879,7 +884,7 @@ export class GitHub {
             return { url, error: { message: e.message, lineno, colno } }
         }
     }
-    async getRepos(prisma, memberEmail) {
+    async getRepos(prisma, orgId, memberEmail) {
         // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repositories-for-the-authenticated-user
         const repos = []
         const perPage = 100
@@ -889,9 +894,10 @@ export class GitHub {
             const url = `${this.baseUrl}/user/repos?per_page=${perPage}&page=${page}`
             console.log(`github.getRepos() ${url}`)
             const data = await this.fetchJSON(url)
-            const createLog = await prisma.integration_usage_log.create({
+            const createLog = await prisma.IntegrationUsageLog.create({
                 data: {
                     memberEmail,
+                    orgId,
                     source: 'github',
                     request: JSON.stringify({ method: "GET", url }).trim(),
                     response: JSON.stringify({ body: convertIsoDatesToTimestamps(data.content), tokenExpiry: data.tokenExpiry }).trim(),
@@ -914,14 +920,15 @@ export class GitHub {
 
         return { content: repos }
     }
-    async getBranch(prisma, memberEmail, repo, branch) {
+    async getBranch(prisma, orgId, memberEmail, repo, branch) {
         // https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#get-a-branch
         const url = `${this.baseUrl}/repos/${repo.full_name}/branches/${branch}`
         console.log(`github.getBranch() ${url}`)
         const data = await this.fetchJSON(url)
-        const createLog = await prisma.integration_usage_log.create({
+        const createLog = await prisma.IntegrationUsageLog.create({
             data: {
                 memberEmail,
+                orgId,
                 source: 'github',
                 request: JSON.stringify({ method: "GET", url }).trim(),
                 response: JSON.stringify({ body: convertIsoDatesToTimestamps(data.content), tokenExpiry: data.tokenExpiry }).trim(),
@@ -932,7 +939,7 @@ export class GitHub {
         console.log(`GitHub.getBranch()`, createLog)
         return data
     }
-    async getBranches(prisma, memberEmail, full_name) {
+    async getBranches(prisma, orgid, memberEmail, full_name) {
         // https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#list-branches
         const branches = []
         const perPage = 100
@@ -942,9 +949,10 @@ export class GitHub {
         while (true) {
             url = `${this.baseUrl}/repos/${full_name}/branches?per_page=${perPage}&page=${page}`
             const data = await this.fetchJSON(url)
-            const createLog = await prisma.integration_usage_log.create({
+            const createLog = await prisma.IntegrationUsageLog.create({
                 data: {
                     memberEmail,
+                    orgid,
                     source: 'github',
                     request: JSON.stringify({ method: "GET", url }).trim(),
                     response: JSON.stringify({ body: convertIsoDatesToTimestamps(data.content), tokenExpiry: data.tokenExpiry }).trim(),
@@ -965,14 +973,15 @@ export class GitHub {
 
         return { ok: true, content: branches }
     }
-    async getCommit(prisma, memberEmail, full_name, commit_sha) {
+    async getCommit(prisma, orgid, memberEmail, full_name, commit_sha) {
         // https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28
         const url = `${this.baseUrl}/repos/${full_name}/commits/${commit_sha}`
         console.log(`github.getCommit() ${url}`)
         const data = await this.fetchJSON(url)
-        const createLog = await prisma.integration_usage_log.create({
+        const createLog = await prisma.IntegrationUsageLog.create({
             data: {
                 memberEmail,
+                orgid,
                 source: 'github',
                 request: JSON.stringify({ method: "GET", url }).trim(),
                 response: JSON.stringify({ body: convertIsoDatesToTimestamps(data.content), tokenExpiry: data.tokenExpiry }).trim(),
@@ -983,7 +992,7 @@ export class GitHub {
         console.log(`GitHub.getCommit()`, createLog)
         return data
     }
-    async getCommits(prisma, memberEmail, full_name, branch_name) {
+    async getCommits(prisma, orgid, memberEmail, full_name, branch_name) {
         // https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28
         const commits = []
         const perPage = 100
@@ -992,9 +1001,10 @@ export class GitHub {
         while (true) {
             url = `${this.baseUrl}/repos/${full_name}/commits?sha=${branch_name}&per_page=${perPage}&page=${page}`
             const data = await this.fetchJSON(url)
-            const createLog = await prisma.integration_usage_log.create({
+            const createLog = await prisma.IntegrationUsageLog.create({
                 data: {
                     memberEmail,
+                    orgid,
                     source: 'github',
                     request: JSON.stringify({ method: "GET", url }).trim(),
                     response: JSON.stringify({ body: convertIsoDatesToTimestamps(data.content), tokenExpiry: data.tokenExpiry }).trim(),
@@ -1022,7 +1032,7 @@ export class GitHub {
  * @param {Request} request the incoming request to read from
  */
 export const ensureStrReqBody = async (request) => {
-    const contentType = request.headers.get("content-type")
+    const contentType = request.headers.get("content-type") || ''
     if (contentType.includes("application/json")) {
         try {
             return JSON.stringify(await request.clone().json())
@@ -1371,6 +1381,70 @@ export const isSARIF = input => {
     return true
 }
 
+/**
+ * Saves an artifact to R2 storage and creates corresponding database entries.
+ * 
+ * @async
+ * @param {Object} prisma - Prisma client instance for database operations.
+ * @param {Object} r2adapter - R2 adapter for storage operations.
+ * @param {string} strContent - The content of the artifact to be saved.
+ * @param {string} artifactUuid - Unique identifier (UUIDv4) for the artifact.
+ * @param {string} artifactType - Type of the artifact (e.g., 'cyclonedx', 'spdx', 'vex', 'vdr', 'sarif').
+ * 
+ * @returns {Promise<Object>} The created artifact object with download links.
+ * 
+ * @description
+ * This function performs the following operations:
+ * 1. Saves the artifact content to R2 storage.
+ * 2. Creates a Link entry in the database.
+ * 3. Creates an Artifact entry in the database.
+ * 4. Determines the appropriate content type and BOM format based on the artifact type.
+ */
+export const saveArtifact = async (prisma, r2adapter, strContent, artifactUuid, artifactType) => {
+    const objectPath = `${artifactType}/${artifactUuid}.json`
+    const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
+    const reportInfo = await r2adapter.put(objectPath, strContent, putOptions)
+    const link = {
+        url: `https://artifacts.vulnetix.app/${objectPath}`,
+        contentType: 'application/json',
+        artifactUuid
+    }
+    const artifact = {
+        uuid: artifactUuid,
+        type: 'OTHER',
+        date: new Date().getTime(),
+        bomFormat: '',
+    }
+    if (['cyclonedx', 'spdx'].includes(artifactType.toLowerCase())) {
+        artifact.type = 'BOM'
+        if ('cyclonedx' === artifactType.toLowerCase()) {
+            artifact.bomFormat = 'CycloneDX'
+            link.contentType = 'application/vnd.cyclonedx+json'
+        } else if ('spdx' === artifactType.toLowerCase()) {
+            artifact.bomFormat = 'SPDX'
+            link.contentType = 'application/spdx+json'
+        }
+    } else if (['vex', 'vdr'].includes(artifactType.toLowerCase())) {
+        artifact.bomFormat = artifactType.toUpperCase()
+        link.contentType = 'application/vnd.cyclonedx+json'
+    } else if ('sarif' === artifactType.toLowerCase()) {
+        link.contentType = 'application/sarif+json'
+    }
+    const linkInfo = await prisma.Link.create({ data: link })
+    const artifactInfo = await prisma.Artifact.upsert({
+        where: { uuid: artifactUuid },
+        update: {
+            date: artifact.date,
+            type: artifact.type,
+            bomFormat: artifact.bomFormat,
+        },
+        create: artifact
+    })
+    console.log(objectPath, reportInfo, linkInfo, artifactInfo)
+    artifact.downloadLinks = [linkInfo]
+    return artifact
+}
+
 export const appExpiryPeriod = (86400000 * 365 * 10)  // 10 years
 
 /**
@@ -1437,7 +1511,22 @@ export async function hex(text, name = "SHA-1") {
     return [...new Uint8Array(await crypto.subtle.digest({ name }, new TextEncoder().encode(text)))].map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
-export const round = (n, p = 100) => Math.round((n + Number.EPSILON) * p) / p
+/**
+ * Rounds a number to a specified number of decimal places.
+ * 
+ * @param {number} n - The number to round.
+ * @param {number} [p=10] - The precision factor. Defaults to 10.
+ *   - p = 10 results in 1 decimal place
+ *   - p = 100 results in 2 decimal places
+ *   - p = 1000 results in 3 decimal places, and so on
+ * 
+ * @returns {number} The rounded number.
+ * 
+ * @example
+ * round(3.14159, 10)  // Returns 3.1
+ * round(3.14159, 100) // Returns 3.14
+ * round(3.14159)      // Returns 3.1 (uses default precision)
+ */export const round = (n, p = 10) => Math.round((n + Number.EPSILON) * p) / p
 
 export const isJSON = str => {
     try {

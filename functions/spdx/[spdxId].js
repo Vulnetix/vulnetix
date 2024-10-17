@@ -2,7 +2,7 @@ import { Server } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
-export async function onRequestGet(context) {
+export async function onRequestDelete(context) {
     const {
         request, // same as existing Worker API
         env, // same as existing Worker API
@@ -23,23 +23,22 @@ export async function onRequestGet(context) {
     if (!verificationResult.isValid) {
         return Response.json({ ok: false, result: verificationResult.message })
     }
-    const { searchParams } = new URL(request.url)
-    const take = parseInt(searchParams.get('take'), 10) || 50
-    const skip = parseInt(searchParams.get('skip'), 10) || 0
-    const sarif = await prisma.sarif.findMany({
-        where: {
-            memberEmail: verificationResult.session.memberEmail,
-        },
+    const spdx = await prisma.SPDXInfo.findFirst({
+        where: { spdxId: params.spdxId },
         include: {
-            results: true,
-            repo: true
-        },
-        take,
-        skip,
-        orderBy: {
-            createdAt: 'desc',
-        },
+            artifact: {
+                include: {
+                    downloadLinks: true
+                }
+            },
+        }
     })
+    for (const link of spdx.artifact.downloadLinks) {
+        await prisma.Link.delete({ where: { id: link.id } })
+    }
+    await prisma.Artifact.delete({ where: { uuid: spdx.artifact.uuid } })
 
-    return Response.json({ ok: true, sarif })
+    const spdxInfo = await prisma.SPDXInfo.delete({ where: { spdxId: params.spdxId } })
+    console.log(`DELETE /spdx/[${params.spdxId}]`, spdxInfo)
+    return Response.json({ ok: true, spdxId: params.spdxId, artifactUuid: spdx.artifact.uuid })
 }

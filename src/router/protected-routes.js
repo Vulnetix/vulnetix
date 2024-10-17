@@ -8,60 +8,76 @@ const routes = [
                 component: () => import('../pages/Dashboard.vue'),
             },
             {
-                path: 'account-settings',
+                path: 'artifacts',
+                component: () => import('../pages/Artifacts.vue'),
+            },
+            {
+                path: 'account',
+                component: () => import('../pages/Profile.vue'),
+            },
+            {
+                path: 'account/settings',
                 component: () => import('../pages/AccountSettings.vue'),
             },
             {
-                path: 'queue/dependencies',
-                component: () => import('../pages/QueueDependencies.vue'),
+                path: 'account/organisation',
+                component: () => import('../pages/Organisation.vue'),
             },
             {
-                path: 'queue/source-code',
-                component: () => import('../pages/QueueSourceCode.vue'),
+                path: 'projects',
+                component: () => import('../pages/Projects.vue'),
             },
             {
-                path: 'triage-overdue',
+                path: 'products',
+                component: () => import('../pages/Products.vue'),
+            },
+            {
+                path: 'triage',
+                component: () => import('../pages/Tasks.vue'),
+            },
+            {
+                path: 'triage/issues',
+                component: () => import('../pages/TriageIssues.vue'),
+            },
+            {
+                path: 'triage/exploitable',
+                component: () => import('../pages/TriageExploitable.vue'),
+            },
+            {
+                path: 'triage/overdue',
                 component: () => import('../pages/TriageOverdue.vue'),
             },
             {
-                path: 'sarif-manager',
-                component: () => import('../pages/SARIFManager.vue'),
-            },
-            {
-                path: 'cyclonedx-manager',
-                component: () => import('../pages/CycloneDXManager.vue'),
-            },
-            {
-                path: 'spdx-manager',
-                component: () => import('../pages/SPDXManager.vue'),
-            },
-            {
-                path: 'vex-manager',
-                component: () => import('../pages/VEXManager.vue'),
-            },
-            {
-                path: 'triage-history',
+                path: 'triage/history',
                 component: () => import('../pages/TriageHistory.vue'),
             },
             {
-                path: 'vulncheck-integration',
+                path: 'integrations',
+                component: () => import('../pages/Integrations.vue'),
+            },
+            {
+                path: 'integration/vulncheck',
                 component: () => import('../pages/VulnCheck.vue'),
             },
             {
-                path: 'osv-integration',
+                path: 'integration/osv-dev',
                 component: () => import('../pages/OSV.vue'),
             },
             {
-                path: 'first-org-integration',
+                path: 'integration/first-org',
                 component: () => import('../pages/FirstOrg.vue'),
             },
             {
-                path: 'mend-integration',
+                path: 'integration/mend',
                 component: () => import('../pages/Mend.vue'),
             },
             {
-                path: 'github-integration',
-                component: () => import('../pages/GitHub.vue'),
+                path: 'integration/mitre-cve',
+                component: () => import('../pages/MitreCve.vue'),
+            },
+            {
+                path: 'integration/github',
+                component: () => import('../pages/GitHubLogs.vue'),
             },
         ],
     },

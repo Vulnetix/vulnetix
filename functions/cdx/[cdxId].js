@@ -2,7 +2,7 @@ import { Server } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
-export async function onRequestGet(context) {
+export async function onRequestDelete(context) {
     const {
         request, // same as existing Worker API
         env, // same as existing Worker API
@@ -23,25 +23,22 @@ export async function onRequestGet(context) {
     if (!verificationResult.isValid) {
         return Response.json({ ok: false, result: verificationResult.message })
     }
-    const { searchParams } = new URL(request.url)
-    const take = parseInt(searchParams.get('take'), 10) || 50
-    const skip = parseInt(searchParams.get('skip'), 10) || 0
-    const cdx = await prisma.cdx.findMany({
-        where: {
-            memberEmail: verificationResult.session.memberEmail,
-        },
-        omit: {
-            memberEmail: true,
-        },
+    const cdx = await prisma.CycloneDXInfo.findFirst({
+        where: { cdxId: params.cdxId },
         include: {
-            repo: true,
-        },
-        take,
-        skip,
-        orderBy: {
-            createdAt: 'desc',
-        },
+            artifact: {
+                include: {
+                    downloadLinks: true
+                }
+            },
+        }
     })
+    for (const link of cdx.artifact.downloadLinks) {
+        await prisma.Link.delete({ where: { id: link.id } })
+    }
+    await prisma.Artifact.delete({ where: { uuid: cdx.artifact.uuid } })
 
-    return Response.json({ ok: true, cdx })
+    const cdxInfo = await prisma.CycloneDXInfo.delete({ where: { cdxId: params.cdxId } })
+    console.log(`DELETE /cdx/[${params.cdxId}]`, cdxInfo)
+    return Response.json({ ok: true, cdxId: params.cdxId, artifactUuid: cdx.artifact.uuid })
 }

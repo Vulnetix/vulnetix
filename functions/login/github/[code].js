@@ -83,7 +83,7 @@ export async function onRequestGet(context) {
                 lastName = words.join(' ') || ''
             }
             if (content?.company) {
-                const originalOrg = await prisma.orgs.findFirst({
+                const originalOrg = await prisma.Org.findFirst({
                     where: {
                         name: content.company
                     }
@@ -91,7 +91,7 @@ export async function onRequestGet(context) {
                 if (originalOrg?.uuid) {
                     orgId = originalOrg.uuid
                 } else {
-                    const orgInfo = await prisma.orgs.create({
+                    const orgInfo = await prisma.Org.create({
                         data: {
                             uuid: orgId,
                             name: content.company,
@@ -100,7 +100,7 @@ export async function onRequestGet(context) {
                     console.log(`/github/install register orgId=${orgId}`, orgInfo)
                 }
             } else {
-                const orgInfo = await prisma.orgs.create({
+                const orgInfo = await prisma.Org.create({
                     data: {
                         uuid: orgId,
                         name: memberEmail.toLowerCase(),
@@ -117,7 +117,7 @@ export async function onRequestGet(context) {
                 firstName,
                 lastName
             }
-            const memberInfo = await prisma.members.create({
+            const memberInfo = await prisma.Member.create({
                 data: response.member
             })
             console.log(`/github/install register email=${memberEmail}`, memberInfo)
@@ -130,6 +130,7 @@ export async function onRequestGet(context) {
         const secret = await hex(crypto.getRandomValues(new Uint32Array(26)), 'SHA-1')
         response.session = {
             kid: token,
+            orgId: response.member.orgId,
             memberEmail: response.member.email,
             expiry,
             issued: created,
@@ -137,16 +138,16 @@ export async function onRequestGet(context) {
             authn_ip,
             authn_ua
         }
-        const sessionInfo = await prisma.sessions.create({
+        const sessionInfo = await prisma.Session.create({
             data: response.session
         })
         console.log(`/github/install session kid=${token}`, sessionInfo)
-        const githubApp = await prisma.github_apps.findFirst({
+        const githubApp = await prisma.GitHubApp.findFirst({
             where: { memberEmail: response.member.email },
         })
         let installationId = githubApp?.installationId
         if (!installationId) {
-            const ghInstalls = await gh.getInstallations()
+            const ghInstalls = await gh.getInstallations(response.session.orgId, response.session.memberEmail)
             if (!ghInstalls?.ok || ghInstalls?.error?.message || !ghInstalls?.content?.installations || !ghInstalls.content?.installations?.length) {
                 return Response.json({ ok: ghInstalls.ok, error: ghInstalls.error, result: `${ghInstalls.status} ${ghInstalls.statusText}` })
             }
@@ -158,7 +159,7 @@ export async function onRequestGet(context) {
             }
         }
         if (installationId) {
-            const GHAppInfo = await prisma.github_apps.upsert({
+            const GHAppInfo = await prisma.GitHubApp.upsert({
                 where: {
                     installationId: parseInt(installationId, 10),
                 },

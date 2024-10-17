@@ -12,6 +12,9 @@ export async function onRequestGet(context) {
         data, // arbitrary space for passing data between middlewares
     } = context
     try {
+        if (!['osv', 'first', 'vulncheck', 'github', 'mitre-cve'].includes((params?.source || '').toLowerCase())) {
+            return Response.json({ ok: false, error: { message: `Invalid log source` }, results: [] })
+        }
         const adapter = new PrismaD1(env.d1db)
         const prisma = new PrismaClient({
             adapter,
@@ -22,17 +25,14 @@ export async function onRequestGet(context) {
         })
         const verificationResult = await (new Server(request, prisma)).authenticate()
         if (!verificationResult.isValid) {
-            return Response.json({ ok: false, result: verificationResult.message })
-        }
-        if (!['osv', 'first', 'vulncheck', 'github'].includes((params?.source || '').toLowerCase())) {
-            return Response.json({ ok: false, error: { message: `Invalid log source` } })
+            return Response.json({ ok: false, result: verificationResult.message, results: [] })
         }
         const { searchParams } = new URL(request.url)
         const take = parseInt(searchParams.get('take'), 10) || 50
         const skip = parseInt(searchParams.get('skip'), 10) || 0
-        const results = await prisma.integration_usage_log.findMany({
+        let results = await prisma.IntegrationUsageLog.findMany({
             where: {
-                memberEmail: verificationResult.session.memberEmail,
+                orgId: verificationResult.session.orgId,
                 source: params?.source,
             },
             take,
@@ -41,10 +41,13 @@ export async function onRequestGet(context) {
                 createdAt: 'desc',
             },
         })
+        if (!results) {
+            results = []
+        }
 
         return Response.json({ ok: true, results })
     } catch (err) {
         console.error(err)
-        return Response.json({ ok: false, error: { message: err }, result: AuthResult.REVOKED })
+        return Response.json({ ok: false, error: { message: err }, result: AuthResult.REVOKED, results: [] })
     }
 }

@@ -1,10 +1,9 @@
 <script setup>
-import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
 import {
   VList,
   VListItem,
   VListSubheader,
-} from 'vuetify/components'
+} from 'vuetify/components';
 
 const props = defineProps({
   isDialogVisible: {
@@ -93,7 +92,7 @@ const resolveCategories = val => {
     return 'Forms Tables'
   if (val === 'chartsMisc')
     return 'Charts Misc'
-  
+
   return 'Misc'
 }
 </script>
@@ -175,11 +174,7 @@ const resolveCategories = val => {
       <!-- 👉 Divider -->
       <VDivider />
 
-      <!-- 👉 Perfect Scrollbar -->
-      <PerfectScrollbar
-        :options="{ wheelPropagation: false, suppressScrollX: true }"
-        class="h-100"
-      >
+      <div class="h-100">
         <!-- 👉 Search List -->
         <VList
           v-show="searchQuery.length && !!searchResults.length"
@@ -286,7 +281,9 @@ const resolveCategories = val => {
         >
           <slot name="noData">
             <VCardText class="h-100">
-              <div class="app-bar-search-suggestions d-flex flex-column align-center justify-center text-high-emphasis h-100">
+              <div
+                class="app-bar-search-suggestions d-flex flex-column align-center justify-center text-high-emphasis h-100"
+              >
                 <VIcon
                   size="75"
                   icon="tabler-file-x"
@@ -317,7 +314,7 @@ const resolveCategories = val => {
             </VCardText>
           </slot>
         </div>
-      </PerfectScrollbar>
+      </div>
     </VCard>
   </VDialog>
 </template>
@@ -344,6 +341,7 @@ const resolveCategories = val => {
   }
 
   .app-bar-search-list {
+
     .v-list-item,
     .v-list-subheader {
       font-size: 0.75rem;

@@ -1,7 +1,64 @@
-import { AuthResult, hex, isCDX, OSV, Server, ensureStrReqBody } from "@/utils";
+import { AuthResult, ensureStrReqBody, hex, isCDX, OSV, saveArtifact, Server } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
+
+export async function onRequestGet(context) {
+    const {
+        request, // same as existing Worker API
+        env, // same as existing Worker API
+        params, // if filename includes [id] or [[path]]
+        waitUntil, // same as ctx.waitUntil in existing Worker API
+        next, // used for middleware or to fetch assets
+        data, // arbitrary space for passing data between middlewares
+    } = context
+    const adapter = new PrismaD1(env.d1db)
+    const prisma = new PrismaClient({
+        adapter,
+        transactionOptions: {
+            maxWait: 1500, // default: 2000
+            timeout: 2000, // default: 5000
+        },
+    })
+    const verificationResult = await (new Server(request, prisma)).authenticate()
+    if (!verificationResult.isValid) {
+        return Response.json({ ok: false, result: verificationResult.message })
+    }
+    const { searchParams } = new URL(request.url)
+    const take = parseInt(searchParams.get('take'), 10) || 50
+    const skip = parseInt(searchParams.get('skip'), 10) || 0
+    let cdx = await prisma.CycloneDXInfo.findMany({
+        where: {
+            orgId: verificationResult.session.orgId,
+        },
+        omit: {
+            memberEmail: true,
+        },
+        include: {
+            repo: true,
+            artifact: {
+                include: {
+                    downloadLinks: true
+                }
+            },
+        },
+        take,
+        skip,
+        orderBy: {
+            createdAt: 'desc',
+        },
+    })
+    cdx = cdx.map(item => {
+        let updatedItem = { ...item }
+        if (item.artifact && item.artifact.downloadLinks && item.artifact.downloadLinks.length) {
+            updatedItem.downloadLink = item.artifact.downloadLinks.filter(l => l.contentType === 'application/vnd.cyclonedx+json')?.pop()?.url
+        }
+        delete updatedItem.artifact
+
+        return updatedItem
+    })
+    return Response.json({ ok: true, cdx })
+}
 
 export async function onRequestPost(context) {
     const {
@@ -34,12 +91,24 @@ export async function onRequestPost(context) {
             if (!isCDX(cdx)) {
                 return Response.json({ ok: false, error: { message: 'CDX is missing necessary fields.' } })
             }
-            // const cdxStr = JSON.stringify(cdx) //TODO: Add to TEA
             const componentsJSON = JSON.stringify(cdx.components)
             const cdxId = await hex(cdx.metadata?.component?.name + componentsJSON)
+
+            const originalCdx = await prisma.CycloneDXInfo.findFirst({
+                where: {
+                    cdxId,
+                    orgId: verificationResult.session.orgId,
+                }
+            })
+
+            const artifactUuid = originalCdx?.artifactUuid || cdx.serialNumber.startsWith('urn:uuid:') ? cdx.serialNumber.substring(9) : crypto.randomUUID()
+            const cdxStr = JSON.stringify(cdx)
+            const artifact = await saveArtifact(prisma, env.r2artifacts, cdxStr, artifactUuid, `cyclonedx`)
             const cdxData = {
                 cdxId,
+                artifactUuid,
                 source: 'upload',
+                orgId: verificationResult.session.orgId,
                 memberEmail: verificationResult.session.memberEmail,
                 cdxVersion: cdx.specVersion,
                 serialNumber: cdx.serialNumber,
@@ -51,7 +120,7 @@ export async function onRequestPost(context) {
                 componentsCount: cdx.components?.length || 0,
                 dependenciesCount: cdx.dependencies?.length || 0,
             }
-            const info = await prisma.cdx.upsert({
+            const info = await prisma.CycloneDXInfo.upsert({
                 where: {
                     cdxId,
                     memberEmail: verificationResult.session.memberEmail,
@@ -62,7 +131,7 @@ export async function onRequestPost(context) {
                 },
                 create: cdxData
             })
-            console.log(`/github/repos/cdx ${cdxId} kid=${verificationResult.session.kid}`, info)
+            console.log(`/upload/cdx ${cdxId} kid=${verificationResult.session.kid}`, info)
             files.push(cdxData)
 
             const osvQueries = cdx.components.map(component => {
@@ -76,7 +145,7 @@ export async function onRequestPost(context) {
             })
             const osv = new OSV()
             const queries = osvQueries.map(q => ({ package: { purl: q?.referenceLocator } }))
-            const results = await osv.queryBatch(prisma, verificationResult.session.memberEmail, queries)
+            const results = await osv.queryBatch(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail, queries)
             let i = 0
             for (const result of results) {
                 const { referenceLocator, name, version, license } = osvQueries[i]
@@ -87,6 +156,7 @@ export async function onRequestPost(context) {
                     const findingId = await hex(`${vuln.id}${referenceLocator}`)
                     const findingData = {
                         findingId,
+                        orgId: verificationResult.session.orgId,
                         memberEmail: verificationResult.session.memberEmail,
                         source: 'osv.dev',
                         category: 'sca',
@@ -97,54 +167,58 @@ export async function onRequestPost(context) {
                         packageName: name,
                         packageVersion: version,
                         packageLicense: license,
+                        maliciousSource: vuln.id.startsWith("MAL-"),
                         cdxId
                     }
-                    const originalFinding = await prisma.findings.findFirst({
+                    const originalFinding = await prisma.Finding.findFirst({
                         where: {
                             findingId,
                             AND: {
-                                memberEmail: verificationResult.session.memberEmail
+                                orgId: verificationResult.session.orgId
                             },
                         }
                     })
                     let finding;
                     if (originalFinding) {
-                        finding = await prisma.findings.update({
+                        finding = await prisma.Finding.update({
                             where: {
-                                id: originalFinding.id,
+                                uuid: originalFinding.uuid,
                             },
                             data: {
+                                cdxId,
                                 modifiedAt: findingData.modifiedAt
                             },
                         })
                     } else {
-                        finding = await prisma.findings.create({ data: findingData })
+                        finding = await prisma.Finding.create({ data: findingData })
                     }
                     console.log(`findings SCA`, finding)
+                    // TODO lookup EPSS
                     const vexData = {
-                        findingKey: finding.id,
+                        findingUuid: finding.uuid,
                         createdAt: (new Date()).getTime(),
                         lastObserved: (new Date()).getTime(),
                         seen: 0,
                         analysisState: 'in_triage'
                     }
-                    const originalVex = await prisma.triage_activity.findUnique({
+                    const originalVex = await prisma.Triage.findFirst({
                         where: {
-                            findingKey: finding.id,
+                            findingUuid: finding.uuid,
+                            analysisState: 'in_triage',
                         }
                     })
                     let vex;
                     if (originalVex) {
-                        vex = await prisma.triage_activity.update({
+                        vex = await prisma.Triage.update({
                             where: {
-                                findingKey: finding.id,
+                                uuid: originalVex.uuid,
                             },
                             data: {
                                 lastObserved: vexData.lastObserved
                             },
                         })
                     } else {
-                        vex = await prisma.triage_activity.create({ data: vexData })
+                        vex = await prisma.Triage.create({ data: vexData })
                     }
                     console.log(`findings VEX`, vex)
                 }

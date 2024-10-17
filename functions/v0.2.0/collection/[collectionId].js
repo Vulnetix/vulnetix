@@ -1,4 +1,3 @@
-import { Collection } from "@/tea";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
@@ -30,7 +29,7 @@ export async function onRequestGet(context) {
         })
         params.collectionId // id assigned in the system to the specific collection as returned by collection element
 
-        // const member = await prisma.members.findFirst({
+        // const member = await prisma.Member.findFirst({
         //     where: {
         //         email: verificationResult.session.memberEmail,
         //     },

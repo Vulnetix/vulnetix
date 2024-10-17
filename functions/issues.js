@@ -27,23 +27,43 @@ export async function onRequestGet(context) {
         const { searchParams } = new URL(request.url)
         const take = parseInt(searchParams.get('take'), 10) || 50
         const skip = parseInt(searchParams.get('skip'), 10) || 0
-        const sast = await prisma.sarif_results.findMany({
+        const findings = await prisma.Finding.findMany({
             where: {
-                sarif: {
-                    memberEmail: verificationResult.session.memberEmail,
-                },
+                orgId: verificationResult.session.orgId,
+                // category: 'sca',
+            },
+            omit: {
+                memberEmail: true,
             },
             include: {
-                sarif: true
+                triage: true,
+                spdx: {
+                    include: {
+                        repo: true
+                    }
+                },
+                cdx: {
+                    include: {
+                        repo: true
+                    }
+                },
             },
             take,
             skip,
             orderBy: {
-                guid: 'asc',
-            },
+                createdAt: 'asc',
+            }
         })
 
-        return Response.json({ ok: true, sast })
+        return Response.json({
+            ok: true, findings: findings.map(finding => {
+                finding.references = JSON.parse(finding.referencesJSON)
+                delete finding.referencesJSON
+                finding.aliases = JSON.parse(finding.aliases)
+                finding.cwes = JSON.parse(finding.cwes)
+                return finding
+            })
+        })
     } catch (err) {
         console.error(err)
         return Response.json({ ok: false, error: { message: err }, result: AuthResult.REVOKED })
