@@ -864,10 +864,10 @@
     "@cloudflare/workers-types" "4.20240614.0"
     "@prisma/driver-adapter-utils" "5.20.0"
 
-"@prisma/client@^5.20.0":
-  version "5.20.0"
-  resolved "https://registry.yarnpkg.com/@prisma/client/-/client-5.20.0.tgz#4fc9f2b2341c9c997c139df4445688dd6b39663b"
-  integrity sha512-CLv55ZuMuUawMsxoqxGtLT3bEZoa2W8L3Qnp6rDIFWy+ZBrUcOFKdoeGPSnbBqxc3SkdxJrF+D1veN/WNynZYA==
+"@prisma/client@^5.21.0":
+  version "5.21.0"
+  resolved "https://registry.yarnpkg.com/@prisma/client/-/client-5.21.0.tgz#778c18964f2da113b78b5cc7ea5c274e3a3607df"
+  integrity sha512-Qf2YleB3dsCRXiKSQZ+j0aF5E+ojpfqF8ExXaNAWBbAhKapMduwNvgo13K2pEuTiQq8voG2aQPQnxjsO9fOpTQ==
 
 "@prisma/debug@5.20.0":
   version "5.20.0"
