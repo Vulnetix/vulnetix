@@ -25,12 +25,17 @@ export async function onRequestGet(context) {
             return Response.json({ ok: false, result: verificationResult.message })
         }
         const { searchParams } = new URL(request.url)
+        const analysisState = searchParams.get('analysisState') || 'in_triage'
         const take = parseInt(searchParams.get('take'), 10) || 50
         const skip = parseInt(searchParams.get('skip'), 10) || 0
         const findings = await prisma.Finding.findMany({
             where: {
                 orgId: verificationResult.session.orgId,
-                // category: 'sca',
+                AND: {
+                    triage: {
+                        every: { analysisState }
+                    }
+                },
             },
             omit: {
                 memberEmail: true,

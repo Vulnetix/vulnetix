@@ -1,7 +1,13 @@
-import { AuthResult, EPSS, OSV, Server } from "@/utils";
+import { AuthResult, EPSS, MitreCVE, OSV, Server } from "@/utils";
 import { CVSS30, CVSS31, CVSS40 } from '@pandatix/js-cvss';
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
+
+// Helper function to process array fields
+const processArrayField = (array, key) => {
+    if (!Array.isArray(array)) return ''
+    return Array.from(new Set(array.map(item => item[key]?.trim()).filter(Boolean))).join(',')
+}
 
 export async function onRequestGet(context) {
     const {
@@ -60,33 +66,73 @@ export async function onRequestGet(context) {
         finding.publishedAt = (new Date(vuln.published)).getTime()
         finding.databaseReviewed = vuln?.database_specific?.github_reviewed ? 1 : 0
         finding.cve = vuln?.aliases?.filter(a => a.startsWith('CVE-')).pop()
-        finding.aliases = JSON.stringify(vuln?.aliases || [])
+        finding.aliases = JSON.stringify(vuln?.aliases?.filter(a => a !== finding.cve) || [])
         finding.cwes = JSON.stringify(vuln?.database_specific?.cwe_ids || [])
         finding.packageEcosystem = vuln.affected.map(affected => affected.package.ecosystem).pop()
         finding.sourceCodeUrl = vuln.affected.map(affected => affected.database_specific.source).pop()
         finding.fixVersion = vuln.affected.map(affected => affected.ranges.pop()?.events.pop()?.fixed).pop()
         finding.vulnerableVersionRange = vuln.affected.map(affected => affected.database_specific.last_known_affected_version_range).pop()
         finding.fixAutomatable = !!finding.vulnerableVersionRange && !!finding.fixVersion ? 1 : 0
-        finding.maliciousSource = vuln.id.startsWith("MAL-")
+        finding.malicious = vuln.id.startsWith("MAL-") ? 1 : 0
         finding.referencesJSON = JSON.stringify(vuln.references.map(reference => reference.url))
+        if (finding.cve) {
+            const mitre = new MitreCVE()
+            const cvelistv5 = await mitre.query(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail, finding.cve)
+            const {
+                cveMetadata,
+                containers: { cna, adp }
+            } = cvelistv5
+
+            if (cna?.timeline) {
+                finding.timelineJSON = JSON.stringify(cna.timeline.filter(i => !!i).map(i => convertIsoDatesToTimestamps(i)))
+            }
+
+            // Extract CISA date
+            const cisaAdp = adp?.find(container => container.providerMetadata.shortName === 'CISA-ADP');
+            if (cisaAdp?.providerMetadata?.dateUpdated) {
+                finding.cisaDateAdded = new Date(cisaAdp.providerMetadata.dateUpdated).getTime()
+            }
+
+            // Process affected products
+            const affectedProducts = cna.affected || []
+            const vendors = processArrayField(affectedProducts, 'vendor')
+            const products = processArrayField(affectedProducts, 'product')
+
+            if (cveMetadata?.datePublished) {
+                finding.publishedAt = new Date(cveMetadata.datePublished).getTime()
+            }
+            if (cveMetadata?.dateReserved) {
+                finding.createdAt = new Date(cveMetadata.dateReserved).getTime()
+            }
+            if (cveMetadata?.dateUpdated) {
+                finding.modifiedAt = new Date(cveMetadata.dateUpdated).getTime()
+            }
+            finding.vendor = vendors || ''
+            finding.product = products || ''
+        }
         const info = await prisma.Finding.update({
             where: {
                 uuid: finding.uuid,
             },
             data: {
+                createdAt: finding.createdAt,
                 modifiedAt: finding.modifiedAt,
                 publishedAt: finding.publishedAt,
                 databaseReviewed: finding.databaseReviewed,
+                cisaDateAdded: finding.cisaDateAdded,
                 cve: finding.cve,
                 aliases: finding.aliases,
                 cwes: finding.cwes,
                 packageEcosystem: finding.packageEcosystem,
                 sourceCodeUrl: finding.sourceCodeUrl,
                 fixVersion: finding.fixVersion,
+                vendor: finding.vendor,
+                product: finding.product,
                 vulnerableVersionRange: finding.vulnerableVersionRange,
                 fixAutomatable: finding.fixAutomatable,
-                maliciousSource: finding.maliciousSource,
+                malicious: finding.malicious,
                 referencesJSON: finding.referencesJSON,
+                timelineJSON: finding.timelineJSON,
             }
         })
         console.log(`Update ${finding.detectionTitle}`, info)

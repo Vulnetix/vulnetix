@@ -23,7 +23,15 @@ export async function onRequestGet(context) {
     if (!verificationResult.isValid) {
         return Response.json({ ok: false, result: verificationResult.message })
     }
-
+    const githubIntegration = await prisma.IntegrationConfig.findFirst({
+        where: {
+            orgId: verificationResult.session.orgId,
+            AND: { name: `github` },
+        }
+    })
+    if (!!githubIntegration?.suspend) {
+        return Response.json({ ok: false, error: { message: 'GitHub Disabled' } })
+    }
     const githubApps = []
     const gitRepos = []
     const installs = await prisma.GitHubApp.findMany({

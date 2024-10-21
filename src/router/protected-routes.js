@@ -33,7 +33,7 @@ const routes = [
             },
             {
                 path: 'triage',
-                component: () => import('../pages/Tasks.vue'),
+                component: () => import('../pages/NewIssues.vue'),
             },
             {
                 path: 'triage/issues',

@@ -23,7 +23,15 @@ export async function onRequestGet(context) {
     if (!verificationResult.isValid) {
         return Response.json({ ok: false, result: verificationResult.message })
     }
-    const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
+    const githubIntegration = await prisma.IntegrationConfig.findFirst({
+        where: {
+            orgId: verificationResult.session.orgId,
+            AND: { name: `github` },
+        }
+    })
+    if (!!githubIntegration?.suspend) {
+        return Response.json({ ok: false, error: { message: 'GitHub Disabled' } })
+    }
     const repoName = `${params.org}/${params.repo}`
     const errors = []
     const files = []
@@ -195,7 +203,7 @@ const process = async (prisma, session, repoName, spdx, spdxId, artifactUuid) =>
                 packageName: name,
                 packageVersion: version,
                 packageLicense: license,
-                maliciousSource: vuln.id.startsWith("MAL-"),
+                malicious: vuln.id.startsWith("MAL-") ? 1 : 0,
                 spdxId
             }
             const originalFinding = await prisma.Finding.findFirst({

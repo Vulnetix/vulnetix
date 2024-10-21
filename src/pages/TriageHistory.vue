@@ -89,7 +89,7 @@ class Controller {
             let hasMore = true
             let skip = 0
             while (hasMore) {
-                const { data } = await client.get(`/issues?take=${pageSize}&skip=${skip}`)
+                const { data } = await client.get(`/history?take=${pageSize}&skip=${skip}`)
                 if (data.ok) {
                     if (data?.findings) {
                         data.findings.forEach(finding => state.results.push(normalise(finding)))
@@ -126,7 +126,6 @@ class Controller {
         }
     }
     expandRow = async item => {
-        console.log(item)
         const findingId = item.uuid
         state.triageLoaders[findingId] = true
         try {
@@ -399,8 +398,8 @@ onMounted(() => Member.ensureSession().then(controller.refresh))
                                         title="Fix Version"
                                     ></VListItem>
                                     <VListItem
-                                        v-if="item.maliciousSource"
-                                        :subtitle="item.maliciousSource"
+                                        v-if="item.malicious"
+                                        :subtitle="item.malicious"
                                         title="Malicious Source"
                                     >
                                     </VListItem>

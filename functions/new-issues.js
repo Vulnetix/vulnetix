@@ -30,9 +30,9 @@ export async function onRequestGet(context) {
         const findings = await prisma.Finding.findMany({
             where: {
                 orgId: verificationResult.session.orgId,
-                NOT: {
+                AND: {
                     triage: {
-                        every: { analysisState: 'in_triage', }
+                        every: { seen: 0, analysisState: 'in_triage', }
                     }
                 },
             },

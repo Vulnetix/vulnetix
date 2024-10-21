@@ -99,15 +99,15 @@ watch(NotificationsStore, () => {
                 heading: 'Triage Queues',
             }" />
             <VerticalNavLink :item="{
-                title: 'My Tasks',
+                title: 'New Issues',
                 icon: 'fluent-mdl2:set-action',
                 to: '/triage',
             }" />
-            <VerticalNavLink :item="{
+            <!-- <VerticalNavLink :item="{
                 title: 'Unassigned',
                 icon: 'hugeicons:blockchain-07',
                 to: '/triage/issues',
-            }" />
+            }" /> -->
             <VerticalNavLink :item="{
                 title: 'Exploitable',
                 icon: 'eos-icons:critical-bug-outlined',
