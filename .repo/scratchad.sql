@@ -7,3 +7,6 @@
 -- SELECT DISTINCT malicious FROM Finding;
 -- ALTER TABLE Finding DROP COLUMN malicious;
 -- ALTER TABLE Finding ADD malicious INTEGER;
+SELECT *
+FROM Finding
+LIMIT 10;

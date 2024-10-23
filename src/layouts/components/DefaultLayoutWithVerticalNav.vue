@@ -103,20 +103,10 @@ watch(NotificationsStore, () => {
                 icon: 'fluent-mdl2:set-action',
                 to: '/triage',
             }" />
-            <!-- <VerticalNavLink :item="{
-                title: 'Unassigned',
-                icon: 'hugeicons:blockchain-07',
-                to: '/triage/issues',
-            }" /> -->
             <VerticalNavLink :item="{
                 title: 'Exploitable',
                 icon: 'eos-icons:critical-bug-outlined',
                 to: '/triage/exploitable',
-            }" />
-            <VerticalNavLink :item="{
-                title: 'Overdue',
-                icon: 'carbon:incomplete-warning',
-                to: '/triage/overdue',
             }" />
             <VerticalNavLink :item="{
                 title: 'History',

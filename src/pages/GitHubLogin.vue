@@ -226,7 +226,7 @@ class Controller {
             if (data?.findings) {
                 for (const findingId of data.findings) {
                     try {
-                        client.get(`/enrich/${findingId}?seen=0`)
+                        client.get(`/finding/${findingId}?seen=0`)
                     } catch (e) {
                         console.error(e)
                     }

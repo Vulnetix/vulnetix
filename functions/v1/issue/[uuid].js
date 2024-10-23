@@ -31,10 +31,11 @@ export async function onRequestGet(context) {
         if (!verificationResult.isValid) {
             return Response.json({ ok: false, result: verificationResult.message })
         }
-        const { findingUuid } = params
+        const { uuid } = params
         const originalFinding = await prisma.Finding.findUnique({
             where: {
-                uuid: findingUuid,
+                uuid,
+                AND: { orgId: verificationResult.session.orgId }
             },
             omit: {
                 memberEmail: true,
@@ -111,9 +112,7 @@ export async function onRequestGet(context) {
             finding.product = products || ''
         }
         const info = await prisma.Finding.update({
-            where: {
-                uuid: finding.uuid,
-            },
+            where: { uuid },
             data: {
                 createdAt: finding.createdAt,
                 modifiedAt: finding.modifiedAt,
@@ -180,7 +179,7 @@ export async function onRequestGet(context) {
             vexExist = false
             finding.triage.push({
                 analysisState,
-                findingUuid: finding.uuid,
+                findingUuid: uuid,
                 createdAt: new Date().getTime(),
                 lastObserved: new Date().getTime(),
             })
@@ -212,6 +211,29 @@ export async function onRequestGet(context) {
         finding.triage = finding.triage.filter(f => f.uuid != vexData.uuid)
         finding.triage.push(vexData)
 
+        // expand JSON fields
+        if (finding.cwes) {
+            finding.cwes = JSON.parse(finding.cwes)
+        }
+        if (finding.aliases) {
+            finding.aliases = JSON.parse(finding.aliases)
+        }
+        if (finding.exploitsJSON) {
+            finding.exploits = JSON.parse(finding.exploitsJSON)
+            delete finding.exploitsJSON
+        }
+        if (finding.knownExploitsJSON) {
+            finding.knownExploits = JSON.parse(finding.knownExploitsJSON)
+            delete finding.knownExploitsJSON
+        }
+        if (finding.referencesJSON) {
+            finding.references = JSON.parse(finding.referencesJSON)
+            delete finding.referencesJSON
+        }
+        if (finding.timelineJSON) {
+            finding.timeline = JSON.parse(finding.timelineJSON)
+            delete finding.timelineJSON
+        }
         return Response.json({ ok: true, finding })
     } catch (err) {
         console.error(err)

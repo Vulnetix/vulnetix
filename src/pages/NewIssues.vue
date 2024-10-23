@@ -136,7 +136,7 @@ const getSourceIcon = (url) => {
 }
 
 const openFindingDetails = (uuid) => {
-    window.open(`/finding/${uuid}`, '_blank')
+    window.open(`/issue/${uuid}`, '_blank')
 }
 
 const openSourceUrl = (url) => {
@@ -383,36 +383,72 @@ onMounted(() => Member.ensureSession().then(controller.refresh))
             </v-list-item-subtitle>
             <template v-slot:append>
                 <v-btn-group variant="outlined">
-                    <v-btn
-                        variant="tonal"
-                        size="small"
-                        @click="resolveFindingState('Resolve')"
-                    >Resolve</v-btn>
-                    <v-btn
-                        variant="tonal"
-                        size="small"
-                        @click="resolveFindingState('False Positive')"
-                    >False Positive</v-btn>
-                    <v-btn
-                        variant="tonal"
-                        size="small"
-                        @click="resolveFindingState('Protected At Perimeter')"
-                    >Protected At Perimeter</v-btn>
-                    <v-btn
-                        variant="tonal"
-                        size="small"
-                        @click="resolveFindingState('Protected By Mitigating Control')"
-                    >Protected By Mitigating Control</v-btn>
-                    <v-btn
-                        variant="tonal"
-                        size="small"
-                        @click="resolveFindingState('Will Not Fix')"
-                    >Will Not Fix</v-btn>
-                    <v-btn
-                        variant="tonal"
-                        size="small"
-                        @click="resolveFindingState('Workaround Available')"
-                    >Workaround Available</v-btn>
+                    <v-tooltip text="Resolve">
+                        <template v-slot:activator="{ props }">
+                            <v-btn
+                                v-bind="props"
+                                icon="mdi-account-circle"
+                                variant="plain"
+                                size="large"
+                                @click="resolveFindingState('resolve')"
+                            /><!-- TODO resolved_with_pedigree -->
+                        </template>
+                    </v-tooltip>
+                    <v-tooltip text="False Positive">
+                        <template v-slot:activator="{ props }">
+                            <v-btn
+                                v-bind="props"
+                                icon="mdi-account-circle"
+                                variant="plain"
+                                size="large"
+                                @click="resolveFindingState('false_positive')"
+                            />
+                        </template>
+                    </v-tooltip>
+                    <v-tooltip text="Protected At Perimeter">
+                        <template v-slot:activator="{ props }">
+                            <v-btn
+                                v-bind="props"
+                                icon="mdi-account-circle"
+                                variant="plain"
+                                size="large"
+                                @click="resolveFindingState('protected_at_perimeter')"
+                            />
+                        </template>
+                    </v-tooltip>
+                    <v-tooltip text="Protected By Mitigating Control">
+                        <template v-slot:activator="{ props }">
+                            <v-btn
+                                v-bind="props"
+                                icon="mdi-account-circle"
+                                variant="plain"
+                                size="large"
+                                @click="resolveFindingState('protected_by_mitigating_control')"
+                            />
+                        </template>
+                    </v-tooltip>
+                    <v-tooltip text="Will Not Fix">
+                        <template v-slot:activator="{ props }">
+                            <v-btn
+                                v-bind="props"
+                                icon="mdi-account-circle"
+                                variant="plain"
+                                size="large"
+                                @click="resolveFindingState('can_not_fix')"
+                            />
+                        </template>
+                    </v-tooltip>
+                    <v-tooltip text="Workaround Available">
+                        <template v-slot:activator="{ props }">
+                            <v-btn
+                                v-bind="props"
+                                icon="mdi-account-circle"
+                                variant="plain"
+                                size="large"
+                                @click="resolveFindingState('workaround_available')"
+                            />
+                        </template>
+                    </v-tooltip>
                 </v-btn-group>
                 <v-btn
                     icon="mdi-open-in-new"
@@ -432,10 +468,13 @@ onMounted(() => Member.ensureSession().then(controller.refresh))
             </template>
         </v-list-item>
     </v-list>
-    <v-alert
+    <VAlert
         v-else
-        type="info"
-    >No findings available.</v-alert>
+        color="primary"
+        icon="pixelarticons-mood-sad"
+        variant="tonal"
+        text="No Issues queued for triage review"
+    />
 
 
 </template>

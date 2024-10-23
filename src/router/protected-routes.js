@@ -36,16 +36,12 @@ const routes = [
                 component: () => import('../pages/NewIssues.vue'),
             },
             {
-                path: 'triage/issues',
-                component: () => import('../pages/TriageIssues.vue'),
+                path: 'issue/:uuid',
+                component: () => import('../pages/Issue.vue'),
             },
             {
                 path: 'triage/exploitable',
                 component: () => import('../pages/TriageExploitable.vue'),
-            },
-            {
-                path: 'triage/overdue',
-                component: () => import('../pages/TriageOverdue.vue'),
             },
             {
                 path: 'triage/history',

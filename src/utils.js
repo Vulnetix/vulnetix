@@ -19,10 +19,10 @@ export class VexAnalysisJustification {
 }
 export class VexAnalysisResponse {
     static get can_not_fix() { return "Can Not Fix" }
-    static get resolved_with_pedigree() { return "Will Not Fix" }
-    static get exploitable() { return "Update" }
-    static get in_triage() { return "Rollback" }
-    static get false_positive() { return "Workaround Available" }
+    static get will_not_fix() { return "Will Not Fix" }
+    static get update() { return "Update" }
+    static get rollback() { return "Rollback" }
+    static get workaround_available() { return "Workaround Available" }
 }
 
 /**
@@ -393,7 +393,7 @@ export class Client {
      * @returns {Promise<Response>} - A promise that resolves to the fetch API response.
      */
     async get(path) {
-        return this.signedFetch(path)
+        return this.signedFetch(`/v1${path}`)
     }
 
     /**
@@ -403,7 +403,7 @@ export class Client {
      * @returns {Promise<Response>} - A promise that resolves to the fetch API response.
      */
     async delete(path) {
-        return this.signedFetch(path, { method: 'DELETE' })
+        return this.signedFetch(`/v1${path}`, { method: 'DELETE' })
     }
 
     /**
@@ -420,7 +420,7 @@ export class Client {
             headers = { 'Content-Type': 'application/json', ...headers }
         }
         const method = 'POST'
-        return this.signedFetch(path, { method, body, headers })
+        return this.signedFetch(`/v1${path}`, { method, body, headers })
     }
 
     /**
@@ -465,7 +465,16 @@ export class Client {
             console.error(respText)
             console.error(`OSV error! status: ${response.status} ${response.statusText}`)
         }
-        const data = JSON.parse(respText || '{}')
+        if (!isJSON(respText)) {
+            throw new Error(`There was an error fetching the issue from the server, please retry shortly.`)
+        }
+        const data = JSON.parse(respText)
+        if (data?.error?.message) {
+            throw new Error(data.error.message)
+        }
+        if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
+            throw new Error(data.result)
+        }
         return { ok: response.ok, status: response.status, statusText: response.statusText, data, url }
     }
 }
@@ -656,14 +665,7 @@ export class MitreCVE {
             throw new Error("Invalid CVE ID format. Expected format: CVE-YYYY-NNNNN....")
         }
         const [, year, number] = cveId.split('-')
-        let subfolder
-        if (number.length <= 4) {
-            subfolder = "0xxx"
-        } else if (number.length <= 5) {
-            subfolder = number.slice(0, 2) + "xxx"
-        } else {
-            subfolder = number.slice(0, -3) + "xxx"
-        }
+        const subfolder = number.slice(0, -3) + "xxx"
         const path = `${year}/${subfolder}/${cveId}.json`
         return `${this.baseUrl}${path}`
     }
