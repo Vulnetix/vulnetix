@@ -8,5 +8,5 @@
 -- ALTER TABLE Finding DROP COLUMN malicious;
 -- ALTER TABLE Finding ADD malicious INTEGER;
 SELECT *
-FROM Finding
-LIMIT 10;
+FROM CVEMetadata
+WHERE vectorString IS NOT NULL;

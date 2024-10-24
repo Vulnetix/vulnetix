@@ -129,7 +129,7 @@ class Controller {
         const findingId = item.uuid
         state.triageLoaders[findingId] = true
         try {
-            const { data } = await client.get(`/finding/${findingId}?seen=1`)
+            const { data } = await client.get(`/issue/${findingId}?seen=1`)
             state.triageLoaders[findingId] = false
             if (data.ok) {
                 if (data?.finding) {

@@ -1,16 +1,14 @@
 <script setup>
-import router from "@/router"
-import { useMemberStore } from '@/stores/member'
-import { Client, isJSON } from '@/utils'
-import { reactive } from 'vue'
-import { useTheme } from 'vuetify'
+import router from "@/router";
+import { Client, isJSON } from '@/utils';
+import { computed, reactive } from 'vue';
+import { useTheme } from 'vuetify';
 //TODO https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#check-if-vulnerability-alerts-are-enabled-for-a-repository
 //TODO https://docs.github.com/en/rest/secret-scanning/secret-scanning?apiVersion=2022-11-28#list-secret-scanning-alerts-for-a-repository
 
 const client = new Client()
-const Member = useMemberStore()
 const { global } = useTheme()
-const tabs = ref()
+
 const initialState = {
     error: "",
     warning: "",
@@ -18,7 +16,9 @@ const initialState = {
     info: "",
     loadingBar: false,
     gitRepos: [],
-    refreshLoaders: {}
+    refreshLoaders: {},
+    sync: 0,
+    totalPromises: 0,
 }
 
 const state = reactive({
@@ -30,7 +30,7 @@ class Controller {
         this.refreshRepos(true, true)
     }
 
-    refreshRepos = async (cached = false, initial = false, install = false) => {
+    refreshRepos = async (cached = false, initial = false) => {
         clearAlerts()
         state.loadingBar = true
         try {
@@ -48,16 +48,6 @@ class Controller {
                     data.error.message = `${data.error.message} (${data.app.login})`
                 }
                 state.error = data.error.message
-                return false
-            }
-            if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
-                state.info = data.result
-                setTimeout(() => router.push('/logout'), 2000)
-                return false
-            }
-            if (typeof data === "string" && !isJSON(data)) {
-                state.warning = cached === true ? "No cached data. Have you tried to install the GitHub App?" : "No data retrieved from GitHub. Was this GitHub App uninstalled?"
-
                 return false
             }
             if (data?.patTokens) {
@@ -80,13 +70,6 @@ class Controller {
                     }
                 }
             }
-            if (install === true) {
-                state.success = "GitHub App installed successfully."
-                for (const repo of state.gitRepos) {
-                    this.refreshSecurity(repo.fullName, false)
-                }
-                return router.push(`/github-integration`)
-            }
 
             return true
         } catch (e) {
@@ -106,10 +89,11 @@ class Controller {
         state.refreshLoaders[full_name] = false
     }
     refreshGithub = async () => {
-        if (await this.refreshRepos(false, false)) {
-            for (const repo of state.gitRepos) {
-                this.refreshSecurity(repo.fullName, false)
-            }
+        await trackPromise(
+            this.refreshRepos(false, false)
+        )
+        for (const repo of state.gitRepos) {
+            trackPromise(this.refreshSecurity(repo.fullName, false))
         }
     }
     refreshSpdx = async (full_name, alerts = true) => {
@@ -143,7 +127,7 @@ class Controller {
             if (data?.findings) {
                 for (const findingId of data.findings) {
                     try {
-                        client.get(`/finding/${findingId}?seen=0`)
+                        trackPromise(client.get(`/issue/${findingId}?seen=0`))
                     } catch (e) {
                         console.error(e)
                     }
@@ -233,10 +217,54 @@ function groupedRepos() {
     }, [])
 }
 
+const isVisible = computed(() => state.sync > 0)
+const completedPromises = computed(() => state.totalPromises - state.sync)
+const trackPromise = async promise => {
+    state.sync++
+    state.totalPromises++
+
+    return promise.finally(() => {
+        state.sync--
+    })
+}
+
 const controller = reactive(new Controller())
 </script>
 
 <template>
+    <VOverlay
+        v-model="isVisible"
+        class="align-center justify-center"
+        scrim="#181a1b"
+        persistent
+    >
+        <VSheet
+            class="d-flex flex-column px-4 py-8"
+            color="#181a1b"
+            rounded="lg"
+        >
+            <div class="d-flex align-center w-100 mb-2">
+                <VProgressLinear
+                    :location="null"
+                    color="primary"
+                    height="12"
+                    :max="state.totalPromises"
+                    min="0"
+                    :model-value="completedPromises"
+                    rounded
+                >
+                    <template v-slot:default="{ value }">
+                        <strong>{{ Math.ceil(value) }}%</strong>
+                    </template>
+                </VProgressLinear>
+            </div>
+            <div class="d-flex justify-center text-h6">
+                Synchronizing {{ completedPromises.toString().padStart(4, '0') }}/{{
+                    state.totalPromises.toString().padStart(4, '0')
+                }}
+            </div>
+        </VSheet>
+    </VOverlay>
     <VRow>
         <VCol cols="12">
             <VProgressLinear
@@ -245,7 +273,8 @@ const controller = reactive(new Controller())
                 color="primary"
                 absolute
                 bottom
-            ></VProgressLinear>
+            >
+            </VProgressLinear>
             <VAlert
                 v-if="state.error"
                 color="error"

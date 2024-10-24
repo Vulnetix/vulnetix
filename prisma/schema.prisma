@@ -251,7 +251,6 @@ model Finding {
   purl                       String?
   cpe                        String?
   databaseReviewed           Int?
-  cve                        String?
   aliases                    String?
   cwes                       String?
   packageName                String
@@ -260,7 +259,7 @@ model Finding {
   vendor                     String?
   product                    String?
   packageEcosystem           String?
-  sourceCodeUrl              String?
+  advisoryUrl                String?
   exploitsJSON               String?
   knownExploitsJSON          String?
   cisaDateAdded              Int?
@@ -306,6 +305,49 @@ model Triage {
   member                Member?   @relation(fields: [memberEmail], references: [email])
 }
 
+model CVEMetadata {
+  cveId                String               @id
+  dataVersion          String
+  state                String
+  datePublished        Int
+  dateUpdated          Int?
+  dateReserved         Int?
+  vectorString         String?
+  title                String
+  sourceAdvisoryRef    String?
+  affectedVendor       String?
+  affectedProduct      String?
+  affectedVersionsJSON String?
+  cpesJSON             String?
+  cnaOrgId             String
+  cna                  CVENumberingAuthrity @relation(fields: [cnaOrgId], references: [orgId])
+  fileLinkId           Int
+  fileLink             Link                 @relation(fields: [fileLinkId], references: [id])
+  adp                  CVEADP[]
+}
+
+model CVENumberingAuthrity {
+  orgId     String        @id
+  shortName String
+  cves      CVEMetadata[]
+}
+
+model CVEADP {
+  cve   CVEMetadata             @relation(fields: [cveId], references: [cveId])
+  cveId String
+  adp   AuthorizedDataPublisher @relation(fields: [adpId], references: [orgId])
+  adpId String
+
+  @@id([cveId, adpId])
+}
+
+model AuthorizedDataPublisher {
+  orgId     String   @id
+  shortName String
+  title     String
+  cves      CVEADP[]
+}
+
 // model Lifecycle {
 //   uuid  String   @id @default(uuid())
 //   event String // list enum String
@@ -319,11 +361,12 @@ model Triage {
 // }
 
 model Link {
-  id           Int       @id @default(autoincrement())
+  id           Int           @id @default(autoincrement())
   url          String
   contentType  String // OCI PLAIN_JSON OCTET_STREAM PLAIN_XML
-  artifact     Artifact? @relation(fields: [artifactUuid], references: [uuid])
+  artifact     Artifact?     @relation(fields: [artifactUuid], references: [uuid])
   artifactUuid String?
+  cves         CVEMetadata[]
 }
 
 model Artifact {

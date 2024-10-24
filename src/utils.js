@@ -463,7 +463,7 @@ export class Client {
             console.error(`req headers=${JSON.stringify(headers, null, 2)}`)
             console.error(`resp headers=${JSON.stringify(response.headers, null, 2)}`)
             console.error(respText)
-            console.error(`OSV error! status: ${response.status} ${response.statusText}`)
+            console.error(`Error! status: ${response.status} ${response.statusText}`)
         }
         if (!isJSON(respText)) {
             throw new Error(`There was an error fetching the issue from the server, please retry shortly.`)
@@ -475,7 +475,7 @@ export class Client {
         if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
             throw new Error(data.result)
         }
-        return { ok: response.ok, status: response.status, statusText: response.statusText, data, url }
+        return { ok: response.ok, status: response.status, statusText: response.statusText, result: data?.result, data, url }
     }
 }
 
@@ -1200,6 +1200,90 @@ export class GitHub {
         return { ok: true, content: commits }
     }
 }
+
+/**
+ * Constructs a version range string from version objects following the CVE schema
+ * @param {Array} versions - Array of version objects from CVE data
+ * @returns {string|null} Formatted version range string or null if invalid
+ */
+export const constructVersionRangeString = versions => {
+    if (!Array.isArray(versions) || versions.length === 0) {
+        return null
+    }
+
+    const ranges = versions
+        .map(v => {
+            // Skip invalid entries
+            if (!v?.version) return null
+
+            // Case 1: Single version
+            if (!v.lessThan && !v.lessThanOrEqual && !v.changes) {
+                return `${v.version}`
+            }
+
+            // Case 2: Version range with less than
+            if (v.lessThan) {
+                return `>=${v.version} <${v.lessThan}`
+            }
+
+            // Case 3: Version range with less than or equal
+            if (v.lessThanOrEqual) {
+                return `>=${v.version} <=${v.lessThanOrEqual}`
+            }
+
+            // Case 4: Version range with changes
+            if (v.changes) {
+                // Note: This is a semver string comparison
+                const sortedChanges = [...v.changes].sort((a, b) => {
+                    // Split versions into components and pre-release tags
+                    const [aBase, aPreRelease] = a.split('-')
+                    const [bBase, bPreRelease] = b.split('-')
+
+                    // Split version numbers
+                    const [aMajor, aMinor, aPatch] = aBase.split('.').map(Number)
+                    const [bMajor, bMinor, bPatch] = bBase.split('.').map(Number)
+
+                    // Compare major versions
+                    if (aMajor !== bMajor) return aMajor - bMajor
+
+                    // Compare minor versions
+                    if (aMinor !== bMinor) return aMinor - bMinor
+
+                    // Compare patch versions
+                    if (aPatch !== bPatch) return aPatch - bPatch
+
+                    // If one has a pre-release tag and the other doesn't,
+                    // the one without comes first
+                    if (aPreRelease && !bPreRelease) return 1
+                    if (!aPreRelease && bPreRelease) return -1
+
+                    // If both have pre-release tags, compare them
+                    if (aPreRelease && bPreRelease) {
+                        return aPreRelease.localeCompare(bPreRelease)
+                    }
+
+                    return 0
+                })
+
+                const changePoints = sortedChanges
+                    .map(change => `${change.at}(${change.status})`)
+                    .join(', ')
+
+                return `${v.version} with changes at ${changePoints}`
+            }
+
+            return `${v.version}`
+        })
+        .filter(Boolean)
+
+    if (ranges.length === 0) {
+        return null
+    }
+
+    // Combine ranges with ' || ' to indicate multiple ranges
+    return ranges.join(' || ')
+}
+
 /**
  * ensureStrReqBody reads in the incoming request body
  * Use await ensureStrReqBody(..) in an async function to get the string
@@ -1245,13 +1329,13 @@ export const ensureStrReqBody = async (request) => {
 export const bufferToHex = input => {
     if (typeof Buffer !== 'undefined') {
         // Node.js environment or using a Buffer polyfill
-        return Buffer.from(input).toString('hex');
+        return Buffer.from(input).toString('hex')
     } else {
         // Browser environment without Buffer support
-        const arrayBuffer = input instanceof ArrayBuffer ? input : new ArrayBuffer(input.byteLength);
-        const view = new Uint8Array(arrayBuffer);
-        const hexArray = Array.from(view).map(byte => byte.toString(16).padStart(2, '0'));
-        return hexArray.join('');
+        const arrayBuffer = input instanceof ArrayBuffer ? input : new ArrayBuffer(input.byteLength)
+        const view = new Uint8Array(arrayBuffer)
+        const hexArray = Array.from(view).map(byte => byte.toString(16).padStart(2, '0'))
+        return hexArray.join('')
     }
 }
 

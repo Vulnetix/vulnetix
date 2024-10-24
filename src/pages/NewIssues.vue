@@ -319,7 +319,7 @@ onMounted(() => Member.ensureSession().then(controller.refresh))
                                 <v-card-title>Source Code</v-card-title>
                                 <v-card-text>
                                     <v-btn
-                                        :href="selectedFinding.sourceCodeUrl"
+                                        :href="selectedFinding.advisoryUrl"
                                         target="_blank"
                                         color="primary"
                                     >
@@ -458,12 +458,12 @@ onMounted(() => Member.ensureSession().then(controller.refresh))
                     @click.stop="openFindingDetails(finding.uuid)"
                 />
                 <v-btn
-                    :icon="getSourceIcon(finding.sourceCodeUrl)"
+                    :icon="getSourceIcon(finding.advisoryUrl)"
                     variant="tonal"
                     size="small"
                     color="secondary"
                     class="ml-2"
-                    @click.stop="openSourceUrl(finding.sourceCodeUrl)"
+                    @click.stop="openSourceUrl(finding.advisoryUrl)"
                 />
             </template>
         </v-list-item>

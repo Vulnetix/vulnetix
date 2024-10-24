@@ -1,4 +1,4 @@
-import { AuthResult, EPSS, MitreCVE, OSV, Server } from "@/utils";
+import { AuthResult, EPSS, MitreCVE, OSV, Server, constructVersionRangeString } from "@/utils";
 import { CVSS30, CVSS31, CVSS40 } from '@pandatix/js-cvss';
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
@@ -32,7 +32,7 @@ export async function onRequestGet(context) {
             return Response.json({ ok: false, result: verificationResult.message })
         }
         const { uuid } = params
-        const originalFinding = await prisma.Finding.findUnique({
+        const finding = await prisma.Finding.findUnique({
             where: {
                 uuid,
                 AND: { orgId: verificationResult.session.orgId }
@@ -54,50 +54,72 @@ export async function onRequestGet(context) {
                 }
             }
         })
-        const finding = {
-            ...originalFinding,
-            cwes: JSON.parse(originalFinding.cwes ?? '[]'),
-            aliases: JSON.parse(originalFinding.aliases ?? '[]'),
-            referencesJSON: JSON.parse(originalFinding.referencesJSON ?? '[]'),
+        if (!finding) {
+            return new Response(null, { status: 404 })
         }
-
-        const osv = new OSV()
-        const vuln = await osv.query(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail, finding.detectionTitle)
-        finding.modifiedAt = (new Date(vuln.modified)).getTime()
-        finding.publishedAt = (new Date(vuln.published)).getTime()
-        finding.databaseReviewed = vuln?.database_specific?.github_reviewed ? 1 : 0
-        finding.cve = vuln?.aliases?.filter(a => a.startsWith('CVE-')).pop()
-        finding.aliases = JSON.stringify(vuln?.aliases?.filter(a => a !== finding.cve) || [])
-        finding.cwes = JSON.stringify(vuln?.database_specific?.cwe_ids || [])
-        finding.packageEcosystem = vuln.affected.map(affected => affected.package.ecosystem).pop()
-        finding.sourceCodeUrl = vuln.affected.map(affected => affected.database_specific.source).pop()
-        finding.fixVersion = vuln.affected.map(affected => affected.ranges.pop()?.events.pop()?.fixed).pop()
-        finding.vulnerableVersionRange = vuln.affected.map(affected => affected.database_specific.last_known_affected_version_range).pop()
+        const osvData = await new OSV().query(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail, finding.detectionTitle)
+        finding.modifiedAt = (new Date(osvData.modified)).getTime()
+        finding.publishedAt = (new Date(osvData.published)).getTime()
+        finding.databaseReviewed = osvData?.database_specific?.github_reviewed ? 1 : 0
+        finding.aliases = JSON.stringify(osvData?.aliases?.filter(a => a !== finding.cveId) || [])
+        finding.cwes = JSON.stringify(osvData?.database_specific?.cwe_ids || [])
+        finding.packageEcosystem = osvData.affected.map(affected => affected.package.ecosystem).pop()
+        finding.advisoryUrl = osvData.affected.map(affected => affected.database_specific.source).pop()
+        finding.fixVersion = osvData.affected.map(affected => affected.ranges.pop()?.events.pop()?.fixed).pop()
+        finding.vulnerableVersionRange = osvData.affected.map(affected => affected.database_specific.last_known_affected_version_range).pop()
         finding.fixAutomatable = !!finding.vulnerableVersionRange && !!finding.fixVersion ? 1 : 0
-        finding.malicious = vuln.id.startsWith("MAL-") ? 1 : 0
-        finding.referencesJSON = JSON.stringify(vuln.references.map(reference => reference.url))
-        if (finding.cve) {
-            const mitre = new MitreCVE()
-            const cvelistv5 = await mitre.query(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail, finding.cve)
+        finding.malicious = osvData.id.startsWith("MAL-") ? 1 : 0
+        finding.referencesJSON = JSON.stringify(osvData.references.map(reference => reference.url))
+
+        const cveId = finding.detectionTitle.startsWith('CVE-') ? finding.detectionTitle : osvData?.aliases?.filter(a => a.startsWith('CVE-')).pop()
+        let cvssVector
+        let cvelistv5
+        let cve
+        if (cveId) {
+            cve = await getCveData(prisma, env.r2artifacts, verificationResult, cveId)
+        }
+        if (cve?.fileLink?.url) {
+            const r2object = await env.r2artifacts.get(cve.fileLink.url)
+            if (r2object) {
+                cvelistv5 = JSON.parse(r2object)
+            }
+        }
+        if (cvelistv5) {
             const {
                 cveMetadata,
                 containers: { cna, adp }
             } = cvelistv5
-
-            if (cna?.timeline) {
-                finding.timelineJSON = JSON.stringify(cna.timeline.filter(i => !!i).map(i => convertIsoDatesToTimestamps(i)))
+            const cveCvss = findVectorString(cna.metrics)
+            if (cveCvss.startsWith('CVSS:4/')) {
+                cvssVector = new CVSS40(cveCvss)
+            } else if (cveCvss.startsWith('CVSS:3.1/')) {
+                cvssVector = new CVSS31(cveCvss)
+            } else if (cveCvss.startsWith('CVSS:3/')) {
+                cvssVector = new CVSS30(cveCvss)
             }
-
+            if (cna?.timeline) {
+                finding.timelineJSON = JSON.stringify(cna.timeline.map(i => convertIsoDatesToTimestamps(i)))
+            }
             // Extract CISA date
-            const cisaAdp = adp?.find(container => container.providerMetadata.shortName === 'CISA-ADP');
+            const cisaAdp = adp?.find(container => container.providerMetadata.shortName === 'CISA-ADP')
             if (cisaAdp?.providerMetadata?.dateUpdated) {
                 finding.cisaDateAdded = new Date(cisaAdp.providerMetadata.dateUpdated).getTime()
             }
-
-            // Process affected products
-            const affectedProducts = cna.affected || []
-            const vendors = processArrayField(affectedProducts, 'vendor')
-            const products = processArrayField(affectedProducts, 'product')
+            // Get affected data from ADP and CNA
+            const adpAffected = adp.flatMap(container => container.affected || [])
+            const cnaAffected = cna.affected || []
+            // Required properties we're looking for
+            const requiredProps = ['versions', 'vendor', 'product']
+            // Find first valid affected data, preferring ADP over CNA
+            const primaryAffected = findFirstValidAffected(adpAffected, requiredProps) ||
+                findFirstValidAffected(cnaAffected, requiredProps) || null
+            // Extract affected data ensuring valid values
+            const affectedData = {
+                versions: primaryAffected?.versions?.filter(v => isValidValue(v.version)) || [],
+                vendor: isValidValue(primaryAffected?.vendor) ? primaryAffected.vendor : null,
+                product: isValidValue(primaryAffected?.product) ? primaryAffected.product : null,
+                cpes: primaryAffected?.cpes?.filter(cpe => isValidValue(cpe))?.join('\n')
+            }
 
             if (cveMetadata?.datePublished) {
                 finding.publishedAt = new Date(cveMetadata.datePublished).getTime()
@@ -108,47 +130,50 @@ export async function onRequestGet(context) {
             if (cveMetadata?.dateUpdated) {
                 finding.modifiedAt = new Date(cveMetadata.dateUpdated).getTime()
             }
-            finding.vendor = vendors || ''
-            finding.product = products || ''
+            finding.vulnerableVersionRange = affectedData.versions.length > 0 ? constructVersionRangeString(affectedData.versions) : null
+            finding.cpe = affectedData?.cpes
+            finding.vendor = affectedData?.vendor
+            finding.product = affectedData?.product
         }
         const info = await prisma.Finding.update({
             where: { uuid },
             data: {
+                detectionTitle: finding.detectionTitle,
                 createdAt: finding.createdAt,
                 modifiedAt: finding.modifiedAt,
                 publishedAt: finding.publishedAt,
                 databaseReviewed: finding.databaseReviewed,
                 cisaDateAdded: finding.cisaDateAdded,
-                cve: finding.cve,
                 aliases: finding.aliases,
                 cwes: finding.cwes,
                 packageEcosystem: finding.packageEcosystem,
-                sourceCodeUrl: finding.sourceCodeUrl,
+                advisoryUrl: finding.advisoryUrl,
                 fixVersion: finding.fixVersion,
+                fixAutomatable: finding.fixAutomatable,
+                vulnerableVersionRange: finding.vulnerableVersionRange,
+                cpe: finding.cpe,
                 vendor: finding.vendor,
                 product: finding.product,
-                vulnerableVersionRange: finding.vulnerableVersionRange,
-                fixAutomatable: finding.fixAutomatable,
                 malicious: finding.malicious,
                 referencesJSON: finding.referencesJSON,
                 timelineJSON: finding.timelineJSON,
             }
         })
-        console.log(`Update ${finding.detectionTitle}`, info)
+        // console.log(`Update ${finding.detectionTitle}`, info)
         let scores
-        if (finding.cve) {
+        if (cveId) {
             const epss = new EPSS()
-            scores = await epss.query(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail, finding.cve)
+            scores = await epss.query(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail, cveId)
         }
         let epssScore, epssPercentile;
         if (scores?.epss) {
             epssScore = parseFloat(scores.epss)
             epssPercentile = parseFloat(scores.percentile)
         }
-        const cvss4 = vuln?.severity?.filter(i => i.score.startsWith('CVSS:4/'))?.pop()
-        const cvss31 = vuln?.severity?.filter(i => i.score.startsWith('CVSS:3.1/'))?.pop()
-        const cvss3 = vuln?.severity?.filter(i => i.score.startsWith('CVSS:3/'))?.pop()
-        const cvssVector = !!cvss4 ? new CVSS40(cvss4.score) : !!cvss31 ? new CVSS31(cvss31.score) : cvss3 ? new CVSS30(cvss3.score) : null
+        const cvss4 = osvData?.severity?.filter(i => i.score.startsWith('CVSS:4/'))?.pop()
+        const cvss31 = osvData?.severity?.filter(i => i.score.startsWith('CVSS:3.1/'))?.pop()
+        const cvss3 = osvData?.severity?.filter(i => i.score.startsWith('CVSS:3/'))?.pop()
+        cvssVector = !!cvss4 ? new CVSS40(cvss4.score) : !!cvss31 ? new CVSS31(cvss31.score) : cvss3 ? new CVSS30(cvss3.score) : null
         // Decision
         // Methodology
         // Exploitation
@@ -239,4 +264,160 @@ export async function onRequestGet(context) {
         console.error(err)
         return Response.json({ ok: false, error: { message: err }, result: AuthResult.REVOKED })
     }
+}
+
+// Helper function to check if a value is valid (exists and not "n/a")
+const isValidValue = (value) => {
+    return value != null && value !== "n/a" && value !== "";
+};
+
+// Helper function to find first affected entry with valid required properties
+const findFirstValidAffected = (affectedList = [], requiredProps = []) => {
+    return affectedList.find(affected =>
+        requiredProps.every(prop => {
+            if (prop === 'versions') {
+                return Array.isArray(affected.versions) &&
+                    affected.versions.length > 0 &&
+                    affected.versions.some(v => isValidValue(v.version));
+            }
+            if (prop === 'cpes') {
+                return Array.isArray(affected.cpes) &&
+                    affected.cpes.length > 0 &&
+                    affected.cpes.some(cpe => isValidValue(cpe));
+            }
+            return isValidValue(affected[prop]);
+        })
+    );
+};
+
+// Helper function to find valid CVSS vector string with version preference
+const findVectorString = (metrics = []) => {
+    const cvssVersions = ['cvssV4_0', 'cvssV3_1', 'cvssV3_0']
+
+    for (const version of cvssVersions) {
+        for (const metric of metrics) {
+            const vectorString = metric[version]?.vectorString
+            if (isValidValue(vectorString)) {
+                return vectorString
+            }
+        }
+    }
+    return null
+}
+
+// Helper function to find valid CVSS vector string with version preference
+const getCveData = async (prisma, r2adapter, verificationResult, cveId) => {
+    let cve = await prisma.CVEMetadata.findUnique({
+        where: { cveId },
+        include: {
+            fileLink: true,
+            adp: true,
+            cna: true,
+        }
+    })
+    if (!cve) {
+        cve = await fetchCVE(prisma, r2adapter, verificationResult, cveId)
+    }
+    return cve
+}
+
+const fetchCVE = async (prisma, r2adapter, verificationResult, cveId) => {
+    const cvelistv5 = await new MitreCVE().query(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail, cveId)
+    const {
+        cveMetadata,
+        dataVersion,
+        containers: { cna, adp = [] }
+    } = cvelistv5
+    // Create or connect CNA organization
+    await prisma.cVENumberingAuthrity.upsert({
+        where: { orgId: cna.providerMetadata.orgId },
+        create: {
+            orgId: cna.providerMetadata.orgId,
+            shortName: cna.providerMetadata.shortName
+        },
+        update: {}
+    })
+
+    // Get affected data from ADP and CNA
+    const adpAffected = adp.flatMap(container => container.affected || []);
+    const cnaAffected = cna.affected || [];
+
+    // Required properties we're looking for
+    const requiredProps = ['versions', 'vendor', 'product'];
+
+    // Find first valid affected data, preferring ADP over CNA
+    const primaryAffected = findFirstValidAffected(adpAffected, requiredProps) ||
+        findFirstValidAffected(cnaAffected, requiredProps) ||
+        null;
+
+    // Extract affected data ensuring valid values
+    const affectedData = {
+        versions: primaryAffected?.versions?.filter(v => isValidValue(v.version)) || [],
+        vendor: isValidValue(primaryAffected?.vendor) ? primaryAffected.vendor : null,
+        product: isValidValue(primaryAffected?.product) ? primaryAffected.product : null,
+        cpes: primaryAffected?.cpes?.filter(cpe => isValidValue(cpe)) || []
+    }
+
+    const vectorString = findVectorString(cna.metrics)
+
+    // Create file link for the source
+    const [, year, number] = cveId.split('-')
+    const objectPath = `cvelistv5/${year}/${number.slice(0, -3) + "xxx"}/${cveId}.json`
+    const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
+    await r2adapter.put(objectPath, JSON.stringify(cvelistv5), putOptions)
+    const fileLink = await prisma.Link.create({
+        data: {
+            url: `https://artifacts.vulnetix.app/${objectPath}`,
+            contentType: "PLAIN_JSON"
+        }
+    })
+    const update = {
+        dataVersion,
+        state: cveMetadata.state,
+        datePublished: new Date(cveMetadata.datePublished).getTime(),
+        dateUpdated: cveMetadata?.dateUpdated ? new Date(cveMetadata.dateUpdated).getTime() : null,
+        dateReserved: cveMetadata?.dateReserved ? new Date(cveMetadata.dateReserved).getTime() : null,
+        vectorString,
+        title: cna?.title || 'Mitre CVE',
+        sourceAdvisoryRef: isValidValue(cna.source?.advisory) ? cna.source.advisory : null,
+        affectedVendor: affectedData.vendor,
+        affectedProduct: affectedData.product,
+        affectedVersionsJSON: affectedData.versions.length > 0 ? JSON.stringify(affectedData.versions) : null,
+        cpesJSON: affectedData.cpes.length > 0 ? JSON.stringify(affectedData.cpes) : null,
+        cnaOrgId: cna.providerMetadata.orgId,
+        fileLinkId: fileLink.id
+    }
+    // Create the main CVE record
+    const cve = await prisma.CVEMetadata.upsert({
+        where: { cveId },
+        create: {
+            cveId,
+            ...update
+        },
+        update,
+    })
+
+    // Link ADP records
+    for (const adpContainer of adp) {
+        const { providerMetadata, title = '' } = adpContainer
+        await prisma.authorizedDataPublisher.upsert({
+            where: { orgId: providerMetadata.orgId },
+            create: {
+                orgId: providerMetadata.orgId,
+                shortName: providerMetadata.shortName,
+                title
+            },
+            update: {}
+        })
+        try {
+            // Create the relationship between CVE and ADP
+            await prisma.CVEADP.create({
+                data: {
+                    cveId,
+                    adpId: providerMetadata.orgId
+                }
+            })
+        } catch (e) { }
+    }
+    return cve
 }

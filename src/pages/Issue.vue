@@ -222,7 +222,7 @@ onBeforeRouteUpdate(async (to, from) => {
                             <VCardTitle>Source Code</VCardTitle>
                             <VCardText>
                                 <VBtn
-                                    :href="state.finding.sourceCodeUrl"
+                                    :href="state.finding.advisoryUrl"
                                     target="_blank"
                                     color="primary"
                                 >
@@ -256,7 +256,7 @@ onBeforeRouteUpdate(async (to, from) => {
                 </VRow>
             </VContainer>
             <v-empty-state
-                v-else
+                v-if="state.loading"
                 size="250"
             >
                 <template v-slot:media>
