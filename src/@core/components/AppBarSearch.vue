@@ -45,7 +45,6 @@ const refSearchInput = ref()
 const isLocalDialogVisible = ref(structuredClone(toRaw(props.isDialogVisible)))
 const searchResults = ref(structuredClone(toRaw(props.searchResults)))
 
-// 👉 Watching props change
 watch(props, () => {
   isLocalDialogVisible.value = structuredClone(toRaw(props.isDialogVisible))
   searchResults.value = structuredClone(toRaw(props.searchResults))
@@ -59,7 +58,6 @@ watch([
   emit('update:isDialogVisible', true)
 })
 
-// 👉 clear search result and close the dialog
 const clearSearchAndCloseDialog = () => {
   emit('update:isDialogVisible', false)
   emit('update:searchQuery', '')
@@ -106,7 +104,6 @@ const dialogModelValueUpdate = val => {
         class="pt-1"
         style="max-height: 65px;"
       >
-        <!-- 👉 Search Input -->
         <VTextField
           ref="refSearchInput"
           v-model="searchQuery"
@@ -118,7 +115,6 @@ const dialogModelValueUpdate = val => {
           @keydown="getFocusOnSearchList"
           @update:model-value="$emit('update:searchQuery', searchQuery)"
         >
-          <!-- 👉 Prepend Inner -->
           <template #prepend-inner>
             <VBtn
               icon
@@ -134,7 +130,6 @@ const dialogModelValueUpdate = val => {
             </VBtn>
           </template>
 
-          <!-- 👉 Append Inner -->
           <template #append-inner>
             <div class="d-flex align-center">
               <div
@@ -161,29 +156,27 @@ const dialogModelValueUpdate = val => {
         </VTextField>
       </VCardText>
 
-      <!-- 👉 Divider -->
       <VDivider />
 
       <div class="h-100">
-        <!-- 👉 Search List -->
         <VList
           v-show="searchQuery.length && !!searchResults.length"
           ref="refSearchList"
           density="compact"
           class="app-bar-search-list"
         >
-          <!-- 👉 list Item /List Sub header -->
           <template
-            v-for="item in searchResults"
-            :key="item.title"
+            v-for="(item, k) in searchResults"
+            :key="k"
           >
             <VListSubheader
               v-if="'header' in item"
               class="text-disabled"
             >
-              {{ resolveCategories(item.title) }}
+              <span v-if="resolveCategories">
+                {{ resolveCategories(item.title) }}
+              </span>
             </VListSubheader>
-
             <template v-else>
               <slot
                 name="searchResult"
@@ -227,7 +220,6 @@ const dialogModelValueUpdate = val => {
           </template>
         </VList>
 
-        <!-- 👉 Suggestions -->
         <div
           v-show="!!searchResults && !searchQuery"
           class="h-100"
@@ -284,7 +276,6 @@ const dialogModelValueUpdate = val => {
           </slot>
         </div>
 
-        <!-- 👉 No Data found -->
         <div
           v-show="!searchResults.length && searchQuery.length"
           class="h-100"

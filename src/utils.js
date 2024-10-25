@@ -1202,9 +1202,10 @@ export class GitHub {
 }
 
 export const parseSearchQuery = query => {
-    const exclusive = []  // for OR groups
-    const inclusive = []  // for individual terms
+    const inclusive = []  // for AND groups
     const exclude = []    // for NOT groups
+    const exclusive = []  // all terms for OR groups
+    const terms = []  // Any of these
     const decodedQuery = decodeURIComponent(query)
 
     // handle quoted terms
@@ -1242,12 +1243,14 @@ export const parseSearchQuery = query => {
 
     // Process tokens for OR and NOT groups
     for (let i = 0; i < tokens.length; i++) {
-        if (tokens[i] === 'OR') {
+        if (tokens[i] === 'AND') {
             if (i > 0 && i < tokens.length - 1) {
-                exclusive.push({
+                inclusive.push({
                     left: tokens[i - 1],
                     right: tokens[i + 1]
                 })
+                terms.push(tokens[i - 1])
+                terms.push(tokens[i + 1])
                 // Skip the next token as it's already processed
                 i++
             }
@@ -1259,16 +1262,17 @@ export const parseSearchQuery = query => {
             }
         } else {
             // Check if this term is not part of a previous OR/AND group
-            const isPartOfGroup = (i > 0 && (tokens[i - 1] === 'OR' || tokens[i - 1] === 'NOT')) ||
-                (i < tokens.length - 1 && (tokens[i + 1] === 'OR' || tokens[i + 1] === 'NOT'))
+            const isPartOfGroup = (i > 0 && (tokens[i - 1] === 'AND' || tokens[i - 1] === 'NOT')) ||
+                (i < tokens.length - 1 && (tokens[i + 1] === 'AND'))
 
             if (!isPartOfGroup) {
-                inclusive.push(tokens[i])
+                exclusive.push(tokens[i])
+                terms.push(tokens[i])
             }
         }
     }
 
-    return { exclusive, inclusive, exclude }
+    return { exclusive, inclusive, exclude, terms: terms.filter((value, index, array) => array.indexOf(value) === index) }
 }
 
 /**
