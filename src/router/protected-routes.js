@@ -5,10 +5,12 @@ const routes = [
         children: [
             {
                 path: 'dashboard',
+                name: 'dashboard',
                 component: () => import('../pages/Dashboard.vue'),
             },
             {
                 path: 'artifacts',
+                name: 'artifacts',
                 component: () => import('../pages/Artifacts.vue'),
             },
             {
@@ -25,6 +27,7 @@ const routes = [
             },
             {
                 path: 'projects',
+                name: 'projects',
                 component: () => import('../pages/Projects.vue'),
             },
             {
@@ -45,6 +48,7 @@ const routes = [
             },
             {
                 path: 'triage/history',
+                name: 'history',
                 component: () => import('../pages/TriageHistory.vue'),
             },
             {

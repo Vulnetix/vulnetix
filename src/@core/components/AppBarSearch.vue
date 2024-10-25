@@ -26,6 +26,10 @@ const props = defineProps({
     type: Array,
     required: false,
   },
+  resolveCategories: {
+    type: Function,
+    required: false,
+  },
 })
 
 const emit = defineEmits([
@@ -81,20 +85,6 @@ const dialogModelValueUpdate = val => {
   emit('update:searchQuery', '')
 }
 
-const resolveCategories = val => {
-  if (val === 'dashboards')
-    return 'Dashboards'
-  if (val === 'appsPages')
-    return 'Apps & Pages'
-  if (val === 'userInterface')
-    return 'User Interface'
-  if (val === 'formsTables')
-    return 'Forms Tables'
-  if (val === 'chartsMisc')
-    return 'Charts Misc'
-
-  return 'Misc'
-}
 </script>
 
 <template>
@@ -220,7 +210,16 @@ const resolveCategories = val => {
                   </template>
 
                   <VListItemTitle>
-                    {{ item.title }}
+                    <RouterLink
+                      class="text-base"
+                      v-if="item?.link"
+                      :to="item?.link"
+                    >
+                      {{ item.title }}
+                    </RouterLink>
+                    <span v-else>
+                      {{ item.title }}
+                    </span>
                   </VListItemTitle>
                 </VListItem>
               </slot>
@@ -255,7 +254,6 @@ const resolveCategories = val => {
                       v-for="item in suggestion.content"
                       :key="item.title"
                       link
-                      :title="item.title"
                       class="app-bar-search-suggestion"
                       @click="$emit('itemSelected', item)"
                     >
@@ -266,6 +264,18 @@ const resolveCategories = val => {
                           class="me-2"
                         />
                       </template>
+                      <VListItemTitle>
+                        <RouterLink
+                          class="text-base"
+                          v-if="item?.link"
+                          :to="item?.link"
+                        >
+                          {{ item.title }}
+                        </RouterLink>
+                        <span v-else>
+                          {{ item.title }}
+                        </span>
+                      </VListItemTitle>
                     </VListItem>
                   </VList>
                 </VCol>

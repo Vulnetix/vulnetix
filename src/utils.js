@@ -1201,6 +1201,76 @@ export class GitHub {
     }
 }
 
+export const parseSearchQuery = query => {
+    const exclusive = []  // for OR groups
+    const inclusive = []  // for individual terms
+    const exclude = []    // for NOT groups
+    const decodedQuery = decodeURIComponent(query)
+
+    // handle quoted terms
+    function processQuotes(str) {
+        const result = []
+        let currentTerm = ''
+        let inQuotes = false
+
+        for (let i = 0; i < str.length; i++) {
+            if (str[i] === '"') {
+                inQuotes = !inQuotes
+                if (!inQuotes && currentTerm) {
+                    result.push(currentTerm)
+                    currentTerm = ''
+                }
+            } else if (inQuotes) {
+                currentTerm += str[i]
+            } else if (str[i] !== ' ') {
+                currentTerm += str[i]
+            } else if (currentTerm) {
+                result.push(currentTerm)
+                currentTerm = ''
+            }
+        }
+
+        if (currentTerm) {
+            result.push(currentTerm)
+        }
+
+        return result
+    }
+
+    // Split by spaces while preserving quoted terms
+    const tokens = processQuotes(decodedQuery)
+
+    // Process tokens for OR and NOT groups
+    for (let i = 0; i < tokens.length; i++) {
+        if (tokens[i] === 'OR') {
+            if (i > 0 && i < tokens.length - 1) {
+                exclusive.push({
+                    left: tokens[i - 1],
+                    right: tokens[i + 1]
+                })
+                // Skip the next token as it's already processed
+                i++
+            }
+        } else if (tokens[i] === 'NOT') {
+            if (i > 0 && i < tokens.length - 1) {
+                exclude.push(tokens[i + 1])
+                // Skip the next token as it's already processed
+                i++
+            }
+        } else {
+            // Check if this term is not part of a previous OR/AND group
+            const isPartOfGroup = (i > 0 && (tokens[i - 1] === 'OR' || tokens[i - 1] === 'NOT')) ||
+                (i < tokens.length - 1 && (tokens[i + 1] === 'OR' || tokens[i + 1] === 'NOT'))
+
+            if (!isPartOfGroup) {
+                inclusive.push(tokens[i])
+            }
+        }
+    }
+
+    return { exclusive, inclusive, exclude }
+}
+
 /**
  * Constructs a version range string from version objects following the CVE schema
  * @param {Array} versions - Array of version objects from CVE data
