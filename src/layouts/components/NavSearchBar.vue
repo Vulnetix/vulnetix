@@ -67,7 +67,8 @@ watchEffect(async () => {
             findings.push({
                 title: finding.detectionTitle,
                 text: `${finding?.purl} (${finding?.aliases?.join(" ")} ${finding?.cwes?.join(" ")})`,
-                link: `/issue/${finding.uuid}`,
+                to: `/issue/${finding.uuid}`,
+                icon: 'eos-icons:critical-bug-outlined',
             })
         }
         if (findings) {
@@ -81,7 +82,8 @@ watchEffect(async () => {
                     boms.push({
                         title: finding.spdx.spdxVersion,
                         text: `${finding.spdx.name} (${finding.spdx.packagesCount} dependencies)`,
-                        link: link.url,
+                        url: link.url,
+                        icon: 'eos-icons:file-system-outlined',
                     })
                 }
             }
@@ -90,7 +92,8 @@ watchEffect(async () => {
                     boms.push({
                         title: `CycloneDX ${finding.cdx.cdxVersion}`,
                         text: `${finding.cdx.name} (${finding.cdx.dependenciesCount} dependencies)`,
-                        link: link.url,
+                        url: link.url,
+                        icon: 'eos-icons:file-system-outlined',
                     })
                 }
             }
@@ -103,7 +106,7 @@ watchEffect(async () => {
 })
 
 const redirectToSuggestedOrSearchedPage = selected => {
-    router.push(selected.url)
+    // router.push(selected.url)
     state.isAppSearchBarVisible = false
     state.searchQuery = ''
 }
@@ -142,40 +145,22 @@ const LazyAppBarSearch = defineAsyncComponent(() => import('@core/components/App
         :search-results="state.searchResults"
         :suggestions="suggestionGroups"
         :no-data-suggestion="noDataSuggestions"
-        @item-selected="redirectToSuggestedOrSearchedPage"
     >
         <template v-slot:searchResult="{ item }">
-            <VListItem link>
-                <VIcon
-                    v-if="item?.icon"
-                    size="20"
-                    :icon="item.icon"
-                    class="me-3"
-                />
-                <VListItemTitle>
-                    <div
-                        v-if="item?.title"
-                        class="text-h5"
-                    >
-                        {{ item.title }}
-                    </div>
-                    <RouterLink
-                        class="text-base"
-                        v-if="item?.link"
-                        :to="item?.link"
-                    >
-                        {{ item.text }}
-                    </RouterLink>
-                    <span v-else>
-                        {{ item.text }}
-                    </span>
-                </VListItemTitle>
-                <VIcon
-                    size="20"
-                    icon="tabler-corner-down-left"
-                    class="enter-icon text-disabled"
-                />
-            </VListItem>
+            <VCard
+                append-icon="mdi-open-in-new"
+                class="w-100"
+                :href="item.url"
+                :to="item.to"
+                :prepend-icon="item.icon"
+                rel="noopener"
+                :subtitle="item.text"
+                :title="item.title"
+                flat
+                hover
+                @click="redirectToSuggestedOrSearchedPage"
+            >
+            </VCard>
         </template>
     </LazyAppBarSearch>
 </template>
