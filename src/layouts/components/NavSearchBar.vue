@@ -47,28 +47,38 @@ const noDataSuggestions = [
     },
 ]
 
-const searchQuery = ref('')
-const isAppSearchBarVisible = ref(false)
-const searchResults = ref([])
-
+const initialState = {
+    searchQuery: '',
+    isAppSearchBarVisible: false,
+    searchResults: [],
+}
+const state = reactive({
+    ...initialState,
+})
 watchEffect(async () => {
-    if (!searchQuery.value) {
+    if (!state.searchQuery) {
         return
     }
-    // while (searchResults.length > 0) {
-    //     searchResults.pop()
-    // }
-    const { data } = await client.get(`/search?q=${encodeURIComponent(searchQuery.value)}`)
+    state.searchResults.splice(0)
+    const { data } = await client.get(`/search?q=${encodeURIComponent(state.searchQuery)}`)
     if (data?.results?.findings) {
+        const findings = []
         for (const finding of data.results.findings) {
-            searchResults.value.push({
+            findings.push({
                 title: finding.detectionTitle,
                 text: `${finding?.purl} (${finding?.aliases?.join(" ")} ${finding?.cwes?.join(" ")})`,
                 link: `/issue/${finding.uuid}`,
             })
+        }
+        if (findings) {
+            state.searchResults.push({ header: true, title: 'Issues' })
+            findings.forEach(f => state.searchResults.push(f))
+        }
+        const boms = []
+        for (const finding of data.results.findings) {
             if (finding?.spdx?.artifact?.downloadLinks) {
                 for (const link of finding.spdx.artifact.downloadLinks) {
-                    searchResults.value.push({
+                    boms.push({
                         title: finding.spdx.spdxVersion,
                         text: `${finding.spdx.name} (${finding.spdx.packagesCount} dependencies)`,
                         link: link.url,
@@ -77,7 +87,7 @@ watchEffect(async () => {
             }
             if (finding?.cdx?.artifact?.downloadLinks) {
                 for (const link of finding.cdx.artifact.downloadLinks) {
-                    searchResults.value.push({
+                    boms.push({
                         title: `CycloneDX ${finding.cdx.cdxVersion}`,
                         text: `${finding.cdx.name} (${finding.cdx.dependenciesCount} dependencies)`,
                         link: link.url,
@@ -85,14 +95,17 @@ watchEffect(async () => {
                 }
             }
         }
-        console.log(searchResults.value)
+        if (boms) {
+            state.searchResults.push({ header: true, title: 'Bills of Materials' })
+            boms.forEach(f => state.searchResults.push(f))
+        }
     }
 })
 
 const redirectToSuggestedOrSearchedPage = selected => {
     router.push(selected.url)
-    isAppSearchBarVisible = false
-    searchQuery = ''
+    state.isAppSearchBarVisible = false
+    state.searchQuery = ''
 }
 
 const LazyAppBarSearch = defineAsyncComponent(() => import('@core/components/AppBarSearch.vue'))
@@ -102,7 +115,7 @@ const LazyAppBarSearch = defineAsyncComponent(() => import('@core/components/App
     <div
         class="d-flex align-center cursor-pointer"
         v-bind="$attrs"
-        @click="isAppSearchBarVisible = !isAppSearchBarVisible"
+        @click="state.isAppSearchBarVisible = !state.isAppSearchBarVisible"
     >
         <VBtn
             icon
@@ -124,9 +137,9 @@ const LazyAppBarSearch = defineAsyncComponent(() => import('@core/components/App
 
     <!-- 👉 App Bar Search -->
     <LazyAppBarSearch
-        v-model:isDialogVisible="isAppSearchBarVisible"
-        v-model:search-query="searchQuery"
-        :search-results="searchResults"
+        v-model:isDialogVisible="state.isAppSearchBarVisible"
+        v-model:search-query="state.searchQuery"
+        :search-results="state.searchResults"
         :suggestions="suggestionGroups"
         :no-data-suggestion="noDataSuggestions"
         @item-selected="redirectToSuggestedOrSearchedPage"
