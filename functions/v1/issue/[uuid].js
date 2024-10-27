@@ -73,6 +73,7 @@ export async function onRequestGet(context) {
 
         const cveId = finding.detectionTitle.startsWith('CVE-') ? finding.detectionTitle : osvData?.aliases?.filter(a => a.startsWith('CVE-')).pop()
         let cvssVector
+        let cvssScore
         let cvelistv5
         let cve
         if (cveId) {
@@ -89,13 +90,13 @@ export async function onRequestGet(context) {
                 cveMetadata,
                 containers: { cna, adp }
             } = cvelistv5
-            const cveCvss = findVectorString(cna.metrics)
-            if (cveCvss.startsWith('CVSS:4/')) {
-                cvssVector = new CVSS40(cveCvss)
-            } else if (cveCvss.startsWith('CVSS:3.1/')) {
-                cvssVector = new CVSS31(cveCvss)
-            } else if (cveCvss.startsWith('CVSS:3/')) {
-                cvssVector = new CVSS30(cveCvss)
+            const cvssVector = findVectorString(cna.metrics)
+            if (cvssVector.startsWith('CVSS:4.0/')) {
+                cvssScore = new CVSS40(cvssVector).Score().toString()
+            } else if (cvssVector.startsWith('CVSS:3.1/')) {
+                cvssScore = new CVSS31(cvssVector).BaseScore().toString()
+            } else if (cvssVector.startsWith('CVSS:3.0/')) {
+                cvssScore = new CVSS30(cvssVector).BaseScore().toString()
             }
             if (cna?.timeline) {
                 finding.timelineJSON = JSON.stringify(cna.timeline.map(i => convertIsoDatesToTimestamps(i)))
@@ -170,10 +171,15 @@ export async function onRequestGet(context) {
             epssScore = parseFloat(scores.epss)
             epssPercentile = parseFloat(scores.percentile)
         }
-        const cvss4 = osvData?.severity?.filter(i => i.score.startsWith('CVSS:4/'))?.pop()
-        const cvss31 = osvData?.severity?.filter(i => i.score.startsWith('CVSS:3.1/'))?.pop()
-        const cvss3 = osvData?.severity?.filter(i => i.score.startsWith('CVSS:3/'))?.pop()
-        cvssVector = !!cvss4 ? new CVSS40(cvss4.score) : !!cvss31 ? new CVSS31(cvss31.score) : cvss3 ? new CVSS30(cvss3.score) : null
+        const cvss = {}
+        if (!cvssVector) {
+            cvss.v4 = osvData?.severity?.filter(i => i.score.startsWith('CVSS:4/'))?.pop()
+            cvss.v31 = osvData?.severity?.filter(i => i.score.startsWith('CVSS:3.1/'))?.pop()
+            cvss.v3 = osvData?.severity?.filter(i => i.score.startsWith('CVSS:3/'))?.pop()
+            cvssVector = !!cvss.v4 ? cvss.v4.score : !!cvss.v31 ? cvss.v31.score : cvss.v3 ? cvss.v3.score : null
+            const vector = !!cvss.v4 ? new CVSS40(cvss.v4.score) : !!cvss.v31 ? new CVSS31(cvss.v31.score) : cvss.v3 ? new CVSS30(cvss.v3.score) : null
+            cvssScore = !!cvss.v4 ? vector.Score().toString() : !!cvss.v31 ? vector.BaseScore().toString() : cvss.v3 ? vector.BaseScore().toString() : null
+        }
         // Decision
         // Methodology
         // Exploitation
@@ -186,9 +192,10 @@ export async function onRequestGet(context) {
         let { analysisState = 'in_triage', triageAutomated = 0, triagedAt = null, seenAt = null } = finding?.triage || {}
         if (
             (cvssVector && (
-                ['E:U', 'E:P', 'E:F', 'E:H'].some(substring => cvss3?.score?.includes(substring)) ||
-                ['E:A', 'E:P', 'E:U'].some(substring => cvss4?.score?.includes(substring))
-            )) || epssPercentile > 0.2
+                ['E:U', 'E:P', 'E:F', 'E:H'].some(substring => cvss.v3?.score?.includes(substring)) ||
+                ['E:U', 'E:P', 'E:F', 'E:H'].some(substring => cvss.v31?.score?.includes(substring)) ||
+                ['E:A', 'E:P', 'E:U'].some(substring => cvss.v4?.score?.includes(substring))
+            )) || epssPercentile > 0.27
         ) {
             analysisState = 'exploitable'
             triageAutomated = 1
@@ -199,21 +206,18 @@ export async function onRequestGet(context) {
         if (seen === 1) {
             seenAt = new Date().getTime()
         }
-        let vexExist = true
-        if (!finding.triage.some(t => t.analysisState === analysisState)) {
-            vexExist = false
-            finding.triage.push({
-                analysisState,
-                findingUuid: uuid,
-                createdAt: new Date().getTime(),
-                lastObserved: new Date().getTime(),
-            })
-        }
+        const vexExist = finding.triage.some(t => t.analysisState === analysisState).length !== 0
         let vexData = finding.triage.filter(t => t.analysisState === analysisState).pop()
+        if (!vexExist) {
+            vexData.analysisState = analysisState
+            vexData.findingUuid = finding.uuid
+            vexData.createdAt = new Date().getTime()
+            vexData.lastObserved = new Date().getTime()
+        }
         vexData.triageAutomated = triageAutomated
         vexData.triagedAt = triagedAt
-        vexData.cvssVector = !!cvss4 ? cvss4.score : !!cvss31 ? cvss31.score : cvss3 ? cvss3.score : null
-        vexData.cvssScore = !!cvss4 ? cvssVector.Score().toString() : !!cvss31 ? cvssVector.BaseScore().toString() : cvss3 ? cvssVector.BaseScore().toString() : null
+        vexData.cvssVector = cvssVector
+        vexData.cvssScore = cvssScore
         if (epssPercentile) {
             vexData.epssPercentile = epssPercentile.toString()
         }

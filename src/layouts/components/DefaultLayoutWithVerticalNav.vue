@@ -103,11 +103,11 @@ watch(NotificationsStore, () => {
                 icon: 'fluent-mdl2:set-action',
                 to: '/triage',
             }" />
-            <VerticalNavLink :item="{
+            <!-- <VerticalNavLink :item="{
                 title: 'Exploitable',
                 icon: 'eos-icons:critical-bug-outlined',
                 to: '/triage/exploitable',
-            }" />
+            }" /> -->
             <VerticalNavLink :item="{
                 title: 'History',
                 icon: 'mdi-clipboard-text-history',

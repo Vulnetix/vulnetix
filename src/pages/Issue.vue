@@ -1,6 +1,6 @@
 <script setup>
 import { useMemberStore } from '@/stores/member';
-import { Client } from '@/utils';
+import { Client, round } from '@/utils';
 import IconVulnetix from '@images/IconVulnetix.vue';
 import { reactive } from 'vue';
 import { useRoute } from 'vue-router';
@@ -17,15 +17,18 @@ const initialState = {
     loading: false,
     issue: {},
 }
+
 const state = reactive({
     ...initialState,
 })
+
 const clearAlerts = () => {
     state.error = ''
     state.warning = ''
     state.success = ''
     state.info = ''
 }
+
 class Controller {
     fetchIssue = async (uuid) => {
         clearAlerts()
@@ -34,6 +37,7 @@ class Controller {
             const { data } = await client.get(`/issue/${uuid}`)
             if (data?.finding) {
                 state.finding = data.finding
+                state.finding.vex = data.finding.triage.sort((a, b) => b.lastObserved - a.lastObserved)?.pop()
             }
             state.loading = false
         } catch (e) {
@@ -50,11 +54,19 @@ const formatDate = (timestamp) => {
 }
 
 const getSeverityColor = (score) => {
-    if (!score) return 'grey'
-    if (score < 4) return 'green'
-    if (score < 7) return 'yellow'
-    if (score < 9) return 'orange'
-    return 'red'
+    if (!score) return '#808080'
+    if (score < 4) return '#008000'
+    if (score < 7) return 'ffff00'
+    if (score < 9) return '#ffa500'
+    return '#ff0000'
+}
+
+const getSeverity = (score) => {
+    if (!score) return 'Informational'
+    if (score < 4) return 'Low'
+    if (score < 7) return 'Medium'
+    if (score < 9) return 'High'
+    return 'Critical'
 }
 
 const getSourceIcon = (url) => {
@@ -71,9 +83,10 @@ onBeforeRouteUpdate(async (to, from) => {
         state.issue = await controller.fetchIssue(to.params.uuid)
     }
 })
-</script>
-<template>
 
+</script>
+
+<template>
     <VCard>
         <VProgressLinear
             :active="state.loading"
@@ -125,40 +138,81 @@ onBeforeRouteUpdate(async (to, from) => {
                         cols="12"
                         md="6"
                     >
+                        <h4 class="text-h5 font-weight-bold mb-4">{{ state.finding.detectionTitle }}</h4>
                         <VList>
                             <VListItem>
-                                <VListItemTitle>CVSS Score</VListItemTitle>
-                                <VListItemSubtitle>{{ state.finding.cvssScore || 'N/A'
-                                    }}</VListItemSubtitle>
+                                <VListItemTitle>Aliases</VListItemTitle>
+                                <VListItemSubtitle
+                                    v-for="(alias, k) in state.finding.aliases"
+                                    :key="k"
+                                >{{ alias }}</VListItemSubtitle>
                             </VListItem>
                             <VListItem>
+                                <VListItemTitle>CVSS Score</VListItemTitle>
+                                <VListItemSubtitle>
+                                    <a
+                                        class="me-3"
+                                        v-if="state.finding.vex?.cvssVector?.startsWith(`CVSS:2.0/`)"
+                                        :href="`https://nvd.nist.gov/vuln-metrics/cvss/v2-calculator?vector=(${state.finding.vex.cvssVector.replace('CVSS:2.0/', '')})`"
+                                        target="_blank"
+                                    >
+                                        {{ state.finding.vex.cvssScore }}
+                                    </a>
+                                    <a
+                                        class="me-3"
+                                        v-if="state.finding.vex?.cvssVector?.startsWith(`CVSS:3.0/`)"
+                                        :href="`https://nvd.nist.gov/vuln-metrics/cvss/v3-calculator?vector=${state.finding.vex.cvssVector.replace('CVSS:3.0/', '')}&version=3.0`"
+                                        target="_blank"
+                                    >
+                                        {{ state.finding.vex.cvssScore }}
+                                    </a>
+                                    <a
+                                        class="me-3"
+                                        v-if="state.finding.vex?.cvssVector?.startsWith(`CVSS:3.1/`)"
+                                        :href="`https://nvd.nist.gov/vuln-metrics/cvss/v3-calculator?vector=${state.finding.vex.cvssVector.replace('CVSS:3.1/', '')}&version=3.1`"
+                                        target="_blank"
+                                    >
+                                        {{ state.finding.vex.cvssScore }}
+                                    </a>
+                                    <a
+                                        class="me-3"
+                                        v-if="state.finding.vex?.cvssVector?.startsWith(`CVSS:4.0/`)"
+                                        :href="`https://nvd.nist.gov/vuln-metrics/cvss/v4-calculator?vector=${state.finding.vex.cvssVector.replace('CVSS:4.0/', '')}&version=4.0`"
+                                        target="_blank"
+                                    >
+                                        {{ state.finding.vex.cvssScore }}
+                                    </a>
+                                    <VChip
+                                        density="compact"
+                                        :color="getSeverityColor(state.finding.vex.cvssScore)"
+                                    >
+                                        {{ getSeverity(state.finding.vex.cvssScore) }}
+                                    </VChip>
+                                </VListItemSubtitle>
+                            </VListItem>
+                            <VListItem v-if="state.finding.vex.epssScore">
                                 <VListItemTitle>EPSS Score</VListItemTitle>
-                                <VListItemSubtitle>{{ state.finding.epssScore || 'N/A'
-                                    }}</VListItemSubtitle>
+                                <VListItemSubtitle>
+                                    {{ state.finding.vex.epssScore }} ({{
+                                        round(parseFloat(state.finding.vex.epssPercentile)) }}%)
+                                </VListItemSubtitle>
                             </VListItem>
                             <VListItem>
                                 <VListItemTitle>Fix Version</VListItemTitle>
-                                <VListItemSubtitle>{{ state.finding.fixVersion || 'N/A'
-                                    }}</VListItemSubtitle>
+                                <VListItemSubtitle>{{ state.finding.fixVersion || 'N/A' }}</VListItemSubtitle>
                             </VListItem>
-                            <VListItem>
+                            <VListItem v-if="state.finding?.vulnerableVersionRange">
                                 <VListItemTitle>Vulnerable Version Range</VListItemTitle>
-                                <VListItemSubtitle>{{ state.finding.vulnerableVersionRange || 'Unknown'
-                                    }}</VListItemSubtitle>
+                                <VListItemSubtitle>{{ state.finding.vulnerableVersionRange || 'Unknown' }}
+                                </VListItemSubtitle>
                             </VListItem>
                             <VListItem>
-                                <VListItemTitle>Malicious</VListItemTitle>
-                                <VListItemSubtitle>{{ state.finding.malicious ? 'Yes' : 'No'
-                                    }}</VListItemSubtitle>
-                            </VListItem>
-                            <VListItem>
-                                <VListItemTitle>CVE</VListItemTitle>
-                                <VListItemSubtitle>{{ state.finding.cve || 'N/A' }}</VListItemSubtitle>
+                                <VListItemTitle>Known Malicious</VListItemTitle>
+                                <VListItemSubtitle>{{ state.finding.malicious ? 'Yes' : 'No' }}</VListItemSubtitle>
                             </VListItem>
                             <VListItem>
                                 <VListItemTitle>Published At</VListItemTitle>
-                                <VListItemSubtitle>{{ formatDate(state.finding.publishedAt)
-                                    }}</VListItemSubtitle>
+                                <VListItemSubtitle>{{ formatDate(state.finding.publishedAt) }}</VListItemSubtitle>
                             </VListItem>
                         </VList>
                     </VCol>

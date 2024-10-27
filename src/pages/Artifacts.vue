@@ -49,92 +49,75 @@ class Controller {
             let skip = 0
             while (hasMore) {
                 const { data } = await client.get(`/artifact/files?take=${pageSize}&skip=${skip}`)
-                if (data.ok) {
-                    if (data?.artifacts) {
-                        for (const artifact of data.artifacts) {
-                            const { uuid, downloadLink, type, bomFormat, analysisKey } = artifact
-                            const { contentType, url } = downloadLink
-                            for (let group of state.artifacts) {
-                                const ext = contentType?.includes("json") ? 'json' : 'txt'
-                                let repoName;
-                                let dependencies;
-                                let results;
-                                let versionInfo;
-                                let findingTitle;
-                                let analysis;
-                                let source;
-                                if (artifact?.cdx) {
-                                    dependencies = artifact.cdx?.dependenciesCount
-                                    repoName = artifact.cdx?.repoName
-                                    source = artifact.cdx?.source
-                                    versionInfo = `CycloneDX-${artifact.cdx?.cdxVersion}`
-                                }
-                                if (artifact?.spdx) {
-                                    dependencies = artifact.spdx?.packagesCount
-                                    repoName = artifact.spdx?.repoName
-                                    source = artifact.spdx?.source
-                                    versionInfo = artifact.spdx?.spdxVersion
-                                }
-                                if (artifact?.sarif) {
-                                    results = artifact.sarif?.resultsCount
-                                    repoName = artifact.sarif?.fullName
-                                    source = artifact.sarif?.source
-                                    versionInfo = artifact.sarif?.toolName
-                                    if (artifact.sarif?.toolVersion) {
-                                        versionInfo = `${versionInfo}-${artifact.sarif?.toolVersion}`
-                                    }
-                                }
-                                if (artifact?.vex) {
-                                    findingTitle = artifact.vex?.findingTitle
-                                    source = artifact.vex?.source
-                                    if (artifact.vex?.analysisState) {
-                                        analysis = VexAnalysisState[artifact.vex.analysisState]
-                                    }
-                                    if (artifact.vex?.analysisJustification) {
-                                        analysis = `${analysis}, ${VexAnalysisJustification[artifact.vex.analysisJustification]}`
-                                    }
-                                    if (artifact.vex?.analysisResponse) {
-                                        analysis = `${analysis}, ${VexAnalysisResponse[artifact.vex.analysisResponse]}`
-                                    }
-                                }
-                                const file = { contentType, ext, lastModified: artifact.date, uuid, source, url, analysis, findingTitle, dependencies, repoName, results, versionInfo }
-
-                                if (group.title === "SARIF" && contentType?.includes("sarif")) {
-                                    file.title = analysisKey || `${uuid}.${ext}`
-                                    group = addFileToSourceSubgroup(group, file)
-                                    break
-                                } else if (group.title === "VEX" && type === "VEX") {
-                                    file.title = artifact.vex.findingTitle
-                                    group = addFileToSourceSubgroup(group, file)
-                                    break
-                                } else if (group.title === bomFormat) {
-                                    if (bomFormat === "CycloneDX") {
-                                        file.title = [artifact.cdx.name, artifact.cdx.version].filter(a => !!a).join('@')
-                                    } else if (bomFormat === "SPDX") {
-                                        file.title = [artifact.spdx.name, artifact.spdx.version].filter(a => !!a).join('@')
-                                    }
-                                    group = addFileToSourceSubgroup(group, file)
-                                    break
+                if (data.ok && data?.artifacts) {
+                    for (const artifact of data.artifacts) {
+                        const { uuid, downloadLink, type, bomFormat, analysisKey } = artifact
+                        const { contentType, url } = downloadLink
+                        for (let group of state.artifacts) {
+                            const ext = contentType?.includes("json") ? 'json' : 'txt'
+                            let repoName;
+                            let dependencies;
+                            let results;
+                            let versionInfo;
+                            let findingTitle;
+                            let analysis;
+                            let source;
+                            if (artifact?.cdx) {
+                                dependencies = artifact.cdx?.dependenciesCount
+                                repoName = artifact.cdx?.repoName
+                                source = artifact.cdx?.source
+                                versionInfo = `CycloneDX-${artifact.cdx?.cdxVersion}`
+                            }
+                            if (artifact?.spdx) {
+                                dependencies = artifact.spdx?.packagesCount
+                                repoName = artifact.spdx?.repoName
+                                source = artifact.spdx?.source
+                                versionInfo = artifact.spdx?.spdxVersion
+                            }
+                            if (artifact?.sarif) {
+                                results = artifact.sarif?.resultsCount
+                                repoName = artifact.sarif?.fullName
+                                source = artifact.sarif?.source
+                                versionInfo = artifact.sarif?.toolName
+                                if (artifact.sarif?.toolVersion) {
+                                    versionInfo = `${versionInfo}-${artifact.sarif?.toolVersion}`
                                 }
                             }
-                        }
-                        for (const group of state.artifacts) {
-                            if (group.children.length === 0) {
-                                group.children.push({ isEmpty: true })
+                            if (artifact?.vex) {
+                                findingTitle = artifact.vex?.findingTitle
+                                source = artifact.vex?.source
+                                if (artifact.vex?.analysisState) {
+                                    analysis = VexAnalysisState[artifact.vex.analysisState]
+                                }
+                                if (artifact.vex?.analysisJustification) {
+                                    analysis = `${analysis}, ${VexAnalysisJustification[artifact.vex.analysisJustification]}`
+                                }
+                                if (artifact.vex?.analysisResponse) {
+                                    analysis = `${analysis}, ${VexAnalysisResponse[artifact.vex.analysisResponse]}`
+                                }
+                            }
+                            const file = { contentType, ext, lastModified: artifact.date, uuid, source, url, analysis, findingTitle, dependencies, repoName, results, versionInfo }
+                            file.key = crypto.randomUUID()
+                            group.key = crypto.randomUUID()
+                            if (group.title === "SARIF" && contentType?.includes("sarif")) {
+                                file.title = analysisKey || `${uuid}.${ext}`
+                                group = addFileToSourceSubgroup(group, file)
+                                break
+                            } else if (group.title === "VEX" && type === "VEX") {
+                                file.title = artifact.vex.findingTitle
+                                group = addFileToSourceSubgroup(group, file)
+                                break
+                            } else if (group.title === bomFormat) {
+                                if (bomFormat === "CycloneDX") {
+                                    file.title = [artifact.cdx.name, artifact.cdx.version].filter(a => !!a).join('@')
+                                } else if (bomFormat === "SPDX") {
+                                    file.title = [artifact.spdx.name, artifact.spdx.version].filter(a => !!a).join('@')
+                                }
+                                group = addFileToSourceSubgroup(group, file)
+                                break
                             }
                         }
                     }
-                } else if (typeof data === "string" && !isJSON(data)) {
-                    break
-                } else if (data?.error?.message) {
-                    state.loading = false
-                    state.error = data.error.message
-                    return
-                } else if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
-                    state.loading = false
-                    state.info = data.result
-                    setTimeout(() => router.push('/logout'), 2000)
-                    return
                 } else {
                     break
                 }
@@ -144,6 +127,12 @@ class Controller {
                     skip += pageSize
                 }
             }
+            for (const group of state.artifacts) {
+                if (group.children.length === 0) {
+                    group.children.push({ isEmpty: true })
+                }
+            }
+
             state.loading = false
         } catch (e) {
             console.error(e)
@@ -321,12 +310,7 @@ const files = ref({
 })
 function addFileToSourceSubgroup(group, file) {
     if (!file?.source) {
-        if (group.children.length === 1) {
-            const child = group.children.pop()
-            if (child.isEmpty) {
-                group.children = []
-            }
-        }
+        group.children = group.children.filter(item => !item?.isEmpty)
         group.children.push(file)
         return group
     }
@@ -338,12 +322,7 @@ function addFileToSourceSubgroup(group, file) {
     }
     if (!sourceSubgroup.children.some(f => f.uuid === file.uuid)) {
         delete file.source
-        if (sourceSubgroup.children.length === 1) {
-            const child = sourceSubgroup.children.pop()
-            if (child.isEmpty) {
-                sourceSubgroup.children = []
-            }
-        }
+        sourceSubgroup.children = sourceSubgroup.children.filter(item => !item?.isEmpty)
         sourceSubgroup.children.push(file)
     }
 
@@ -401,13 +380,11 @@ function updateArtifactsFromFiles(files) {
             newFile.results = fileData.resultsCount || 0 // Assuming SARIF has a resultsCount
         }
 
+        // Remove the 'isEmpty' property if it exists
+        uploadObject.children = uploadObject.children.filter(item => !item?.isEmpty)
+
         // Add the new file to the upload object's children
         uploadObject.children.push(newFile)
-
-        // Remove the 'isEmpty' property if it exists
-        if (targetArtifact.children[0].isEmpty) {
-            delete targetArtifact.children[0].isEmpty
-        }
     }
 }
 </script>
@@ -581,7 +558,8 @@ function updateArtifactsFromFiles(files) {
         <VTreeview
             v-else
             :items="state.artifacts"
-            item-value="title"
+            item-title="title"
+            item-value="key"
             open-all
             open-on-click
             slim

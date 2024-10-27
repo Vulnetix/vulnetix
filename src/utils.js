@@ -817,11 +817,7 @@ export class GitHub {
             return { url, error: { message: e.message, lineno, colno } }
         }
     }
-    async fetchSARIF(url) {
-        const githubIntegration = await prisma.IntegrationConfig.findFirst({ where: { orgId, AND: { name: `github` } } })
-        if (!!githubIntegration?.suspend) {
-            throw new Error('GitHub Integration is Disabled')
-        }
+    async __FetchSARIF(url) {
         try {
             const headers = Object.assign(this.headers, { 'Accept': 'application/sarif+json' })
             const response = await fetch(url, { headers })
@@ -831,9 +827,39 @@ export class GitHub {
                 console.error(respText)
                 console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
             }
-            const tokenExpiry = response.headers.get('GitHub-Authentication-Token-Expiration')
-            const content = JSON.parse(respText)
+            let content = respText
+            if (isJSON(respText)) {
+                content = JSON.parse(respText)
+            }
+            const tokenExpiry = (new Date(response.headers.get('GitHub-Authentication-Token-Expiration'))).getTime()
             return { ok: response.ok, status: response.status, statusText: response.statusText, tokenExpiry, error: { message: content?.message }, content, url }
+        } catch (e) {
+            const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/)
+            console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
+
+            return { url, error: { message: e.message, lineno, colno } }
+        }
+    }
+    async fetchSARIF(prisma, orgId, memberEmail, url) {
+        const githubIntegration = await prisma.IntegrationConfig.findFirst({ where: { orgId, AND: { name: `github` } } })
+        if (!!githubIntegration?.suspend) {
+            throw new Error('GitHub Integration is Disabled')
+        }
+        try {
+            const response = await this.__FetchSARIF(url)
+            const createLog0 = await prisma.IntegrationUsageLog.create({
+                data: {
+                    memberEmail,
+                    orgId,
+                    source: 'github',
+                    request: JSON.stringify({ method: "GET", url }).trim(),
+                    response: JSON.stringify({ body: convertIsoDatesToTimestamps(response.content), tokenExpiry: response.tokenExpiry }).trim(),
+                    statusCode: response?.status || 500,
+                    createdAt: new Date().getTime(),
+                }
+            })
+            // console.log(`GitHub.getRepoSarif()`, createLog0)
+            return response
         } catch (e) {
             const [, lineno, colno] = e.stack.match(/(\d+):(\d+)/)
             console.error(`line ${lineno}, col ${colno} ${e.message}`, e.stack)
@@ -866,14 +892,14 @@ export class GitHub {
                     createdAt: new Date().getTime(),
                 }
             })
-            console.log(`GitHub.getRepoSarif()`, createLog0)
+            // console.log(`GitHub.getRepoSarif()`, createLog0)
             if (!data?.ok) {
                 return data
             }
             for (const report of data.content) {
                 const sarifUrl = `${this.baseUrl}/repos/${full_name}/code-scanning/analyses/${report.id}`
                 console.log(`github.getRepoSarif(${full_name}) ${sarifUrl}`)
-                const sarifData = await this.fetchSARIF(sarifUrl)
+                const sarifData = await this.__FetchSARIF(sarifUrl)
                 const createLog = await prisma.IntegrationUsageLog.create({
                     data: {
                         memberEmail,

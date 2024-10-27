@@ -129,10 +129,10 @@ export async function onRequestGet(context) {
         })
 
         const artifacts = result.map(artifact => {
-            artifact.spdx = artifact.spdx.sort((a, b) => a.createdAt - b.createdAt)?.pop()
-            artifact.sarif = artifact.sarif.sort((a, b) => a.createdAt - b.createdAt)?.pop()
-            artifact.cdx = artifact.cdx.sort((a, b) => a.createdAt - b.createdAt)?.pop()
-            const vex = artifact.vex.sort((a, b) => a.lastObserved - b.lastObserved)?.pop()
+            artifact.spdx = artifact.spdx.sort((a, b) => b.createdAt - a.createdAt)?.pop()
+            artifact.sarif = artifact.sarif.sort((a, b) => b.createdAt - a.createdAt)?.pop()
+            artifact.cdx = artifact.cdx.sort((a, b) => b.createdAt - a.createdAt)?.pop()
+            const vex = artifact.vex.sort((a, b) => b.lastObserved - a.lastObserved)?.pop()
             if (vex?.finding) {
                 vex.repoName = vex?.finding?.repoName
                 vex.source = vex?.finding?.source
@@ -140,7 +140,7 @@ export async function onRequestGet(context) {
                 delete vex.finding
             }
             artifact.vex = vex
-            artifact.downloadLink = artifact.downloadLinks.sort((a, b) => a.id - b.id)?.pop()
+            artifact.downloadLink = artifact.downloadLinks.sort((a, b) => b.id - a.id)?.pop()
             delete artifact.downloadLinks
             return artifact
         })
