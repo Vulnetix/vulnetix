@@ -473,7 +473,7 @@ export class Client {
             throw new Error(data.error.message)
         }
         if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
-            throw new Error(data.result)
+            window.location = `${window.location.origin}/logout`
         }
         return { ok: response.ok, status: response.status, statusText: response.statusText, result: data?.result, data, url }
     }
