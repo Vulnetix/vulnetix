@@ -393,7 +393,7 @@ export class Client {
      * @returns {Promise<Response>} - A promise that resolves to the fetch API response.
      */
     async get(path) {
-        return this.signedFetch(`/v1${path}`)
+        return this.signedFetch(`/api${path}`)
     }
 
     /**
@@ -403,7 +403,7 @@ export class Client {
      * @returns {Promise<Response>} - A promise that resolves to the fetch API response.
      */
     async delete(path) {
-        return this.signedFetch(`/v1${path}`, { method: 'DELETE' })
+        return this.signedFetch(`/api${path}`, { method: 'DELETE' })
     }
 
     /**
@@ -420,7 +420,7 @@ export class Client {
             headers = { 'Content-Type': 'application/json', ...headers }
         }
         const method = 'POST'
-        return this.signedFetch(`/v1${path}`, { method, body, headers })
+        return this.signedFetch(`/api${path}`, { method, body, headers })
     }
 
     /**

@@ -96,10 +96,10 @@ watch(NotificationsStore, () => {
             }" />
 
             <VerticalNavSectionTitle :item="{
-                heading: 'Triage Queues',
+                heading: 'Triage',
             }" />
             <VerticalNavLink :item="{
-                title: 'New Issues',
+                title: 'Queue',
                 icon: 'fluent-mdl2:set-action',
                 to: '/triage',
             }" />
