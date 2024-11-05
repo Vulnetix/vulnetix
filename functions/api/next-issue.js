@@ -25,7 +25,7 @@ export async function onRequestGet(context) {
             return Response.json({ ok: false, result: verificationResult.message })
         }
         const findingCount = await prisma.Finding.count()
-        let finding;
+        let finding, spdxJson, cdxJson;
         if (findingCount > 0) {
             finding = await prisma.Finding.findFirst({
                 where: {
@@ -44,11 +44,21 @@ export async function onRequestGet(context) {
                     spdx: {
                         include: {
                             repo: true,
+                            artifact: {
+                                include: {
+                                    downloadLinks: true,
+                                },
+                            },
                         }
                     },
                     cdx: {
                         include: {
                             repo: true,
+                            artifact: {
+                                include: {
+                                    downloadLinks: true,
+                                },
+                            },
                         }
                     },
                 },
@@ -58,31 +68,45 @@ export async function onRequestGet(context) {
                     createdAt: 'asc', // oldest first
                 }
             })
-        }
-        if (finding?.referencesJSON) {
-            finding.references = JSON.parse(finding.referencesJSON)
+
+            finding.references = finding?.referencesJSON ? JSON.parse(finding.referencesJSON) : []
+            finding.timeline = finding?.timelineJSON ? JSON.parse(finding.timelineJSON) : []
+            finding.exploits = finding?.exploitsJSON ? JSON.parse(finding.exploitsJSON) : []
+            finding.knownExploits = finding?.knownExploitsJSON ? JSON.parse(finding.knownExploitsJSON) : []
+            finding.aliases = finding?.aliases ? JSON.parse(finding.aliases) : []
+            finding.cwes = finding?.cwes ? JSON.parse(finding.cwes) : []
             delete finding.referencesJSON
-        }
-        if (finding?.timelineJSON) {
-            finding.timeline = JSON.parse(finding.timelineJSON)
-            delete finding.timelineJSON
-        }
-        if (finding?.exploitsJSON) {
-            finding.exploits = JSON.parse(finding.exploitsJSON)
-            delete finding.exploitsJSON
-        }
-        if (finding?.knownExploitsJSON) {
-            finding.knownExploits = JSON.parse(finding.knownExploitsJSON)
             delete finding.knownExploitsJSON
-        }
-        if (finding?.aliases) {
-            finding.aliases = JSON.parse(finding.aliases)
-        }
-        if (finding?.cwes) {
-            finding.cwes = JSON.parse(finding.cwes)
+            delete finding.timelineJSON
+            delete finding.exploitsJSON
+
+            if (finding?.spdx?.artifact?.uuid) {
+                const resp = await env.r2artifacts.get(`spdx/${finding.spdx.artifact.uuid}.json`)
+                if (resp) {
+                    spdxJson = await resp.json()
+                }
+            }
+            if (!finding?.repoName && finding?.spdx?.repo?.fullName) {
+                finding.repoName = finding.spdx.repo.fullName
+            }
+            if (finding?.repoName && !finding?.repoSource && finding?.spdx?.repo?.source) {
+                finding.repoSource = finding.spdx.repo.source
+            }
+            if (finding?.cdx?.artifact?.uuid) {
+                const resp = await env.r2artifacts.get(`cyclonedx/${finding.cdx.artifact.uuid}.json`)
+                if (resp) {
+                    cdxJson = await resp.json()
+                }
+            }
+            if (!finding?.repoName && finding?.cdx?.repo?.fullName) {
+                finding.repoName = finding.cdx.repo.fullName
+            }
+            if (finding?.repoName && !finding?.repoSource && finding?.cdx?.repo?.source) {
+                finding.repoSource = finding.cdx.repo.source
+            }
         }
 
-        return Response.json({ ok: true, finding, findingCount })
+        return Response.json({ ok: true, finding, findingCount, spdxJson, cdxJson })
     } catch (err) {
         console.error(err)
         return Response.json({ ok: false, error: { message: err }, result: AuthResult.REVOKED })

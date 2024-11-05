@@ -194,6 +194,7 @@ const process = async (prisma, session, repoName, spdx, spdxId, artifactUuid) =>
                 findingId,
                 orgId: session.orgId,
                 memberEmail: session.memberEmail,
+                repoName,
                 source: 'osv.dev',
                 category: 'sca',
                 createdAt: (new Date()).getTime(),

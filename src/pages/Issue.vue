@@ -34,7 +34,7 @@ class Controller {
         clearAlerts()
         state.loading = true
         try {
-            const { data } = await client.get(`/issue/${uuid}`)
+            const { data } = await client.get(`/issue/${uuid}?seen=1`)
             if (data?.finding) {
                 state.finding = data.finding
                 state.finding.vex = data.finding.triage.sort((a, b) => b.lastObserved - a.lastObserved)?.pop()

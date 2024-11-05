@@ -44,12 +44,22 @@ export async function onRequestGet(context) {
                 triage: true,
                 spdx: {
                     include: {
-                        repo: true
+                        repo: true,
+                        artifact: {
+                            include: {
+                                downloadLinks: true,
+                            },
+                        },
                     }
                 },
                 cdx: {
                     include: {
-                        repo: true
+                        repo: true,
+                        artifact: {
+                            include: {
+                                downloadLinks: true,
+                            },
+                        },
                     }
                 }
             }
@@ -241,29 +251,44 @@ export async function onRequestGet(context) {
         finding.triage.push(vexData)
 
         // expand JSON fields
-        if (finding.cwes) {
-            finding.cwes = JSON.parse(finding.cwes)
+        finding.references = finding?.referencesJSON ? JSON.parse(finding.referencesJSON) : []
+        finding.timeline = finding?.timelineJSON ? JSON.parse(finding.timelineJSON) : []
+        finding.exploits = finding?.exploitsJSON ? JSON.parse(finding.exploitsJSON) : []
+        finding.knownExploits = finding?.knownExploitsJSON ? JSON.parse(finding.knownExploitsJSON) : []
+        finding.aliases = finding?.aliases ? JSON.parse(finding.aliases) : []
+        finding.cwes = finding?.cwes ? JSON.parse(finding.cwes) : []
+        delete finding.referencesJSON
+        delete finding.knownExploitsJSON
+        delete finding.timelineJSON
+        delete finding.exploitsJSON
+
+        let spdxJson, cdxJson;
+        if (finding?.spdx?.artifact?.uuid) {
+            const resp = await env.r2artifacts.get(`spdx/${finding.spdx.artifact.uuid}.json`)
+            if (resp) {
+                spdxJson = await resp.json()
+            }
         }
-        if (finding.aliases) {
-            finding.aliases = JSON.parse(finding.aliases)
+        if (!finding?.repoName && finding?.spdx?.repo?.fullName) {
+            finding.repoName = finding.spdx.repo.fullName
         }
-        if (finding.exploitsJSON) {
-            finding.exploits = JSON.parse(finding.exploitsJSON)
-            delete finding.exploitsJSON
+        if (finding?.repoName && !finding?.repoSource && finding?.spdx?.repo?.source) {
+            finding.repoSource = finding.spdx.repo.source
         }
-        if (finding.knownExploitsJSON) {
-            finding.knownExploits = JSON.parse(finding.knownExploitsJSON)
-            delete finding.knownExploitsJSON
+        if (finding?.cdx?.artifact?.uuid) {
+            const resp = await env.r2artifacts.get(`cyclonedx/${finding.cdx.artifact.uuid}.json`)
+            if (resp) {
+                cdxJson = await resp.json()
+            }
         }
-        if (finding.referencesJSON) {
-            finding.references = JSON.parse(finding.referencesJSON)
-            delete finding.referencesJSON
+        if (!finding?.repoName && finding?.cdx?.repo?.fullName) {
+            finding.repoName = finding.cdx.repo.fullName
         }
-        if (finding.timelineJSON) {
-            finding.timeline = JSON.parse(finding.timelineJSON)
-            delete finding.timelineJSON
+        if (finding?.repoName && !finding?.repoSource && finding?.cdx?.repo?.source) {
+            finding.repoSource = finding.cdx.repo.source
         }
-        return Response.json({ ok: true, finding })
+
+        return Response.json({ ok: true, finding, spdxJson, cdxJson })
     } catch (err) {
         console.error(err)
         return Response.json({ ok: false, error: { message: err }, result: AuthResult.REVOKED })
