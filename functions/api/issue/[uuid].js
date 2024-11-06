@@ -1,13 +1,7 @@
-import { AuthResult, EPSS, MitreCVE, OSV, Server, constructVersionRangeString } from "@/utils";
+import { AuthResult, EPSS, MitreCVE, OSV, Server, constructVersionRangeString, convertIsoDatesToTimestamps } from "@/utils";
 import { CVSS30, CVSS31, CVSS40 } from '@pandatix/js-cvss';
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
-
-// Helper function to process array fields
-const processArrayField = (array, key) => {
-    if (!Array.isArray(array)) return ''
-    return Array.from(new Set(array.map(item => item[key]?.trim()).filter(Boolean))).join(',')
-}
 
 export async function onRequestGet(context) {
     const {
@@ -90,9 +84,13 @@ export async function onRequestGet(context) {
             cve = await getCveData(prisma, env.r2artifacts, verificationResult, cveId)
         }
         if (cve?.fileLink?.url) {
-            const r2object = await env.r2artifacts.get(cve.fileLink.url)
+            const [, year, number] = cveId.split('-')
+            const objectPath = `cvelistv5/${year}/${number.slice(0, -3) + "xxx"}/${cveId}.json`
+            const r2object = await env.r2artifacts.get(objectPath)
             if (r2object) {
-                cvelistv5 = JSON.parse(r2object)
+                try {
+                    cvelistv5 = await r2object.json()
+                } catch (err) {}
             }
         }
         if (cvelistv5) {
@@ -101,12 +99,14 @@ export async function onRequestGet(context) {
                 containers: { cna, adp }
             } = cvelistv5
             const cvssVector = findVectorString(cna.metrics)
-            if (cvssVector.startsWith('CVSS:4.0/')) {
-                cvssScore = new CVSS40(cvssVector).Score().toString()
-            } else if (cvssVector.startsWith('CVSS:3.1/')) {
-                cvssScore = new CVSS31(cvssVector).BaseScore().toString()
-            } else if (cvssVector.startsWith('CVSS:3.0/')) {
-                cvssScore = new CVSS30(cvssVector).BaseScore().toString()
+            if (cvssVector) {
+                if (cvssVector.startsWith('CVSS:4.0/')) {
+                    cvssScore = new CVSS40(cvssVector).Score().toString()
+                } else if (cvssVector.startsWith('CVSS:3.1/')) {
+                    cvssScore = new CVSS31(cvssVector).BaseScore().toString()
+                } else if (cvssVector.startsWith('CVSS:3.0/')) {
+                    cvssScore = new CVSS30(cvssVector).BaseScore().toString()
+                }
             }
             if (cna?.timeline) {
                 finding.timelineJSON = JSON.stringify(cna.timeline.map(i => convertIsoDatesToTimestamps(i)))

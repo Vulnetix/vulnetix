@@ -1954,6 +1954,16 @@ export const hexStringToUint8Array = hexString => {
     return array
 }
 
+export const getPastelColor = () => {
+    const red = Math.floor(Math.random() * 75 + 180)
+    const green = Math.floor(Math.random() * 75 + 180)
+    const blue = Math.floor(Math.random() * 75 + 180)
+    return '#' +
+        red.toString(16).padStart(2, '0') +
+        green.toString(16).padStart(2, '0') +
+        blue.toString(16).padStart(2, '0')
+}
+
 // https://octodex.github.com/images/
 export const octodex = [
     "parentocats.png",
