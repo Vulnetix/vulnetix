@@ -1,6 +1,5 @@
 <script setup>
 import Finding from '@/components/Finding.vue';
-import { useQueueStore } from '@/stores/findingQueue';
 import { useMemberStore } from '@/stores/member';
 import { Client } from '@/utils';
 import IconVulnetix from '@images/IconVulnetix.vue';
@@ -8,7 +7,6 @@ import { reactive } from 'vue';
 
 const client = new Client()
 const Member = useMemberStore()
-const queueStore = useQueueStore()
 
 const initialState = {
     error: "",
@@ -19,6 +17,7 @@ const initialState = {
     finding: null,
     triageLoaders: {},
     currentTriage: {},
+    queueRemaining: 0,
 }
 const state = reactive({
     ...initialState,
@@ -34,17 +33,14 @@ class Controller {
         clearAlerts()
         state.loading = true
         try {
-            const { data } = await client.get(`/next-issue?seen=1`)
+            const { data } = await client.get(`/next-issue`)
             state.loading = false
             if (data.ok && data?.finding) {
                 state.finding = data.finding
+                state.queueRemaining = data.findingCount
                 state.currentTriage = data.finding.triage.sort((a, b) =>
                     a.lastObserved - b.lastObserved
                 ).pop()
-                if (!queueStore.total) {
-                    queueStore.setTotal(data.findingCount)
-                    queueStore.incrementProgress()
-                }
             }
         } catch (e) {
             console.error(e)
@@ -55,7 +51,12 @@ class Controller {
 }
 
 const controller = reactive(new Controller())
-onMounted(() => Member.ensureSession().then(controller.refresh))
+onMounted(() => {
+    Member.ensureSession()
+        .then(controller.refresh)
+        .then(() => window.history.replaceState({ ...history.state }, '', `${window.location.origin}/issue/${state.finding.uuid}`))
+})
+
 </script>
 
 <template>
@@ -104,7 +105,12 @@ onMounted(() => Member.ensureSession().then(controller.refresh))
             variant="tonal"
         />
         <VCardText>
-            <Finding v-if="state.finding" :finding="state.finding" :current-triage="state.currentTriage" />
+            <Finding
+                v-if="state.finding"
+                :finding="state.finding"
+                :current-triage="state.currentTriage"
+                :queue-remaining="state.queueRemaining"
+            />
         </VCardText>
     </VCard>
     <v-empty-state

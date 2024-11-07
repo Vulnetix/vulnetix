@@ -679,20 +679,40 @@ export class MitreCVE {
         const url = this.constructURL(cveId)
         const resp = await this.fetchJSON(url)
 
-        if (resp?.content) {
+        if (isJSON(resp?.content)) {
+            const data = JSON.parse(resp.content)
             const createLog = await prisma.IntegrationUsageLog.create({
                 data: {
                     memberEmail,
                     orgId,
                     source: 'mitre-cve',
                     request: JSON.stringify({ method: "GET", url }).trim(),
-                    response: JSON.stringify({ body: convertIsoDatesToTimestamps(resp.content), status: resp.status }).trim(),
+                    response: JSON.stringify({ body: convertIsoDatesToTimestamps(data), status: resp.status }).trim(),
                     statusCode: resp?.status || 500,
                     createdAt: new Date().getTime(),
                 }
             })
             console.log(`MitreCVE.query()`, createLog)
-            return resp.content
+            return data
+        } else {
+            const response = await this.fetchJSON(`https://cveawg.mitre.org/api/cve-id/${cveId}`)
+
+            if (isJSON(response?.content)) {
+                const cveData = JSON.parse(response.content)
+                const log = await prisma.IntegrationUsageLog.create({
+                    data: {
+                        memberEmail,
+                        orgId,
+                        source: 'mitre-cve',
+                        request: JSON.stringify({ method: "GET", url }).trim(),
+                        response: JSON.stringify({ body: convertIsoDatesToTimestamps(cveData), status: response.status }).trim(),
+                        statusCode: response?.status || 500,
+                        createdAt: new Date().getTime(),
+                    }
+                })
+                console.log(`MitreCVE.query()`, log)
+                return cveData
+            }
         }
     }
 }

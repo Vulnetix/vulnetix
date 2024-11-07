@@ -1,3 +1,4 @@
+import { processFinding } from '@/finding';
 import { AuthResult, Server } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
@@ -69,16 +70,7 @@ export async function onRequestGet(context) {
                 }
             })
 
-            finding.references = finding?.referencesJSON ? JSON.parse(finding.referencesJSON) : []
-            finding.timeline = finding?.timelineJSON ? JSON.parse(finding.timelineJSON) : []
-            finding.exploits = finding?.exploitsJSON ? JSON.parse(finding.exploitsJSON) : []
-            finding.knownExploits = finding?.knownExploitsJSON ? JSON.parse(finding.knownExploitsJSON) : []
-            finding.aliases = finding?.aliases ? JSON.parse(finding.aliases) : []
-            finding.cwes = finding?.cwes ? JSON.parse(finding.cwes) : []
-            delete finding.referencesJSON
-            delete finding.knownExploitsJSON
-            delete finding.timelineJSON
-            delete finding.exploitsJSON
+            finding = await processFinding(prisma, env.r2artifacts, verificationResult, finding)
 
             if (finding?.spdx?.artifact?.uuid) {
                 const resp = await env.r2artifacts.get(`spdx/${finding.spdx.artifact.uuid}.json`)

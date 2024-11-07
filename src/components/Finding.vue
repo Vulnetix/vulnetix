@@ -1,9 +1,7 @@
 <script setup>
-import { useQueueStore } from '@/stores/findingQueue';
 import { getPastelColor } from '@/utils';
+import { onMounted } from 'vue';
 import { useTheme } from 'vuetify';
-
-const queueStore = useQueueStore()
 
 const props = defineProps({
     finding: {
@@ -14,6 +12,10 @@ const props = defineProps({
         type: Object,
         required: true,
     },
+    queueRemaining: {
+        type: Number,
+        required: false,
+    },
 })
 
 const { global } = useTheme()
@@ -22,6 +24,9 @@ const dialog = ref(false)
 const response = ref('')
 const justification = ref('')
 const justificationText = ref('')
+const versions = ref([])
+
+onMounted(() => generateVersions())
 
 const Response = {
     false_positive: "False Positive",
@@ -57,7 +62,7 @@ const handleNext = async () => {
     // state.loading = true
     // await client.get(`/issue/${findingUuid}?seen=1`)
     // await controller.refresh()
-    queueStore.incrementProgress()
+    // queueStore.incrementProgress()
 }
 
 const handleTriage = () => {
@@ -67,24 +72,24 @@ const handleTriage = () => {
 
     // Save result logic here
 
-    queueStore.incrementProgress()
+    // queueStore.incrementProgress()
 }
 
 const timelineEvents = computed(() => {
     const events = [
         {
-            value: 'First discovered in repo',
+            value: 'First discovered in repository',
             time: props.finding.createdAt,
             color: getPastelColor(),
         },
         {
-            value: 'Last synchronized with finding source',
+            value: `Last synchronized with ${props.finding.source}`,
             time: props.finding.modifiedAt,
             color: getPastelColor(),
         },
         {
             value: 'Advisory first published',
-            time: props.finding.publishedAt-1,
+            time: props.finding.publishedAt - 1,
             color: getPastelColor(),
         }
     ]
@@ -107,7 +112,7 @@ const timelineEvents = computed(() => {
 
     if (props.currentTriage?.seenAt) {
         events.push({
-            value: `Reviewed by ${props.currentTriage.memberEmail}`,
+            value: props.currentTriage?.memberEmail ? `Reviewed by ${props.currentTriage.memberEmail}` : 'Pix Automated',
             time: props.currentTriage.seenAt,
             color: getPastelColor(),
         })
@@ -123,7 +128,7 @@ const timelineEvents = computed(() => {
 
     if (props.finding.spdx?.createdAt) {
         events.push({
-            value: 'SPDX BOM created',
+            value: 'SPDX BOM published',
             time: props.finding.spdx.createdAt,
             color: getPastelColor(),
         })
@@ -131,7 +136,7 @@ const timelineEvents = computed(() => {
 
     if (props.finding.cdx?.createdAt) {
         events.push({
-            value: 'CycloneDX BOM created',
+            value: 'CycloneDX BOM published',
             time: props.finding.cdx.createdAt,
             color: getPastelColor(),
         })
@@ -144,216 +149,601 @@ const timelineEvents = computed(() => {
     }
     return events.sort((a, b) => a.time - b.time)
 })
+
+const generateVersions = () => {
+    if (!props.finding?.vulnerableVersionRange) {
+        return
+    }
+    const versionSet = new Set()
+    const ranges = props.finding.vulnerableVersionRange.split('||').map(r => r.trim());
+
+    ranges.forEach(range => {
+        const [comparison, version] = range.split(' ');
+
+        if (version.match(/[a-z]$/)) {
+            const baseVersion = version.replace(/[a-z]$/, '');
+            const letterSuffix = version.slice(-1);
+            if (comparison.includes('>=')) {
+                generateLetterVersions(baseVersion, letterSuffix, 'z')
+                    .forEach(v => versionSet.add(v));
+            } else if (comparison.includes('<')) {
+                generateLetterVersions(baseVersion, 'a', letterSuffix)
+                    .forEach(v => versionSet.add(v));
+            }
+        } else {
+            const [major, minor, patch] = version.split('.').map(Number);
+            if (comparison.includes('>=')) {
+                const nextMinor = `${major}.${minor + 1}.0`;
+                generateNumericVersions(version, nextMinor)
+                    .forEach(v => versionSet.add(v));
+            } else if (comparison.includes('<')) {
+                const prevVersion = `${major}.${minor}.${Math.max(0, patch - 1)}`;
+                generateNumericVersions(prevVersion, version)
+                    .forEach(v => versionSet.add(v));
+            }
+        }
+    })
+    if (props.finding?.packageVersion) {
+        versionSet.add(props.finding.packageVersion);
+    }
+    if (props.finding?.fixVersion) {
+        versionSet.add(props.finding.fixVersion);
+    }
+    // Convert to array, sort, and add metadata
+    Array.from(versionSet)
+        .sort((a, b) => compareVersions(a, b))
+        .forEach(version => versions.value.push({
+            version,
+            isCurrentVersion: version === props.finding.packageVersion,
+            isVulnerable: isVersionVulnerable(
+                version,
+                parseVersionRanges(props.finding.vulnerableVersionRange)
+            )
+        }))
+}
+
+const generateNumericVersions = (start, end) => {
+    const versionSet = new Set();
+    const [startMajor, startMinor, startPatch] = start.split('.').map(Number);
+    const [endMajor, endMinor, endPatch] = end.split('.').map(Number);
+
+    for (let major = startMajor; major <= endMajor; major++) {
+        for (let minor = (major === startMajor ? startMinor : 0);
+            minor <= (major === endMajor ? endMinor : 99); minor++) {
+            for (let patch = (major === startMajor && minor === startMinor ? startPatch : 0);
+                patch <= (major === endMajor && minor === endMinor ? endPatch : 99); patch++) {
+                versionSet.add(`${major}.${minor}.${patch}`);
+            }
+        }
+    }
+    return versionSet;
+}
+
+const generateLetterVersions = (baseVersion, start = 'a', end = 'z') => {
+    const versionSet = new Set();
+    for (let i = start.charCodeAt(0); i <= end.charCodeAt(0); i++) {
+        versionSet.add(`${baseVersion}${String.fromCharCode(i)}`);
+    }
+    return versionSet;
+}
+
+const parseVersionRanges = vulnerableVersionsStr => {
+    return vulnerableVersionsStr.split('||').map(range => {
+        const [comparison, version] = range.trim().split(' ');
+        return {
+            comparison: comparison.replace('>=', 'gte')
+                .replace('>', 'gt')
+                .replace('<=', 'lte')
+                .replace('<', 'lt'),
+            version: version
+        };
+    });
+}
+
+const compareVersions = (v1, v2) => {
+    const v1Parts = v1.split('.').map(part => {
+        const matches = part.match(/(\d+)([a-z]*)/);
+        return matches ? [parseInt(matches[1]), matches[2] || ''] : [parseInt(part), ''];
+    });
+
+    const v2Parts = v2.split('.').map(part => {
+        const matches = part.match(/(\d+)([a-z]*)/);
+        return matches ? [parseInt(matches[1]), matches[2] || ''] : [parseInt(part), ''];
+    });
+
+    for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
+        const [num1 = 0, suffix1 = ''] = v1Parts[i] || [];
+        const [num2 = 0, suffix2 = ''] = v2Parts[i] || [];
+
+        if (num1 !== num2) return num1 - num2;
+        if (suffix1 !== suffix2) return suffix1.localeCompare(suffix2);
+    }
+
+    return 0;
+}
+
+const isVersionVulnerable = (version, vulnerableRanges) => {
+    return vulnerableRanges.some(range => {
+        const comparison = compareVersions(version, range.version);
+        switch (range.comparison) {
+            case 'gt': return comparison > 0;
+            case 'gte': return comparison >= 0;
+            case 'lt': return comparison < 0;
+            case 'lte': return comparison <= 0;
+            default: return false;
+        }
+    });
+}
+const scoreColor = computed(() => {
+    if (!props.currentTriage?.epssScore) return;
+    if (props.currentTriage.epssScore < 0.01) return 'success'
+    if (props.currentTriage.epssScore < 0.1) return 'info'
+    if (props.currentTriage.epssScore < 0.35) return 'warning'
+    return 'error'
+})
+
+const cvssVersion = computed(() => {
+    if (!props.currentTriage?.cvssVector) return null
+    const match = props.currentTriage.cvssVector.match(/CVSS:(\d+\.\d+)/)
+    return match ? match[1] : null
+})
+
+const cvssCalculatorUrl = computed(() => {
+    if (!props.currentTriage?.cvssVector) return;
+    const baseUrl = 'https://nvd.nist.gov/vuln-metrics/cvss/'
+    const version = cvssVersion.value
+
+    if (version.startsWith('4')) {
+        return `${baseUrl}v4-calculator?vector=${encodeURIComponent(props.currentTriage.cvssVector.split('/').slice(1).join('/'))}&version=4.0`
+    } else if (version.startsWith('3')) {
+        return `${baseUrl}v3-calculator?vector=${encodeURIComponent(props.currentTriage.cvssVector.split('/').slice(1).join('/'))}&version=${version}`
+    }
+})
+
+const cvssColor = computed(() => {
+    if (!props.currentTriage?.cvssScore) return 'base'
+    if (props.currentTriage.cvssScore < 4.0) return 'success'
+    if (props.currentTriage.cvssScore < 7.0) return 'info'
+    if (props.currentTriage.cvssScore < 9.0) return 'warning'
+    return 'error'
+})
+
+const cvssChipColor = computed(() => {
+    if (cvssVersion.value.startsWith('4')) return 'primary'
+    if (cvssVersion.value.startsWith('3')) return 'secondary'
+    return getPastelColor()
+})
 </script>
 
 <template>
-    <v-container
+    <VContainer
         fluid
         class="pa-0"
         v-if="props.finding"
     >
-        <v-row>
-            <v-col cols="12">
-                <v-card>
+        <VRow>
+            <VCol cols="12">
+                <VCard>
                     <!-- Progress Header -->
-                    <v-card-title class="d-flex justify-space-between align-center">
+                    <VCardTitle class="d-flex justify-space-between align-center">
                         <div>
                             <span class="text-h5">{{ props.finding.detectionTitle }}</span>
-                            <v-chip
+                            <VChip
                                 v-if="props.finding.malicious"
                                 color="error"
                                 class="ml-2"
                             >
                                 Malicious Package
-                                <v-icon
+                                <VIcon
                                     end
                                     icon="mdi-alert-circle"
                                 />
-                            </v-chip>
+                            </VChip>
                         </div>
-                        <div class="d-flex align-center">
-                            <span class="mr-4">{{ queueStore.progress }} / {{ queueStore.total }}</span>
+                        <div
+                            class="d-flex align-center"
+                            v-if="props.queueRemaining"
+                        >
+                            <span class="mr-4">{{ props.queueRemaining }} remain</span>
                         </div>
-                    </v-card-title>
+                    </VCardTitle>
 
-                    <v-card-text>
+                    <VCardText>
                         <!-- Basic Info -->
-                        <v-row>
-                            <v-col
+                        <VRow>
+                            <VCol
                                 cols="12"
                                 md="6"
                             >
-                                <v-list density="compact">
-                                    <v-list-item>
+                                <VList density="compact">
+                                    <VListItem>
                                         <template v-slot:prepend>
-                                            <v-icon icon="proicons:open-source" />
+                                            <VIcon icon="mdi-package-variant" />
                                         </template>
-                                        <v-list-item-title>Source: {{ props.finding.source }}</v-list-item-title>
-                                    </v-list-item>
-
-                                    <v-list-item>
-                                        <template v-slot:prepend>
-                                            <v-icon icon="mdi-package-variant" />
-                                        </template>
-                                        <v-list-item-title>
+                                        <VListItemTitle>
                                             Package: {{ props.finding.packageEcosystem }}:{{ props.finding.packageName
                                             }}@{{
                                                 props.finding.packageVersion || '*' }}
-                                        </v-list-item-title>
-                                    </v-list-item>
+                                        </VListItemTitle>
+                                    </VListItem>
 
-                                    <v-list-item v-if="props.finding.vendor || props.finding.product">
+                                    <VListItem v-if="props.finding.vendor || props.finding.product">
                                         <template v-slot:prepend>
-                                            <v-icon icon="mdi-domain" />
+                                            <VIcon icon="mdi-domain" />
                                         </template>
-                                        <v-list-item-title>
+                                        <VListItemTitle>
                                             {{ props.finding.vendor }} {{ props.finding.product }}
-                                        </v-list-item-title>
-                                    </v-list-item>
-                                </v-list>
-                            </v-col>
+                                        </VListItemTitle>
+                                    </VListItem>
 
-                            <v-col
+                                    <VListItem v-if="props.finding?.cpe">
+                                        <template v-slot:prepend>
+                                            <VIcon icon="hugeicons:package-search" />
+                                        </template>
+                                        <VListItemTitle>
+                                            CPE: {{ props.finding.cpe }}
+                                        </VListItemTitle>
+                                    </VListItem>
+                                </VList>
+                            </VCol>
+
+                            <VCol
                                 cols="12"
                                 md="6"
                             >
                                 <div class="d-flex flex-wrap gap-2">
-                                    <v-chip
+                                    <VChip
                                         v-for="alias in props.finding.aliases"
                                         :key="alias"
                                         color="primary"
                                         variant="outlined"
                                     >
                                         {{ alias }}
-                                    </v-chip>
+                                    </VChip>
 
-                                    <v-chip
+                                    <VChip
                                         v-for="cwe in props.finding.cwes"
                                         :key="cwe"
                                         color="info"
                                     >
                                         {{ cwe }}
-                                    </v-chip>
+                                    </VChip>
                                 </div>
-                            </v-col>
+                            </VCol>
 
-                            <v-col
+                            <VCol
                                 cols="12"
                                 md="6"
                             >
-                                <v-card variant="outlined" title="Data Sources">
-                                    <v-card-text>
-                                        <v-list density="compact">
-                                            <v-list-item
-                                                v-if="props.finding.cdx?.artifact?.downloadLinks?.length"
-                                            >
+                                <VCard
+                                    variant="outlined"
+                                    title="Data Sources"
+                                >
+                                    <VCardText>
+                                        <VList density="compact">
+                                            <VListItem v-if="props.finding.cdx?.artifact?.downloadLinks?.length">
                                                 <template v-slot:prepend>
-                                                    <v-icon aria-label="CycloneDX" role="img" aria-hidden="false">
-                                                        <img src="@images/icons/logo/cyclonedx.png" width="25"/>
-                                                    </v-icon>
+                                                    <VIcon
+                                                        aria-label="CycloneDX"
+                                                        role="img"
+                                                        aria-hidden="false"
+                                                    >
+                                                        <img
+                                                            src="@images/icons/logo/cyclonedx.png"
+                                                            width="25"
+                                                        />
+                                                    </VIcon>
                                                 </template>
-                                                <v-list-item-title>
-                                                    {{ [props.finding.cdx.name, props.finding.cdx?.version].filter(a => !!a).join('@') }}
-                                                    <v-btn
+                                                <VListItemTitle>
+                                                    {{ [props.finding.cdx.name, props.finding.cdx?.version].filter(a =>
+                                                        !!a).join('@') }}
+                                                    <VBtn
                                                         icon="mdi:download"
                                                         :href="props.finding.cdx.artifact.downloadLinks[0].url"
                                                         download
                                                         variant="outlined"
                                                         size="x-small"
                                                     >
-                                                    </v-btn>
-                                                </v-list-item-title>
-                                            </v-list-item>
-        
-                                            <v-list-item
-                                                v-if="props.finding.spdx?.artifact?.downloadLinks?.length"
+                                                    </VBtn>
+                                                </VListItemTitle>
+                                            </VListItem>
+
+                                            <VListItem
+                                                v-if="props.finding.source === 'osv.dev'"
+                                                :href="`https://osv.dev/vulnerability/${props.finding.detectionTitle}`"
+                                                target="_blank"
                                             >
                                                 <template v-slot:prepend>
-                                                    <v-icon aria-label="SPDX" role="img" aria-hidden="false">
-                                                        <img src="@images/icons/logo/spdx.png" width="25"/>
-                                                    </v-icon>
-                                                </template>
-                                                <v-list-item-title>
-                                                    {{ [props.finding.spdx.name, props.finding.spdx?.version].filter(a => !!a).join('@') }}
-                                                    <v-btn
-                                                        icon="mdi:download"
-                                                        :href="props.finding.spdx.artifact.downloadLinks[0].url"
-                                                        download
-                                                        variant="outlined"
-                                                        size="x-small"
+                                                    <VIcon
+                                                        aria-label="OSV.dev"
+                                                        role="img"
+                                                        aria-hidden="false"
                                                     >
-                                                    </v-btn>
-                                                </v-list-item-title>
-                                            </v-list-item>
-        
-                                            <v-list-item v-if="props.finding.repoName">
-                                                <template v-slot:prepend>
-                                                    <v-icon icon="mdi-source-repository" />
+                                                        <img
+                                                            src="@images/icons/logo/osv.png"
+                                                            width="25"
+                                                        />
+                                                    </VIcon>
                                                 </template>
-                                                <v-list-item-title>{{ props.finding.repoName }}</v-list-item-title>
-                                            </v-list-item>
-        
-                                        </v-list>
-                                    </v-card-text>
-                                </v-card>
-                            </v-col>
+                                                <template v-slot:append>
+                                                    <VIcon icon="mdi:open-in-new" />
+                                                </template>
+                                                Purl: {{ props.finding.purl }}
+                                            </VListItem>
+                                            <template
+                                                v-for="(alias, k) in props.finding.aliases"
+                                                :key="k"
+                                            >
+                                                <VListItem
+                                                    v-if="alias.startsWith('CVE-')"
+                                                    :href="`https://www.cve.org/CVERecord?id=${alias}`"
+                                                    target="_blank"
+                                                >
+                                                    <template v-slot:prepend>
+                                                        <VIcon
+                                                            aria-label="cve.org"
+                                                            role="img"
+                                                            aria-hidden="false"
+                                                        >
+                                                            <img
+                                                                src="@images/icons/logo/cve.png"
+                                                                width="25"
+                                                            />
+                                                        </VIcon>
+                                                    </template>
+                                                    <template v-slot:append>
+                                                        <VIcon icon="mdi:open-in-new" />
+                                                    </template>
+                                                    {{ alias }}
+                                                </VListItem>
 
-                            <!-- CVSS & EPSS Info -->
-                            <v-col
+                                            </template>
+
+                                            <VListItem
+                                                v-if="props.finding.spdx?.artifact?.downloadLinks?.length"
+                                                :href="props.finding.spdx.artifact.downloadLinks[0].url"
+                                                target="_blank"
+                                            >
+                                                <template v-slot:prepend>
+                                                    <VIcon
+                                                        aria-label="SPDX"
+                                                        role="img"
+                                                        aria-hidden="false"
+                                                    >
+                                                        <img
+                                                            src="@images/icons/logo/spdx.png"
+                                                            width="25"
+                                                        />
+                                                    </VIcon>
+                                                </template>
+                                                <template v-slot:append>
+                                                    <VIcon icon="mdi:download" />
+                                                </template>
+                                                <VTooltip
+                                                    activator="parent"
+                                                    location="top"
+                                                >Download SPDX Artifact</VTooltip>
+                                                {{ [props.finding.spdx.name,
+                                                props.finding.spdx?.version].filter(a => !!a).join('@') }}
+                                            </VListItem>
+
+                                            <VListItem
+                                                v-if="props.finding?.repoSource === 'GitHub'"
+                                                :href="`https://github.com/` + props.finding.repoName"
+                                                target="_blank"
+                                            >
+                                                <template v-slot:prepend>
+                                                    <VIcon icon="mdi-github" />
+                                                </template>
+                                                <template v-slot:append>
+                                                    <VIcon icon="mdi:open-in-new" />
+                                                </template>
+                                                <VTooltip
+                                                    activator="parent"
+                                                    location="top"
+                                                >Open {{ props.finding.repoSource }} in a new tab
+                                                </VTooltip>
+                                                {{ props.finding.repoName }}
+                                            </VListItem>
+
+                                            <VListItem
+                                                v-if="props.currentTriage?.cvssVector"
+                                                :href="cvssCalculatorUrl"
+                                                target="_blank"
+                                            >
+                                                <template v-slot:prepend>
+                                                    <VIcon
+                                                        aria-label="NIST NVD"
+                                                        role="img"
+                                                        aria-hidden="false"
+                                                    >
+                                                        <img
+                                                            src="@images/icons/logo/nvd.png"
+                                                            width="25"
+                                                        />
+                                                    </VIcon>
+                                                </template>
+                                                <template v-slot:append>
+                                                    <VIcon icon="hugeicons:calculate" />
+                                                </template>
+                                                <VTooltip
+                                                    activator="parent"
+                                                    location="top"
+                                                >Open NVD Calculator in a new tab
+                                                </VTooltip>
+                                                {{ props.currentTriage.cvssVector }}
+                                            </VListItem>
+
+                                            <VListItem
+                                                v-if="props.currentTriage?.epssScore"
+                                                href="https://www.first.org/epss/data_stats"
+                                                target="_blank"
+                                            >
+                                                <template v-slot:prepend>
+                                                    <VIcon
+                                                        aria-label="FIRST.org"
+                                                        role="img"
+                                                        aria-hidden="false"
+                                                    >
+                                                        <img
+                                                            src="@images/icons/logo/first.png"
+                                                            width="25"
+                                                        />
+                                                    </VIcon>
+                                                </template>
+                                                <template v-slot:append>
+                                                    <VIcon icon="mdi:open-in-new" />
+                                                </template>
+                                                Exploit Prediction Scoring System
+                                            </VListItem>
+                                        </VList>
+                                    </VCardText>
+                                </VCard>
+                            </VCol>
+
+                            <!-- Prioritisation -->
+                            <VCol
                                 cols="12"
                                 md="6"
                             >
-                                <v-card variant="outlined" title="Enrichment">
-                                    <v-card-text>
-                                        <div
-                                            v-if="props.currentTriage?.cvssVector"
-                                            class="d-flex align-center mb-2"
-                                        >
-                                            <v-tooltip :text="props.currentTriage?.cvssVector">
-                                                <template v-slot:activator="{ props }">
-                                                    <a
-                                                        v-bind="props"
-                                                        :href="`https://nvd.nist.gov/vuln-metrics/cvss/v3-calculator?vector=${props.currentTriage?.cvssVector}`"
-                                                        target="_blank"
-                                                        class="text-decoration-none"
-                                                        :style="`color: ${getSeverityColor(props.currentTriage.cvssScore)};`"
-                                                    >
-                                                        CVSS Score: {{ props.currentTriage.cvssScore }}
-                                                    </a>
-                                                </template>
-                                            </v-tooltip>
-                                        </div>
-                                        <div v-if="props.currentTriage?.epssScore">
-                                            EPSS Score: {{ props.currentTriage?.epssScore }}
-                                            ({{ props.currentTriage?.epssPercentile }} percentile)
-                                        </div>
+                                <VCard
+                                    variant="outlined"
+                                    title="Risk Scores"
+                                >
+                                    <VCardText>
+                                        <!-- SSVC -->
                                         <div v-if="props.currentTriage?.ssvc">
                                             SSVC: {{ props.currentTriage?.ssvc }}
                                         </div>
-                                        <div v-if="props.finding.fixVersion">
-                                            Fixed in version: {{ props.finding.fixVersion }}
-                                        </div>
-                                        <div v-if="props.finding.vulnerableVersionRange">
-                                            Vulnerable versions: {{ props.finding.vulnerableVersionRange }}
-                                        </div>
-                                        <time
-                                            v-if="props.currentTriage?.lastObserved"
-                                            :datetime="new Date(props.currentTriage?.lastObserved).toISOString()"
+
+                                        <!-- CVSS Score -->
+                                        <div
+                                            class="mb-4"
+                                            v-if="props.currentTriage?.cvssScore"
                                         >
-                                            Last observed: {{ new Date(props.currentTriage?.lastObserved).toLocaleString() }}
-                                        </time>
-                                    </v-card-text>
-                                </v-card>
-                            </v-col>
+                                            <div class="d-flex justify-space-between align-center mb-2">
+                                                <div class="d-flex align-center">
+                                                    <span class="font-weight-medium">CVSS</span>
+                                                    <v-chip
+                                                        :color="cvssChipColor"
+                                                        class="ml-2"
+                                                        size="small"
+                                                    >
+                                                        v{{ cvssVersion }}
+                                                    </v-chip>
+                                                </div>
+                                                <span class="font-weight-bold">{{ props.currentTriage.cvssScore
+                                                    }} / 10.0</span>
+                                            </div>
+                                            <v-progress-linear
+                                                :model-value="parseInt(props.currentTriage.cvssScore, 10)"
+                                                :color="cvssColor"
+                                                height="10"
+                                                max="10"
+                                                rounded
+                                            />
+                                        </div>
+
+                                        <!-- EPSS Score -->
+                                        <div
+                                            class="mb-4"
+                                            v-if="props.currentTriage?.epssScore"
+                                        >
+                                            <div class="d-flex justify-space-between align-center mb-2">
+                                                <span class="font-weight-medium">EPSS Score</span>
+                                                <span class="font-monospace">{{
+                                                    parseFloat(props.currentTriage.epssScore).toFixed(5)
+                                                }}</span>
+                                            </div>
+                                            <VProgressLinear
+                                                :model-value="parseFloat(props.currentTriage.epssScore).toFixed(5)"
+                                                :color="scoreColor"
+                                                height="10"
+                                                max="1"
+                                                rounded
+                                            >
+                                            </VProgressLinear>
+                                        </div>
+
+                                        <!-- Percentile -->
+                                        <div
+                                            class="mb-4"
+                                            v-if="props.currentTriage?.epssPercentile"
+                                        >
+                                            <div class="d-flex justify-space-between align-center mb-2">
+                                                <span class="font-weight-medium">EPSS Percentile</span>
+                                                <span class="font-monospace">{{
+                                                    parseFloat(props.currentTriage.epssPercentile).toFixed(5)
+                                                }}%</span>
+                                            </div>
+                                            <VProgressLinear
+                                                :model-value="parseFloat(props.currentTriage.epssPercentile).toFixed(5)"
+                                                color="primary"
+                                                height="10"
+                                                max="1"
+                                                rounded
+                                            ></VProgressLinear>
+                                        </div>
+
+                                    </VCardText>
+                                </VCard>
+                                <VCard
+                                    variant="outlined"
+                                    title="Package Versions"
+                                >
+                                    <VCardText>
+                                        <VList density="compact">
+                                            <VListItem
+                                                v-for="{ version, isCurrentVersion, isVulnerable } in versions"
+                                                :key="version"
+                                            >
+                                                <template v-slot:prepend>
+                                                    <span class="font-mono">
+                                                        {{ version }}
+                                                    </span>
+                                                </template>
+
+                                                <span
+                                                    v-if="isCurrentVersion"
+                                                    class="font-mono ml-2 text-info font-semibold"
+                                                >
+                                                    (Current)
+                                                </span>
+                                                <VTooltip
+                                                    v-if="version === props.finding.fixVersion"
+                                                    :text="props.finding.vulnerableVersionRange"
+                                                    location="end"
+                                                >
+                                                    <template v-slot:activator="{ props }">
+                                                        <span
+                                                            v-bind="props"
+                                                            class="ml-2 text-success font-semibold"
+                                                        >
+                                                            (Fix)
+                                                        </span>
+                                                    </template>
+                                                </VTooltip>
+                                                <span
+                                                    v-if="isVulnerable"
+                                                    class="ml-2 text-error text-sm font-medium"
+                                                >
+                                                    Vulnerable
+                                                </span>
+                                            </VListItem>
+                                        </VList>
+                                    </VCardText>
+                                </VCard>
+                            </VCol>
 
                             <!-- Timeline -->
-                            <v-col cols="8">
-                                <v-card variant="outlined" title="Timeline">
-                                    <v-card-text>
-                                        <v-timeline
-                                            align="center"
-                                        >
-                                            <v-timeline-item
+                            <VCol cols="8">
+                                <VCard
+                                    variant="outlined"
+                                    title="Timeline"
+                                >
+                                    <VCardText>
+                                        <VTimeline align="center">
+                                            <VTimelineItem
                                                 v-for="(event, i) in timelineEvents"
                                                 :key="i"
                                                 :dot-color="event.color"
@@ -367,74 +757,45 @@ const timelineEvents = computed(() => {
                                                     ></div>
                                                 </template>
                                                 <template v-slot:default>
-                                                    <v-card>
-                                                        <v-card-title class="text-h6" :style="`color: rgb(var(--v-theme-on-surface-bright)); background-color: ${event.color};`">
+                                                    <VCard>
+                                                        <VCardTitle
+                                                            class="text-h6"
+                                                            :style="`color: rgb(var(--v-theme-on-surface-bright)); background-color: ${event.color};`"
+                                                        >
                                                             {{ event.value }}
-                                                        </v-card-title>
-                                                    </v-card>
+                                                        </VCardTitle>
+                                                    </VCard>
                                                 </template>
-                                            </v-timeline-item>
-                                        </v-timeline>
-                                    </v-card-text>
-                                </v-card>
-                            </v-col>
-
-                            <!-- Dependency Tree -->
-                            <v-col
-                                cols="8"
-                                v-if="props.finding.source === 'sca'"
-                            >
-                                <v-card variant="outlined">
-                                    <v-card-title>Dependencies (TODO locked ver)</v-card-title>
-                                    <v-card-text>
-                                        <v-treeview
-                                            v-if="props.finding?.cdxJson?.dependencies"
-                                            :items="props.finding.cdxJson.dependencies"
-                                            item-children="dependsOn"
-                                            item-text="ref"
-                                        />
-                                        <v-treeview
-                                            v-else-if="props.finding?.spdxJson?.packages"
-                                            :items="props.finding.spdxJson.packages"
-                                            item-children="relationships"
-                                            item-text="name"
-                                        />
-                                    </v-card-text>
-                                </v-card>
-                            </v-col>
+                                            </VTimelineItem>
+                                        </VTimeline>
+                                    </VCardText>
+                                </VCard>
+                            </VCol>
 
                             <!-- References List -->
-                            <v-col
+                            <VCol
                                 cols="4"
                                 rows="2"
                             >
-                                <v-card variant="outlined" title="References">
-                                    <v-card-text>
-                                        <v-list>
-                                            <v-list-item
+                                <VCard
+                                    variant="outlined"
+                                    title="References"
+                                >
+                                    <VCardText>
+                                        <VList>
+                                            <VListItem
                                                 v-for="ref in [...props.finding?.references || [], props.finding?.advisoryUrl]"
                                                 :key="ref"
                                                 :href="ref"
                                                 target="_blank"
                                             >
                                                 <template v-slot:prepend>
-                                                    <v-icon icon="mdi:open-in-new" />
+                                                    <VIcon icon="mdi:open-in-new" />
                                                 </template>
                                                 {{ ref }}
-                                            </v-list-item>
+                                            </VListItem>
 
-                                            <v-list-item
-                                                v-if="props.finding?.repoSource === 'GitHub'"
-                                                :href="`https://github.com/${props.finding.repoName}`"
-                                                target="_blank"
-                                            >
-                                                <template v-slot:prepend>
-                                                    <v-icon icon="mdi-github" />
-                                                </template>
-                                                {{ props.finding.repoName }}
-                                            </v-list-item>
-
-                                            <v-list-item
+                                            <VListItem
                                                 v-for="exploit in [...props.finding?.exploits || [], ...props.finding?.knownExploits || []]"
                                                 :key="exploit"
                                                 :href="exploit"
@@ -442,115 +803,109 @@ const timelineEvents = computed(() => {
                                                 color="error"
                                             >
                                                 <template v-slot:prepend>
-                                                    <v-icon
+                                                    <VIcon
                                                         icon="mdi:alert-circle"
                                                         color="error"
                                                     />
                                                 </template>
                                                 {{ exploit }}
-                                            </v-list-item>
-                                        </v-list>
-                                    </v-card-text>
-                                </v-card>
-                            </v-col>
-                        </v-row>
+                                            </VListItem>
+                                        </VList>
+                                    </VCardText>
+                                </VCard>
+                            </VCol>
+                        </VRow>
+                    </VCardText>
 
-                        <!-- References -->
-                        <v-row class="mt-4">
-                            <v-col cols="12">
-                                
-                            </v-col>
-                        </v-row>
-                    </v-card-text>
-
-                    <v-card-actions>
-                        <v-spacer />
-                        <v-dialog
+                    <VCardActions>
+                        <VSpacer />
+                        <VDialog
                             v-model="dialog"
                             max-width="600"
                         >
                             <template v-slot:activator="{ props: activatorProps }">
-                                <v-btn
-                                class="text-none font-weight-regular"
-                                prepend-icon="mdi-account"
-                                text="Triage"
-                                variant="tonal"
-                                v-bind="activatorProps"
-                                ></v-btn>
+                                <VBtn
+                                    class="text-none font-weight-regular"
+                                    prepend-icon="flowbite:fix-tables-outline"
+                                    text="Triage"
+                                    variant="tonal"
+                                    v-bind="activatorProps"
+                                ></VBtn>
                             </template>
 
-                            <v-card>
-                                <v-card-text>
+                            <VCard>
+                                <VCardText>
                                     <!-- Analysis Form -->
-                                    <v-row dense>
-                                        <v-col
+                                    <VRow dense>
+                                        <VCol
                                             cols="12"
                                             md="6"
                                         >
-                                            <v-select
+                                            <VSelect
                                                 v-model="response"
                                                 :items="Object.values(Response)"
                                                 label="Response*"
                                                 required
                                             />
-                                        </v-col>
+                                        </VCol>
 
-                                        <v-col
+                                        <VCol
                                             cols="12"
                                             md="6"
                                         >
-                                            <v-select
+                                            <VSelect
                                                 v-model="justification"
                                                 :items="Object.values(Justification)"
                                                 label="Justification*"
                                                 required
                                             />
-                                        </v-col>
+                                        </VCol>
 
-                                        <v-col cols="12">
-                                            <v-textarea
+                                        <VCol cols="12">
+                                            <VTextarea
                                                 v-model="justificationText"
                                                 label="Additional Notes"
                                                 rows="3"
                                             />
-                                        </v-col>
-                                    </v-row>
+                                        </VCol>
+                                    </VRow>
 
-                                <small class="text-caption text-medium-emphasis">*indicates required field</small>
-                                </v-card-text>
+                                    <small class="text-caption text-medium-emphasis">*indicates required field</small>
+                                </VCardText>
 
-                                <v-divider></v-divider>
+                                <VDivider />
 
-                                <v-card-actions>
-                                <v-spacer></v-spacer>
+                                <VCardActions>
+                                    <VSpacer />
 
-                                <v-btn
-                                    text="Close"
-                                    variant="plain"
-                                    @click="dialog = false"
-                                ></v-btn>
+                                    <VBtn
+                                        text="Close"
+                                        variant="plain"
+                                        @click="dialog = false"
+                                    ></VBtn>
 
-                                <v-btn
-                                    color="primary"
-                                    text="Save"
-                                    variant="tonal"
-                                    :disabled="!response || !justification"
-                                    @click="handleTriage"
-                                ></v-btn>
-                                </v-card-actions>
-                            </v-card>
-                        </v-dialog>
-                        <v-btn
+                                    <VBtn
+                                        color="primary"
+                                        text="Save"
+                                        variant="tonal"
+                                        :disabled="!response || !justification"
+                                        @click="handleTriage"
+                                    ></VBtn>
+                                </VCardActions>
+                            </VCard>
+                        </VDialog>
+                        <VBtn
                             color="primary"
                             @click="handleNext"
+                            v-if="props.queueRemaining"
                         >
                             Next Finding
-                        </v-btn>
-                    </v-card-actions>
-                </v-card>
-            </v-col>
-        </v-row>
-    </v-container>
+                        </VBtn>
+                    </VCardActions>
+                </VCard>
+            </VCol>
+        </VRow>
+    </VContainer>
 </template>
 
 <style scoped>
@@ -562,14 +917,14 @@ const timelineEvents = computed(() => {
     background-color: transparent !important;
 }
 
-.finding-list .v-list-item {
+.finding-list .VList-item {
     border: 1px solid rgba(0, 0, 0, 0.12);
     border-radius: 4px;
     margin-bottom: 8px;
     transition: background-color 0.2s ease;
 }
 
-.finding-list .v-list-item:hover {
+.finding-list .VList-item:hover {
     background-color: rgba(0, 0, 0, 0.04);
 }
 </style>

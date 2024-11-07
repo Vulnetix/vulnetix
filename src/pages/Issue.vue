@@ -1,6 +1,5 @@
 <script setup>
 import Finding from '@/components/Finding.vue';
-import { useQueueStore } from '@/stores/findingQueue';
 import { useMemberStore } from '@/stores/member';
 import { Client } from '@/utils';
 import IconVulnetix from '@images/IconVulnetix.vue';
@@ -10,7 +9,6 @@ import { useRoute } from 'vue-router';
 const route = useRoute()
 const client = new Client()
 const Member = useMemberStore()
-const queueStore = useQueueStore()
 
 const initialState = {
     error: "",
@@ -43,10 +41,6 @@ class Controller {
                 state.currentTriage = data.finding.triage.sort((a, b) =>
                     a.lastObserved - b.lastObserved
                 ).pop()
-                if (!queueStore.total) {
-                    queueStore.setTotal(data.findingCount)
-                    queueStore.incrementProgress()
-                }
             }
             state.loading = false
         } catch (e) {
@@ -114,7 +108,11 @@ onBeforeRouteUpdate(async (to, from) => {
             variant="tonal"
         />
         <VCardText>
-            <Finding v-if="state.finding" :finding="state.finding" :current-triage="state.currentTriage" />
+            <Finding
+                v-if="state.finding"
+                :finding="state.finding"
+                :current-triage="state.currentTriage"
+            />
         </VCardText>
     </VCard>
     <v-empty-state
