@@ -1844,7 +1844,176 @@ export const convertIsoDatesToTimestamps = obj => {
         return obj // Handle other data types (e.g., numbers, strings)
     }
 }
+/**
+ * Parses a SemVer string into its components
+ * @param {string} versionString - The version string to parse
+ * @returns {Object} Object containing version components and constraints
+ */
+export function parseSemVer(versionString) {
+    // Regular expressions for different parts
+    const operatorRegex = /^([<>]=?|=|~|\^)/;
+    const versionRegex = /^v?(\d+|[x*])(?:\.(\d+|[x*]))?(?:\.(\d+|[x*]))?(?:-([0-9A-Za-z-.]+))?(?:\+([0-9A-Za-z-.]+))?$/;
 
+    let operator = '';
+    let version = versionString;
+
+    // Extract operator if present
+    const operatorMatch = versionString.match(operatorRegex);
+    if (operatorMatch) {
+        operator = operatorMatch[1];
+        version = versionString.slice(operator.length).trim();
+    }
+
+    // Handle "*" as a special case
+    if (version === '*') {
+        return {
+            operator,
+            major: '*',
+            minor: '*',
+            patch: '*',
+            prerelease: null,
+            buildMetadata: null,
+            original: versionString
+        };
+    }
+
+    // Parse version parts
+    const match = version.match(versionRegex);
+    if (!match) {
+        return;
+    }
+
+    const [, major, minor, patch, prerelease, buildMetadata] = match;
+
+    // Convert version parts to numbers or keep as special characters
+    const processVersionPart = (part) => {
+        if (!part) return '0';
+        if (part === '*' || part === 'x') return '*';
+        return part;
+    };
+
+    return {
+        operator,
+        major: processVersionPart(major),
+        minor: processVersionPart(minor),
+        patch: processVersionPart(patch),
+        prerelease: prerelease || null,
+        buildMetadata: buildMetadata || null,
+        original: versionString
+    };
+}
+/**
+ * Splits a version string into comparison operator and version number
+ * @param {string} versionString - The version string to split
+ * @returns {[string, string]} Array containing [comparison, version]
+ */
+export function splitVersionComparison(versionString) {
+    const parsed = parseSemVer(versionString)
+    if (!parsed) return ['=', versionString]
+    const { operator, major, minor, patch } = parsed
+    const version = `${major}.${minor}.${patch}`
+    return [operator || '=', version]
+}
+
+export const isValidSemver = version => {
+    if (!version) return false;
+    const semverRegex = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
+    return semverRegex.test(version);
+}
+
+export function getVersionString(versionString) {
+    // Get clean version number for each part
+    const cleanVersions = versionString.split('||').map(v => v.trim()).filter(v => !!v).map(v => {
+        const [, version = ''] = splitVersionComparison(v)
+        return version.trim()
+    }).filter(i => !!i)
+    if (!cleanVersions.length) return ""
+    const comp = (v1, v2) => {
+        const versionRegex = /^v?(\d+|[x*])(?:\.(\d+|[x*]))?(?:\.(\d+|[x*]))?(?:-([0-9A-Za-z-.]+))?(?:\+([0-9A-Za-z-.]+))?$/;
+        if (v2.includes('*.*.*')) return v1
+        if (v1.includes('*.*.*')) return v2
+        if (!v1.match(versionRegex)) return v2
+        if (!v2.match(versionRegex)) return v1
+        const parse = (v) => v.split('.').map(part => part === '*' ? Infinity : parseInt(part));
+        const [major1, minor1, patch1] = parse(v1);
+        const [major2, minor2, patch2] = parse(v2);
+
+        if (major1 !== major2) return major1 > major2 ? v1 : v2;
+        if (minor1 !== minor2) return minor1 > minor2 ? v1 : v2;
+        return patch1 >= patch2 ? v1 : v2;
+    }
+    const semVer = cleanVersions.reduce((highest, current) => {
+        return comp(highest, current)
+    })
+    const { major, minor, patch } = parseSemVer(semVer)
+    return `${major}.${minor}.${patch}`
+}
+
+export const compareVersions = (v1, v2) => {
+    if (!v1 || !v2) return 0
+    const v1Parts = v1.split('.').map(part => {
+        const matches = part.match(/(\d+)([a-z]*)/);
+        return matches ? [parseInt(matches[1]), matches[2] || ''] : [parseInt(part), ''];
+    });
+
+    const v2Parts = v2.split('.').map(part => {
+        const matches = part.match(/(\d+)([a-z]*)/);
+        return matches ? [parseInt(matches[1]), matches[2] || ''] : [parseInt(part), ''];
+    });
+
+    for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
+        const [num1 = 0, suffix1 = ''] = v1Parts[i] || [];
+        const [num2 = 0, suffix2 = ''] = v2Parts[i] || [];
+
+        if (num1 !== num2) return num1 - num2;
+        if (suffix1 !== suffix2) return suffix1.localeCompare(suffix2);
+    }
+
+    return 0;
+}
+
+export const parseVersionRanges = vulnerableVersionsStr => {
+    // Normalize the string by:
+    // 1. Replace multiple spaces with single space
+    // 2. Remove spaces around comparison operators
+    const normalizedStr = vulnerableVersionsStr
+        .trim()
+        .replace(/\s+/g, ' ')
+        .replace(/\s*(>=|>|<=|<)\s*/g, ' $1');
+
+    const parts = normalizedStr.split(' ').filter(i => !!i.trim());
+    const ranges = [];
+
+    for (let i = 0; i < parts.length; i += 2) {
+        const comparison = parts[i];
+        const version = parts[i + 1];
+
+        if (comparison && version) {
+            ranges.push({
+                comparison: comparison.replace('>=', 'gte')
+                    .replace('>', 'gt')
+                    .replace('<=', 'lte')
+                    .replace('<', 'lt'),
+                version: version
+            });
+        }
+    }
+
+    return ranges;
+}
+
+export const isVersionVulnerable = (version, vulnerableRanges) => {
+    return vulnerableRanges.every(range => {
+        const comparison = compareVersions(version, range.version);
+        switch (range.comparison) {
+            case 'gt': return comparison > 0;
+            case 'gte': return comparison >= 0;
+            case 'lt': return comparison < 0;
+            case 'lte': return comparison <= 0;
+            default: return false;
+        }
+    });
+}
 /**
  * Flattens a nested object into a single-level object, optionally converting ISO 8601 date strings to Unix timestamps.
  *

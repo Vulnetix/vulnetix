@@ -1,5 +1,5 @@
 <script setup>
-import { getPastelColor } from '@/utils';
+import { compareVersions, getPastelColor, getVersionString, isVersionVulnerable, parseVersionRanges, VexAnalysisState } from '@/utils';
 import { onMounted } from 'vue';
 import { useTheme } from 'vuetify';
 
@@ -26,7 +26,7 @@ const justification = ref('')
 const justificationText = ref('')
 const versions = ref([])
 
-onMounted(() => generateVersions())
+onMounted(() => init())
 
 const Response = {
     false_positive: "False Positive",
@@ -48,14 +48,6 @@ const Justification = {
     protected_by_mitigating_control: "Protected By Mitigating Control"
 }
 
-const getSeverityColor = (score) => {
-    if (!score) return 'grey'
-    if (score < 4) return 'green'
-    if (score < 7) return 'yellow'
-    if (score < 9) return 'orange'
-    return 'red'
-}
-
 const handleNext = async () => {
     // const findingUuid = props.finding.uuid
     // state.finding = null
@@ -75,126 +67,39 @@ const handleTriage = () => {
     // queueStore.incrementProgress()
 }
 
-const timelineEvents = computed(() => {
-    const events = [
-        {
-            value: 'First discovered in repository',
-            time: props.finding.createdAt,
-            color: getPastelColor(),
-        },
-        {
-            value: `Last synchronized with ${props.finding.source}`,
-            time: props.finding.modifiedAt,
-            color: getPastelColor(),
-        },
-        {
-            value: 'Advisory first published',
-            time: props.finding.publishedAt - 1,
-            color: getPastelColor(),
-        }
-    ]
-
-    if (props.currentTriage?.lastObserved) {
-        events.push({
-            value: 'Last VEX created',
-            time: props.currentTriage.lastObserved,
-            color: getPastelColor(),
-        })
-    }
-
-    if (props.currentTriage?.triagedAt) {
-        events.push({
-            value: 'Last finding outcome decision',
-            time: props.currentTriage.triagedAt,
-            color: getPastelColor(),
-        })
-    }
-
-    if (props.currentTriage?.seenAt) {
-        events.push({
-            value: props.currentTriage?.memberEmail ? `Reviewed by ${props.currentTriage.memberEmail}` : 'Pix Automated',
-            time: props.currentTriage.seenAt,
-            color: getPastelColor(),
-        })
-    }
-
-    if (props.finding.cisaDateAdded) {
-        events.push({
-            value: 'Added to CISA KEV',
-            time: props.finding.cisaDateAdded,
-            color: getPastelColor(),
-        })
-    }
-
-    if (props.finding.spdx?.createdAt) {
-        events.push({
-            value: 'SPDX BOM published',
-            time: props.finding.spdx.createdAt,
-            color: getPastelColor(),
-        })
-    }
-
-    if (props.finding.cdx?.createdAt) {
-        events.push({
-            value: 'CycloneDX BOM published',
-            time: props.finding.cdx.createdAt,
-            color: getPastelColor(),
-        })
-    }
-    if (props.finding?.timeline) {
-        props.finding.timeline.forEach(t => {
-            t.color = getPastelColor()
-            events.push(t)
-        })
-    }
-    return events.sort((a, b) => a.time - b.time)
-})
-
-const generateVersions = () => {
-    if (!props.finding?.vulnerableVersionRange) {
-        return
-    }
-    const versionSet = new Set()
-    const ranges = props.finding.vulnerableVersionRange.split('||').map(r => r.trim());
-
-    ranges.forEach(range => {
-        const [comparison, version] = range.split(' ');
-
-        if (version.match(/[a-z]$/)) {
-            const baseVersion = version.replace(/[a-z]$/, '');
-            const letterSuffix = version.slice(-1);
-            if (comparison.includes('>=')) {
-                generateLetterVersions(baseVersion, letterSuffix, 'z')
-                    .forEach(v => versionSet.add(v));
-            } else if (comparison.includes('<')) {
-                generateLetterVersions(baseVersion, 'a', letterSuffix)
-                    .forEach(v => versionSet.add(v));
-            }
-        } else {
-            const [major, minor, patch] = version.split('.').map(Number);
-            if (comparison.includes('>=')) {
-                const nextMinor = `${major}.${minor + 1}.0`;
-                generateNumericVersions(version, nextMinor)
-                    .forEach(v => versionSet.add(v));
-            } else if (comparison.includes('<')) {
-                const prevVersion = `${major}.${minor}.${Math.max(0, patch - 1)}`;
-                generateNumericVersions(prevVersion, version)
-                    .forEach(v => versionSet.add(v));
-            }
-        }
+const init = () => {
+    props.finding.timeline = props.finding.timeline.map(t => {
+        t.color = getPastelColor()
+        return t
     })
+
+    const versionSet = new Set()
     if (props.finding?.packageVersion) {
-        versionSet.add(props.finding.packageVersion);
+        versionSet.add(getVersionString(props.finding.packageVersion));
     }
     if (props.finding?.fixVersion) {
-        versionSet.add(props.finding.fixVersion);
+        versionSet.add(getVersionString(props.finding.fixVersion));
+    }
+    if (!props?.finding?.vulnerableVersionRange) {
+        // Convert to array, sort, and add metadata
+        Array.from(versionSet)
+            .sort((a, b) => compareVersions(a, b))
+            .forEach(version => versions.value.push({
+                version,
+                isCurrentVersion: version === getVersionString(props.finding.packageVersion),
+                isVulnerable: props.finding?.fixVersion ? isVersionVulnerable(
+                    version,
+                    parseVersionRanges(`< ${getVersionString(props.finding.fixVersion)}`)
+                ) : true
+            }))
+        return
     }
     // Convert to array, sort, and add metadata
     Array.from(versionSet)
         .sort((a, b) => compareVersions(a, b))
         .forEach(version => versions.value.push({
             version,
-            isCurrentVersion: version === props.finding.packageVersion,
+            isCurrentVersion: version === getVersionString(props.finding.packageVersion),
             isVulnerable: isVersionVulnerable(
                 version,
                 parseVersionRanges(props.finding.vulnerableVersionRange)
@@ -202,78 +107,6 @@ const generateVersions = () => {
         }))
 }
 
-const generateNumericVersions = (start, end) => {
-    const versionSet = new Set();
-    const [startMajor, startMinor, startPatch] = start.split('.').map(Number);
-    const [endMajor, endMinor, endPatch] = end.split('.').map(Number);
-
-    for (let major = startMajor; major <= endMajor; major++) {
-        for (let minor = (major === startMajor ? startMinor : 0);
-            minor <= (major === endMajor ? endMinor : 99); minor++) {
-            for (let patch = (major === startMajor && minor === startMinor ? startPatch : 0);
-                patch <= (major === endMajor && minor === endMinor ? endPatch : 99); patch++) {
-                versionSet.add(`${major}.${minor}.${patch}`);
-            }
-        }
-    }
-    return versionSet;
-}
-
-const generateLetterVersions = (baseVersion, start = 'a', end = 'z') => {
-    const versionSet = new Set();
-    for (let i = start.charCodeAt(0); i <= end.charCodeAt(0); i++) {
-        versionSet.add(`${baseVersion}${String.fromCharCode(i)}`);
-    }
-    return versionSet;
-}
-
-const parseVersionRanges = vulnerableVersionsStr => {
-    return vulnerableVersionsStr.split('||').map(range => {
-        const [comparison, version] = range.trim().split(' ');
-        return {
-            comparison: comparison.replace('>=', 'gte')
-                .replace('>', 'gt')
-                .replace('<=', 'lte')
-                .replace('<', 'lt'),
-            version: version
-        };
-    });
-}
-
-const compareVersions = (v1, v2) => {
-    const v1Parts = v1.split('.').map(part => {
-        const matches = part.match(/(\d+)([a-z]*)/);
-        return matches ? [parseInt(matches[1]), matches[2] || ''] : [parseInt(part), ''];
-    });
-
-    const v2Parts = v2.split('.').map(part => {
-        const matches = part.match(/(\d+)([a-z]*)/);
-        return matches ? [parseInt(matches[1]), matches[2] || ''] : [parseInt(part), ''];
-    });
-
-    for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
-        const [num1 = 0, suffix1 = ''] = v1Parts[i] || [];
-        const [num2 = 0, suffix2 = ''] = v2Parts[i] || [];
-
-        if (num1 !== num2) return num1 - num2;
-        if (suffix1 !== suffix2) return suffix1.localeCompare(suffix2);
-    }
-
-    return 0;
-}
-
-const isVersionVulnerable = (version, vulnerableRanges) => {
-    return vulnerableRanges.some(range => {
-        const comparison = compareVersions(version, range.version);
-        switch (range.comparison) {
-            case 'gt': return comparison > 0;
-            case 'gte': return comparison >= 0;
-            case 'lt': return comparison < 0;
-            case 'lte': return comparison <= 0;
-            default: return false;
-        }
-    });
-}
 const scoreColor = computed(() => {
     if (!props.currentTriage?.epssScore) return;
     if (props.currentTriage.epssScore < 0.01) return 'success'
@@ -329,15 +162,11 @@ const cvssChipColor = computed(() => {
                         <div>
                             <span class="text-h5">{{ props.finding.detectionTitle }}</span>
                             <VChip
-                                v-if="props.finding.malicious"
-                                color="error"
+                                v-if="props.currentTriage.analysisState !== 'in_triage'"
+                                color="secondary"
                                 class="ml-2"
                             >
-                                Malicious Package
-                                <VIcon
-                                    end
-                                    icon="mdi-alert-circle"
-                                />
+                                {{ VexAnalysisState[props.currentTriage.analysisState] }}
                             </VChip>
                         </div>
                         <div
@@ -363,7 +192,7 @@ const cvssChipColor = computed(() => {
                                         <VListItemTitle>
                                             Package: {{ props.finding.packageEcosystem }}:{{ props.finding.packageName
                                             }}@{{
-                                                props.finding.packageVersion || '*' }}
+                                                getVersionString(props.finding.packageVersion) }}
                                         </VListItemTitle>
                                     </VListItem>
 
@@ -407,6 +236,18 @@ const cvssChipColor = computed(() => {
                                         color="info"
                                     >
                                         {{ cwe }}
+                                    </VChip>
+
+                                    <VChip
+                                        v-if="props.finding.malicious"
+                                        color="error"
+                                        class="ml-2"
+                                    >
+                                        Malicious Package
+                                        <VIcon
+                                            end
+                                            icon="mdi-alert-circle"
+                                        />
                                     </VChip>
                                 </div>
                             </VCol>
@@ -536,7 +377,7 @@ const cvssChipColor = computed(() => {
                                                     <VIcon icon="mdi-github" />
                                                 </template>
                                                 <template v-slot:append>
-                                                    <VIcon icon="mdi:open-in-new" />
+                                                    <VIcon icon="fluent-mdl2:external-git" />
                                                 </template>
                                                 <VTooltip
                                                     activator="parent"
@@ -606,10 +447,27 @@ const cvssChipColor = computed(() => {
                                 cols="12"
                                 md="6"
                             >
-                                <VCard
-                                    variant="outlined"
-                                    title="Risk Scores"
-                                >
+                                <VCard variant="outlined">
+                                    <VCardTitle class="d-flex justify-space-between">
+                                        <div class="mt-4">Risk Scores</div>
+                                        <!-- Confidence -->
+                                        <VProgressCircular
+                                            :model-value="props.finding.confidenceScore"
+                                            :color="props.finding.confidenceLevel === 'Low' ? 'warning' : props.finding.confidenceLevel === 'Reasonable' ? 'info' : 'primary'"
+                                            :size="80"
+                                            :width="15"
+                                        >
+                                            <div class="text-center">
+                                                <div class="text-subtitle-2">{{ props.finding.confidenceLevel }}
+                                                </div>
+                                            </div>
+                                        </VProgressCircular>
+                                        <VTooltip
+                                            activator="parent"
+                                            location="top"
+                                            :text="props.finding.confidenceRationale.join(`\n\n`)"
+                                        />
+                                    </VCardTitle>
                                     <VCardText>
                                         <!-- SSVC -->
                                         <div v-if="props.currentTriage?.ssvc">
@@ -624,18 +482,18 @@ const cvssChipColor = computed(() => {
                                             <div class="d-flex justify-space-between align-center mb-2">
                                                 <div class="d-flex align-center">
                                                     <span class="font-weight-medium">CVSS</span>
-                                                    <v-chip
+                                                    <VChip
                                                         :color="cvssChipColor"
                                                         class="ml-2"
                                                         size="small"
                                                     >
                                                         v{{ cvssVersion }}
-                                                    </v-chip>
+                                                    </VChip>
                                                 </div>
                                                 <span class="font-weight-bold">{{ props.currentTriage.cvssScore
                                                     }} / 10.0</span>
                                             </div>
-                                            <v-progress-linear
+                                            <VProgressLinear
                                                 :model-value="parseInt(props.currentTriage.cvssScore, 10)"
                                                 :color="cvssColor"
                                                 height="10"
@@ -653,7 +511,7 @@ const cvssChipColor = computed(() => {
                                                 <span class="font-weight-medium">EPSS Score</span>
                                                 <span class="font-monospace">{{
                                                     parseFloat(props.currentTriage.epssScore).toFixed(5)
-                                                }}</span>
+                                                    }}</span>
                                             </div>
                                             <VProgressLinear
                                                 :model-value="parseFloat(props.currentTriage.epssScore).toFixed(5)"
@@ -674,7 +532,7 @@ const cvssChipColor = computed(() => {
                                                 <span class="font-weight-medium">EPSS Percentile</span>
                                                 <span class="font-monospace">{{
                                                     parseFloat(props.currentTriage.epssPercentile).toFixed(5)
-                                                }}%</span>
+                                                    }}%</span>
                                             </div>
                                             <VProgressLinear
                                                 :model-value="parseFloat(props.currentTriage.epssPercentile).toFixed(5)"
@@ -693,39 +551,41 @@ const cvssChipColor = computed(() => {
                                 >
                                     <VCardText>
                                         <VList density="compact">
+                                            <VListItem v-if="props.finding?.vulnerableVersionRange">
+                                                <template v-slot:prepend>
+                                                    <VIcon icon="system-uicons:versions" />
+                                                    <span class="ml-2 mr-1">
+                                                        Vulnerable Range
+                                                    </span>
+                                                </template>
+                                                {{ props.finding.vulnerableVersionRange }}
+                                            </VListItem>
+
                                             <VListItem
                                                 v-for="{ version, isCurrentVersion, isVulnerable } in versions"
                                                 :key="version"
                                             >
                                                 <template v-slot:prepend>
-                                                    <span class="font-mono">
+                                                    <VIcon icon="system-uicons:version" />
+                                                    <span class="ml-2 mr-1 font-mono">
                                                         {{ version }}
                                                     </span>
                                                 </template>
-
                                                 <span
                                                     v-if="isCurrentVersion"
-                                                    class="font-mono ml-2 text-info font-semibold"
+                                                    class="font-mono ml-1 text-info font-semibold"
                                                 >
                                                     (Current)
                                                 </span>
-                                                <VTooltip
-                                                    v-if="version === props.finding.fixVersion"
-                                                    :text="props.finding.vulnerableVersionRange"
-                                                    location="end"
-                                                >
-                                                    <template v-slot:activator="{ props }">
-                                                        <span
-                                                            v-bind="props"
-                                                            class="ml-2 text-success font-semibold"
-                                                        >
-                                                            (Fix)
-                                                        </span>
-                                                    </template>
-                                                </VTooltip>
                                                 <span
-                                                    v-if="isVulnerable"
-                                                    class="ml-2 text-error text-sm font-medium"
+                                                    v-if="props.finding?.fixVersion && version === getVersionString(props.finding.fixVersion)"
+                                                    class="ml-1 text-success font-semibold"
+                                                >
+                                                    (Fix)
+                                                </span>
+                                                <span
+                                                    v-if="isVulnerable && version !== props.finding?.fixVersion ? getVersionString(props.finding?.fixVersion || '') : null"
+                                                    class="ml-1 text-error text-sm font-medium"
                                                 >
                                                     Vulnerable
                                                 </span>
@@ -744,7 +604,7 @@ const cvssChipColor = computed(() => {
                                     <VCardText>
                                         <VTimeline align="center">
                                             <VTimelineItem
-                                                v-for="(event, i) in timelineEvents"
+                                                v-for="(event, i) in props.finding.timeline"
                                                 :key="i"
                                                 :dot-color="event.color"
                                                 size="large"

@@ -1,17 +1,138 @@
-import { EPSS, MitreCVE, OSV, constructVersionRangeString, convertIsoDatesToTimestamps } from "@/utils";
+import {
+    constructVersionRangeString,
+    convertIsoDatesToTimestamps,
+    EPSS,
+    getVersionString,
+    isValidSemver,
+    MitreCVE,
+    OSV,
+    VexAnalysisState
+} from "@/utils";
 import { CVSS30, CVSS31, CVSS40 } from '@pandatix/js-cvss';
+/**
+ * Adds or replaces an object in an array based on a key-value match condition.
+ * 
+ * @param {Array|string} inputObject - The input array or JSON string containing an array of objects.
+ *                                    If a string is provided, it must be a valid JSON-encoded array.
+ * @param {string} keyName - The name of the key to match against in each object.
+ * @param {Object} newObject - The new object to add or replace in the array.
+ * 
+ * @returns {Array|string} Returns either:
+ *                        - An array if the input was an array
+ *                        - A JSON string if the input was a JSON string
+ * 
+ * @throws {Error} Throws an error if:
+ *                 - inputObject is neither an array nor a string
+ *                 - inputObject is a string but contains invalid JSON
+ *                 - Parsed JSON string does not contain an array
+ * 
+ * @example
+ * // With array input
+ * const arr = [{ id: 1, name: 'John' }, { id: 2, name: 'Jane' }];
+ * const newObj = { id: 1, name: 'Johnny' };
+ * addToList(arr, 'id', newObj);
+ * // Returns: [{ id: 1, name: 'Johnny' }, { id: 2, name: 'Jane' }]
+ * 
+ * @example
+ * // With JSON string input
+ * const jsonStr = '[{"id": 1, "name": "John"}, {"id": 2, "name": "Jane"}]';
+ * addToList(jsonStr, 'id', { id: 1, name: 'Johnny' });
+ * // Returns: '[{"id":1,"name":"Johnny"},{"id":2,"name":"Jane"}]'
+ */
+function addToList(inputObject, keyName, newObject) {
+    // Store the type of inputObject
+    const inputType = typeof inputObject
+    // Initialize working array
+    let workingArray
+    // Handle input based on type
+    if (Array.isArray(inputObject)) {
+        workingArray = inputObject
+    } else if (inputType === 'string') {
+        try {
+            workingArray = JSON.parse(inputObject);
+            if (!Array.isArray(workingArray)) {
+                throw new Error('Parsed JSON is not an array')
+            }
+        } catch (error) {
+            throw new Error('Invalid JSON string: ' + error.message)
+        }
+    } else {
+        console.error(inputObject, 'inputObject must be either an array or a JSON string')
+        return inputObject
+    }
+
+    if (!newObject?.[keyName]) {
+        workingArray.push(newObject)
+    } else {
+        // Find index of matching object
+        const index = workingArray.findIndex(item => item[keyName] === newObject[keyName]);
+        // Replace or add newObject
+        if (index !== -1) {
+            workingArray[index] = newObject
+        } else {
+            workingArray.push(newObject)
+        }
+    }
+    // Return based on input type
+    if (inputType === 'string') {
+        return JSON.stringify(workingArray)
+    }
+
+    return workingArray
+}
 
 export const processFinding = async (prisma, r2adapter, verificationResult, finding, seen = 0) => {
     const osvData = await new OSV().query(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail, finding.detectionTitle)
     finding.modifiedAt = (new Date(osvData.modified)).getTime()
     finding.publishedAt = (new Date(osvData.published)).getTime()
     finding.databaseReviewed = osvData?.database_specific?.github_reviewed ? 1 : 0
+    if (osvData?.database_specific?.github_reviewed && osvData?.database_specific?.github_reviewed_at) {
+        finding.timelineJSON = addToList(finding.timelineJSON ?? '[]', 'value', { value: `GitHub Advisory review`, time: new Date(osvData.database_specific.github_reviewed_at).getTime() })
+    }
+    if (osvData?.database_specific?.nvd_published_at) {
+        finding.timelineJSON = addToList(finding.timelineJSON ?? '[]', 'value', { value: `NIST Advisory NVD review`, time: new Date(osvData.database_specific.nvd_published_at).getTime() })
+    }
     finding.aliases = JSON.stringify(osvData?.aliases?.filter(a => a !== finding.cveId) || [])
     finding.cwes = JSON.stringify(osvData?.database_specific?.cwe_ids || [])
-    finding.packageEcosystem = osvData.affected.map(affected => affected.package.ecosystem).pop()
-    finding.advisoryUrl = osvData.affected.map(affected => affected.database_specific.source).pop()
-    finding.fixVersion = osvData.affected.map(affected => affected.ranges.pop()?.events.pop()?.fixed).pop()
-    finding.vulnerableVersionRange = osvData.affected.map(affected => affected.database_specific.last_known_affected_version_range).pop()
+    const fixVersions = []
+    const vulnerableVersionRange = []
+    for (const affected of osvData.affected) {
+        for (const range of affected?.ranges || []) {
+            let fixed = ''
+            let introduced = ''
+            for (const event of range?.events || []) {
+                if (event?.fixed) {
+                    fixVersions.push(event.fixed)
+                    fixed = ` < ${event.fixed}`
+                }
+                if (event?.last_affected) {
+                    fixed = ` <= ${event.last_affected}`
+                }
+                if (event?.introduced) {
+                    introduced = `>= ${event.introduced}`
+                }
+            }
+            vulnerableVersionRange.push(introduced + fixed)
+        }
+        if (affected?.database_specific?.last_known_affected_version_range) {
+            // vulnerableVersionRange.push(affected.database_specific.last_known_affected_version_range)
+        }
+        if (affected?.package?.ecosystem) {
+            finding.packageEcosystem = affected.package.ecosystem
+        }
+        if (affected?.database_specific?.source) {
+            finding.advisoryUrl = affected.database_specific.source
+        }
+        if (affected?.ecosystem_specific?.affected_functions) {
+            finding.affectedFunctions = affected.ecosystem_specific.affected_functions.join(`\n`)
+        }
+    }
+    if (vulnerableVersionRange.length) {
+        finding.vulnerableVersionRange = vulnerableVersionRange.join(' || ')
+    }
+    if (fixVersions.length) {
+        finding.fixVersion = fixVersions.join(' || ')
+    }
     finding.fixAutomatable = !!finding.vulnerableVersionRange && !!finding.fixVersion ? 1 : 0
     finding.malicious = osvData.id.startsWith("MAL-") ? 1 : 0
     finding.referencesJSON = JSON.stringify(osvData.references.map(reference => reference.url))
@@ -50,7 +171,7 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
             }
         }
         if (cna?.timeline) {
-            finding.timelineJSON = JSON.stringify(cna.timeline.map(i => convertIsoDatesToTimestamps(i)))
+            finding.timelineJSON = addToList(finding.timelineJSON, 'value', JSON.stringify(cna.timeline.map(i => convertIsoDatesToTimestamps(i))))
         }
         // Extract CISA date
         const cisaAdp = adp?.find(container => container.providerMetadata.shortName === 'CISA-ADP')
@@ -58,7 +179,7 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
             finding.cisaDateAdded = new Date(cisaAdp.providerMetadata.dateUpdated).getTime()
         }
         // Get affected data from ADP and CNA
-        const adpAffected = adp.flatMap(container => container.affected || [])
+        const adpAffected = adp?.flatMap(container => container.affected || []) || []
         const cnaAffected = cna.affected || []
         // Required properties we're looking for
         const requiredProps = ['versions', 'vendor', 'product']
@@ -87,6 +208,11 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
         finding.vendor = affectedData?.vendor
         finding.product = affectedData?.product
     }
+    const confidence = evaluateAdvisoryConfidence(finding)
+    finding.confidenceScore = confidence.percentage
+    finding.confidenceLevel = confidence.confidenceLevel
+    finding.confidenceRationaleJSON = JSON.stringify(confidence.evaluations.filter(i => i.result).map(i => i.rationale))
+    finding.timelineJSON = makeTimeline(finding)
     const info = await prisma.Finding.update({
         where: { uuid: finding.uuid },
         data: {
@@ -123,11 +249,11 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
         epssPercentile = parseFloat(scores.percentile)
     }
     const cvss = {}
-    if (!cvssVector) {
-        cvss.v4 = osvData?.severity?.filter(i => i.score.startsWith('CVSS:4/'))?.pop()
+    if (!cvssVector || !cvssVector.startsWith('CVSS:4/')) {
+        cvss.v4 = osvData?.severity?.filter(i => i.type === 'CVSS_V4')?.pop()
         cvss.v31 = osvData?.severity?.filter(i => i.score.startsWith('CVSS:3.1/'))?.pop()
         cvss.v3 = osvData?.severity?.filter(i => i.score.startsWith('CVSS:3/'))?.pop()
-        cvssVector = !!cvss.v4 ? cvss.v4.score : !!cvss.v31 ? cvss.v31.score : cvss.v3 ? cvss.v3.score : null
+        cvssVector = !!cvss.v4 ? cvss.v4.score : !!cvss.v31 ? cvss.v31.score : cvss.v3 ? cvss.v3.score : cvssVector
         const vector = !!cvss.v4 ? new CVSS40(cvss.v4.score) : !!cvss.v31 ? new CVSS31(cvss.v31.score) : cvss.v3 ? new CVSS30(cvss.v3.score) : null
         cvssScore = !!cvss.v4 ? vector.Score().toString() : !!cvss.v31 ? vector.BaseScore().toString() : cvss.v3 ? vector.BaseScore().toString() : null
     }
@@ -137,21 +263,55 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
     // TechnicalImpact
     // Automatable
     // MissionWellbeingImpact        
-
-    let { analysisState = 'in_triage', triageAutomated = 0, triagedAt = null, seenAt = null } = finding?.triage || {}
-    if (
+    let { analysisState = 'in_triage', triageAutomated = 0, triagedAt = null, seenAt = null, analysisDetail = null } = {}
+    if (finding.exploits.length || finding.knownExploits.length) {
+        analysisState = 'exploitable'
+        triageAutomated = 1
+        analysisDetail = `Known exploitation`
+        if (!triagedAt) {
+            triagedAt = new Date().getTime()
+        }
+    } else if (
         (cvssVector && (
             ['E:U', 'E:P', 'E:F', 'E:H'].some(substring => cvss.v3?.score?.includes(substring)) ||
             ['E:U', 'E:P', 'E:F', 'E:H'].some(substring => cvss.v31?.score?.includes(substring)) ||
             ['E:A', 'E:P', 'E:U'].some(substring => cvss.v4?.score?.includes(substring))
-        )) || epssPercentile > 0.27
+        ))
     ) {
         analysisState = 'exploitable'
+        triageAutomated = 1
+        analysisDetail = `CVSS provided exploitability vector, without known exploits in the database.`
+        if (!triagedAt) {
+            triagedAt = new Date().getTime()
+        }
+    } else if (
+        // https://www.first.org/epss/articles/prob_percentile_bins
+        epssPercentile > 0.954 // EPSS is best used when there is no other evidence of active exploitation
+    ) {
+        analysisState = 'exploitable'
+        triageAutomated = 1
+        analysisDetail = `EPSS Percentile greater than 95.4% which is a critical prediction.`
+        if (!triagedAt) {
+            triagedAt = new Date().getTime()
+        }
+    }
+    if (analysisState === 'exploitable') {
         triageAutomated = 1
         if (!triagedAt) {
             triagedAt = new Date().getTime()
         }
     }
+    // if (!isVersionVulnerable(
+    //     getVersionString(finding.packageVersion),
+    //     parseVersionRanges(finding.vulnerableVersionRange)
+    // )) {
+    //     analysisState = 'false_positive'
+    //     triageAutomated = 1
+    //     analysisDetail = `Vulnerbility database error: ${getVersionString(finding.packageVersion)} in not within vulnerable range "${finding.vulnerableVersionRange}"`
+    //     if (!triagedAt) {
+    //         triagedAt = new Date().getTime()
+    //     }
+    // }
     if (seen === 1) {
         seenAt = new Date().getTime()
     }
@@ -163,6 +323,7 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
         vexData.createdAt = new Date().getTime()
         vexData.lastObserved = new Date().getTime()
     }
+    vexData.analysisDetail = analysisDetail
     vexData.triageAutomated = triageAutomated
     vexData.triagedAt = triagedAt
     vexData.cvssVector = cvssVector
@@ -183,19 +344,32 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
             data: vexData,
         })
         // console.log(`Updated VEX ${finding.detectionTitle}`, vexInfo)
+        finding.triage = finding.triage.filter(f => f.uuid != vexData.uuid)
+        finding.triage.push(vexData)
     } else {
         vexData = await prisma.Triage.create({ data: vexData })
+        finding.triage = finding.triage.filter(f => f.uuid != vexData.uuid)
+        finding.triage.push(vexData)
+        finding.timelineJSON = makeTimeline(finding)
+        const info = await prisma.Finding.update({
+            where: { uuid: finding.uuid },
+            data: {
+                modifiedAt: finding.modifiedAt,
+                timelineJSON: finding.timelineJSON,
+            }
+        })
+        // console.log(`Update ${finding.detectionTitle}`, info)
     }
-    finding.triage = finding.triage.filter(f => f.uuid != vexData.uuid)
-    finding.triage.push(vexData)
 
     // expand JSON fields
+    finding.confidenceRationale = finding?.confidenceRationaleJSON ? JSON.parse(finding.confidenceRationaleJSON) : []
     finding.references = finding?.referencesJSON ? JSON.parse(finding.referencesJSON) : []
     finding.timeline = finding?.timelineJSON ? JSON.parse(finding.timelineJSON) : []
     finding.exploits = finding?.exploitsJSON ? JSON.parse(finding.exploitsJSON) : []
     finding.knownExploits = finding?.knownExploitsJSON ? JSON.parse(finding.knownExploitsJSON) : []
     finding.aliases = finding?.aliases ? JSON.parse(finding.aliases) : []
     finding.cwes = finding?.cwes ? JSON.parse(finding.cwes) : []
+    delete finding.confidenceRationaleJSON
     delete finding.referencesJSON
     delete finding.knownExploitsJSON
     delete finding.timelineJSON
@@ -360,4 +534,203 @@ export const fetchCVE = async (prisma, r2adapter, verificationResult, cveId) => 
         } catch (e) { }
     }
     return cve
+}
+
+const makeTimeline = finding => {
+    const retJson = !finding?.timeline
+    const timeline = retJson ? JSON.parse(finding?.timelineJSON || '[]') : finding?.timeline || []
+    const events = [
+        {
+            value: 'First discovered in repository',
+            time: finding.createdAt,
+        },
+        {
+            value: `Last synchronized with ${finding.source}`,
+            time: finding.modifiedAt,
+        },
+        {
+            value: 'Advisory first published',
+            time: finding.publishedAt - 1,
+        }
+    ]
+    for (const vex of finding.triage) {
+        if (vex.lastObserved) {
+            events.push({
+                value: `VEX generated as ${VexAnalysisState[vex.analysisState]}`,
+                time: vex.lastObserved,
+            })
+        }
+        if (vex.triagedAt && vex.memberEmail) {
+            events.push({
+                value: `${vex.memberEmail} Traiged`,
+                time: vex.triagedAt,
+            })
+        }
+        if (vex.seenAt && vex.memberEmail) {
+            events.push({
+                value: `${vex.memberEmail} Review`,
+                time: vex.seenAt,
+            })
+        }
+    }
+    if (finding.cisaDateAdded) {
+        events.push({
+            value: 'Added to CISA KEV',
+            time: finding.cisaDateAdded,
+        })
+    }
+    if (finding.spdx?.createdAt) {
+        events.push({
+            value: 'SPDX BOM published',
+            time: finding.spdx.createdAt,
+        })
+    }
+    if (finding.cdx?.createdAt) {
+        events.push({
+            value: 'CycloneDX BOM published',
+            time: finding.cdx.createdAt,
+        })
+    }
+    timeline.forEach(t => events.push(t))
+    const ret = [...new Map(events.map(item => [`${item.value}-${item.time}`, item])).values()]
+        .filter(i => !['Last VEX created', 'Pix Automated', 'Last finding outcome decision'].includes(i.value))
+        .sort((a, b) => a.time - b.time)
+
+    return retJson ? JSON.stringify(ret) : ret
+}
+
+export const confidenceRules = {
+    // falsePositiveVersion: {
+    //     weight: 20,
+    //     evaluate: finding => ({
+    //         result: !isVersionVulnerable(
+    //             getVersionString(finding.packageVersion),
+    //             parseVersionRanges(finding.vulnerableVersionRange)
+    //         ),
+    //         rationale: `Vulnerbility database error: ${getVersionString(finding.packageVersion)} in not within vulnerable range "${finding.vulnerableVersionRange}"`,
+    //         score: !isVersionVulnerable(
+    //             getVersionString(finding.packageVersion),
+    //             parseVersionRanges(finding.vulnerableVersionRange)
+    //         ) ? 20 : 0
+    //     })
+    // },
+    databaseReviewed: {
+        weight: 2,
+        evaluate: finding => ({
+            result: finding.databaseReviewed === 1,
+            rationale: `Information in this advisory has been fact checked.`,
+            score: finding.databaseReviewed === 1 ? 2 : 0
+        })
+    },
+    invalidPackageVersion: {
+        weight: -5,
+        evaluate: finding => ({
+            result: !isValidSemver(getVersionString(finding.packageVersion)),
+            rationale: "Package version format is not SemVer and prone to false positive detections.",
+            score: !isValidSemver(getVersionString(finding.packageVersion)) ? -5 : 0
+        })
+    },
+    cisaValidated: {
+        weight: 5,
+        evaluate: finding => ({
+            result: Boolean(finding.cisaDateAdded),
+            rationale: "CISA vulnrichment provides higher confidence for information in the CVE.",
+            score: finding.cisaDateAdded ? 5 : 0
+        })
+    },
+    invalidFixVersion: {
+        weight: -1,
+        evaluate: finding => ({
+            result: !isValidSemver(getVersionString(finding.fixVersion)),
+            rationale: "Without a valid Fix Version and known patch, the Advisory may not have been verified because it has no known fix.",
+            score: !isValidSemver(getVersionString(finding.fixVersion)) ? -1 : 0
+        })
+    },
+    maliciousPackage: {
+        weight: 10,
+        evaluate: finding => ({
+            result: finding.malicious === 1,
+            rationale: "All known malicious packages should be immediately assessed.",
+            score: finding.malicious === 1 ? 10 : 0
+        })
+    },
+    goodReferences: {
+        weight: 2,
+        evaluate: finding => ({
+            result: finding.references?.length >= 5,
+            rationale: "There are a good amount of references which indicates wide spread reporting and review.",
+            score: (finding.references?.length || 0) >= 5 ? 2 : 0
+        })
+    },
+    limitedReferences: {
+        weight: -1,
+        evaluate: finding => ({
+            result: finding.references?.length < 5,
+            rationale: "There are too few references which may indicate a relatively low quality report, in terms of coverage of advisories and evidence.",
+            score: (finding.references?.length || 0) < 5 ? -1 : 0
+        })
+    },
+    exploitsAvailable: {
+        weight: 2,
+        evaluate: finding => ({
+            result: (finding.exploits?.length || 0) >= 1,
+            rationale: "While exploits are often mere detection only PoC, rather than proof of real exploitation, having even a detection is a strong indication of true positive.",
+            score: (finding.exploits?.length || 0) >= 1 ? 2 : 0
+        })
+    }
+}
+
+export const evaluateAdvisoryConfidence = advisory => {
+    // Calculate maximum possible score
+    const max = Object.values(confidenceRules)
+        .filter(rule => rule.weight > 0)
+        .reduce((sum, rule) => sum + rule.weight < 0 ? 0 : rule.weight, 0)
+
+    const min = Object.values(confidenceRules)
+        .filter(rule => rule.weight < 0)
+        .reduce((sum, rule) => sum - rule.weight < 0 ? Math.abs(rule.weight) : 0, 0)
+
+    // Evaluate each rule
+    const evaluations = Object.entries(confidenceRules).map(([key, rule]) => {
+        advisory.references = advisory?.referencesJSON ? JSON.parse(advisory.referencesJSON) : []
+        advisory.exploits = advisory?.exploitsJSON ? JSON.parse(advisory.exploitsJSON) : []
+        advisory.knownExploits = advisory?.knownExploitsJSON ? JSON.parse(advisory.knownExploitsJSON) : []
+        const evaluation = rule.evaluate(advisory)
+        return {
+            rule: key,
+            ...evaluation
+        };
+    });
+
+    // Calculate total score
+    const result = evaluations.reduce((sum, res) => sum + res.score, 0)
+
+    // Calculate confidence level dynamically
+    const offset = min < 0 ? Math.abs(min) : 0
+    const normalizedScore = result + offset
+    const normalizedMax = max + offset
+    const percentage = parseFloat(((normalizedScore / normalizedMax) * 100).toFixed(2))
+
+    let confidenceLevel;
+    if (percentage <= 33) {
+        confidenceLevel = "Low"
+    } else if (percentage < 80) {
+        confidenceLevel = "High"
+    } else {
+        confidenceLevel = "Sure"
+    }
+
+    return {
+        percentage,
+        confidenceLevel,
+        result,
+        max,
+        min,
+        evaluations: evaluations.map(res => ({
+            rule: res.rule,
+            result: res.result,
+            rationale: res.rationale,
+            score: res.score
+        }))
+    };
 }
