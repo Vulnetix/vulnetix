@@ -150,7 +150,7 @@ const process = async (prisma, session, repoName, spdx, spdxId, artifactUuid) =>
         documentNamespace: spdx.documentNamespace,
         createdAt: (new Date(spdx.creationInfo.created)).getTime(),
         toolName: spdx.creationInfo.creators.join(', '),
-        documentDescribes: spdx.documentDescribes.join(','),
+        documentDescribes: spdx?.documentDescribes?.join(','),
         packagesCount: spdx.packages.length,
         comment: spdx.creationInfo?.comment || '',
     }

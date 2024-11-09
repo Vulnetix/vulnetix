@@ -1581,11 +1581,9 @@ export const isSPDX = input => {
     }
     if (typeof spdx?.name === 'undefined' ||
         typeof spdx?.dataLicense === 'undefined' ||
-        typeof spdx?.documentDescribes === 'undefined' ||
         typeof spdx?.packages === 'undefined' ||
         typeof spdx?.creationInfo?.creators === 'undefined' ||
         !spdx?.creationInfo?.creators.length ||
-        !spdx.documentDescribes.length ||
         !spdx.packages.length
     ) {
         throw `SPDX is missing "dataLicense", "name", "relationships", "packages", "creationInfo.creators", or "documentDescribes"`

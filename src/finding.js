@@ -3,11 +3,11 @@ import {
     convertIsoDatesToTimestamps,
     EPSS,
     getSemVerWithoutOperator,
-    parseVersionRanges,
     isValidSemver,
     isVersionVulnerable,
     MitreCVE,
     OSV,
+    parseVersionRanges,
     VexAnalysisState
 } from "@/utils";
 import { CVSS30, CVSS31, CVSS40 } from '@pandatix/js-cvss';
@@ -233,6 +233,7 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
             fixVersion: finding.fixVersion,
             fixAutomatable: finding.fixAutomatable,
             vulnerableVersionRange: finding.vulnerableVersionRange,
+            affectedFunctions: finding.affectedFunctions,
             cpe: finding.cpe,
             vendor: finding.vendor,
             product: finding.product,
@@ -364,7 +365,6 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
         })
         // console.log(`Update ${finding.detectionTitle}`, info)
     }
-
     // expand JSON fields
     finding.confidenceRationale = finding?.confidenceRationaleJSON ? JSON.parse(finding.confidenceRationaleJSON) : []
     finding.references = finding?.referencesJSON ? JSON.parse(finding.referencesJSON) : []
@@ -604,83 +604,53 @@ const makeTimeline = finding => {
 }
 
 export const confidenceRules = {
-    // falsePositiveVersion: {
-    //     weight: 20,
-    //     evaluate: finding => ({
-    //         result: !isVersionVulnerable(
-    //             getSemVerWithoutOperator(finding.packageVersion),
-    //             finding?.vulnerableVersionRange ? parseVersionRanges(finding.vulnerableVersionRange) : parseVersionRanges(`< ${getSemVerWithoutOperator(finding.fixVersion)}`)
-    //         ),
-    //         rationale: `Vulnerbility database error: ${getSemVerWithoutOperator(finding.packageVersion)} in not within vulnerable range "${finding.vulnerableVersionRange}"`,
-    //         score: !isVersionVulnerable(
-    //             getSemVerWithoutOperator(finding.packageVersion),
-    //             finding?.vulnerableVersionRange ? parseVersionRanges(finding.vulnerableVersionRange) : parseVersionRanges(`< ${getSemVerWithoutOperator(finding.fixVersion)}`)
-    //         ) ? 20 : 0
-    //     })
-    // },
+    falsePositiveVersion: {
+        weight: 10,
+        rationale: `Package Version is not within vulnerable range.`,
+        evaluate: finding => !isVersionVulnerable(
+            getSemVerWithoutOperator(finding.packageVersion),
+            finding?.vulnerableVersionRange ? parseVersionRanges(finding.vulnerableVersionRange) : parseVersionRanges(`< ${getSemVerWithoutOperator(finding.fixVersion)}`)
+        ),
+    },
     databaseReviewed: {
-        weight: 2,
-        evaluate: finding => ({
-            result: finding.databaseReviewed === 1,
-            rationale: `Information in this advisory has been fact checked.`,
-            score: finding.databaseReviewed === 1 ? 2 : 0
-        })
+        weight: 1,
+        rationale: `Information in this advisory has been fact checked.`,
+        evaluate: finding => finding.databaseReviewed === 1,
     },
     invalidPackageVersion: {
-        weight: -5,
-        evaluate: finding => ({
-            result: !isValidSemver(getSemVerWithoutOperator(finding.packageVersion)),
-            rationale: "Package version format is not SemVer and prone to false positive detections.",
-            score: !isValidSemver(getSemVerWithoutOperator(finding.packageVersion)) ? -5 : 0
-        })
+        weight: -2,
+        rationale: "Package version format is not SemVer and prone to false positive detections.",
+        evaluate: finding => !isValidSemver(getSemVerWithoutOperator(finding.packageVersion)),
     },
     cisaValidated: {
-        weight: 5,
-        evaluate: finding => ({
-            result: Boolean(finding.cisaDateAdded),
-            rationale: "CISA vulnrichment provides higher confidence for information in the CVE.",
-            score: finding.cisaDateAdded ? 5 : 0
-        })
+        weight: 2,
+        rationale: "CISA vulnrichment provides higher confidence for information in the CVE.",
+        evaluate: finding => Boolean(finding.cisaDateAdded),
     },
-    invalidFixVersion: {
+    noFixVersion: {
         weight: -1,
-        evaluate: finding => ({
-            result: !isValidSemver(getSemVerWithoutOperator(finding.fixVersion)),
-            rationale: "Without a valid Fix Version and known patch, the Advisory may not have been verified because it has no known fix.",
-            score: !isValidSemver(getSemVerWithoutOperator(finding.fixVersion)) ? -1 : 0
-        })
+        rationale: "Without a Fix Version and known patch, the Advisory may not have been verified because it has no known fix.",
+        evaluate: finding => !getSemVerWithoutOperator(finding.fixVersion) && !finding?.vulnerableVersionRange,
     },
     maliciousPackage: {
-        weight: 10,
-        evaluate: finding => ({
-            result: finding.malicious === 1,
-            rationale: "All known malicious packages should be immediately assessed.",
-            score: finding.malicious === 1 ? 10 : 0
-        })
+        weight: 5,
+        rationale: "All known malicious packages should be immediately assessed.",
+        evaluate: finding => finding.malicious === 1,
     },
     goodReferences: {
-        weight: 2,
-        evaluate: finding => ({
-            result: finding.references?.length >= 5,
-            rationale: "There are a good amount of references which indicates wide spread reporting and review.",
-            score: (finding.references?.length || 0) >= 5 ? 2 : 0
-        })
+        weight: 1,
+        rationale: "There are a good amount of references which indicates wide spread reporting and review.",
+        evaluate: finding => finding.references?.length >= 5,
     },
     limitedReferences: {
         weight: -1,
-        evaluate: finding => ({
-            result: finding.references?.length < 5,
-            rationale: "There are too few references which may indicate a relatively low quality report, in terms of coverage of advisories and evidence.",
-            score: (finding.references?.length || 0) < 5 ? -1 : 0
-        })
+        rationale: "There are too few references which may indicate a relatively low quality report, in terms of coverage of advisories and evidence.",
+        evaluate: finding => finding.references?.length < 5,
     },
     exploitsAvailable: {
         weight: 2,
-        evaluate: finding => ({
-            result: (finding.exploits?.length || 0) >= 1,
-            rationale: "While exploits are often mere detection only PoC, rather than proof of real exploitation, having even a detection is a strong indication of true positive.",
-            score: (finding.exploits?.length || 0) >= 1 ? 2 : 0
-        })
+        rationale: "While exploits are often mere detection only PoC, rather than proof of real exploitation, having even a detection is a strong indication of true positive.",
+        evaluate: finding => (finding?.exploits?.length || 0) + (finding?.knownExploits?.length || 0) >= 1,
     }
 }
 
@@ -688,11 +658,11 @@ export const evaluateAdvisoryConfidence = advisory => {
     // Calculate maximum possible score
     const max = Object.values(confidenceRules)
         .filter(rule => rule.weight > 0)
-        .reduce((sum, rule) => sum + rule.weight < 0 ? 0 : rule.weight, 0)
+        .reduce((sum, rule) => sum + (rule.weight > 0 ? rule.weight : 0), 0)
 
     const min = Object.values(confidenceRules)
         .filter(rule => rule.weight < 0)
-        .reduce((sum, rule) => sum - rule.weight < 0 ? Math.abs(rule.weight) : 0, 0)
+        .reduce((sum, rule) => sum - (rule.weight < 0 ? Math.abs(rule.weight) : 0), 0)
 
     // Evaluate each rule
     const evaluations = Object.entries(confidenceRules).map(([key, rule]) => {
@@ -702,7 +672,9 @@ export const evaluateAdvisoryConfidence = advisory => {
         const evaluation = rule.evaluate(advisory)
         return {
             rule: key,
-            ...evaluation
+            result: evaluation,
+            score: evaluation ? rule.weight : 0,
+            rationale: rule.rationale,
         };
     });
 
@@ -727,14 +699,12 @@ export const evaluateAdvisoryConfidence = advisory => {
     return {
         percentage,
         confidenceLevel,
+        normalizedScore,
         result,
         max,
+        normalizedMax,
         min,
-        evaluations: evaluations.map(res => ({
-            rule: res.rule,
-            result: res.result,
-            rationale: res.rationale,
-            score: res.score
-        }))
+        offset,
+        evaluations,
     };
 }

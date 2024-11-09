@@ -440,6 +440,16 @@ const cvssChipColor = computed(() => {
                                         </VList>
                                     </VCardText>
                                 </VCard>
+
+                                <VCard
+                                    variant="outlined"
+                                    title="Vulnerable Paths"
+                                    v-if="props.finding?.affectedFunctions"
+                                >
+                                    <VCardText>
+                                        {{ props.finding.affectedFunctions }}
+                                    </VCardText>
+                                </VCard>
                             </VCol>
 
                             <!-- Prioritisation -->
@@ -555,6 +565,7 @@ const cvssChipColor = computed(() => {
 
                                     </VCardText>
                                 </VCard>
+
                                 <VCard
                                     variant="outlined"
                                     title="Package Versions"
