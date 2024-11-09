@@ -1808,7 +1808,6 @@ export const saveArtifact = async (prisma, r2adapter, strContent, artifactUuid, 
         },
         create: artifact
     })
-    console.log(objectPath, reportInfo, linkInfo, artifactInfo)
     artifact.downloadLinks = [linkInfo]
     return artifact
 }
@@ -2039,17 +2038,14 @@ export const isVersionVulnerable = (version, vulnerableRanges) => {
         // Split into operator and version
         const [operator, compareVersion] = splitVersionComparison(comparison)
 
-        console.log("operator", operator, "compareVersion", compareVersion, "targetVersion", targetVersion)
         // Validate both versions
         if (!isValidSemver(targetVersion) || !isValidSemver(compareVersion)) {
-            console.log("isValidSemver === false", isValidSemver(targetVersion), isValidSemver(compareVersion))
             return false
         }
 
         // Get the difference between versions
         const versionDifference = compareVersions(targetVersion, compareVersion)
 
-        console.log("versionDifference", versionDifference)
         // Evaluate based on operator
         switch (operator) {
             case '<':
@@ -2077,10 +2073,8 @@ export const isVersionVulnerable = (version, vulnerableRanges) => {
         .replace(/\s+/g, ' ')
         .replace(/\s*(>=|>|<=|<)\s*/g, ' $1')
 
-    console.log("normalizedVersion", normalizedVersion)
     // Split into individual range sets (separated by ||)
     const rangeSets = normalizedRanges.split('||').map(range => range.trim())
-    console.log("rangeSets", rangeSets)
 
     // Check each range set (these are OR conditions)
     for (const rangeSet of rangeSets) {
@@ -2092,7 +2086,6 @@ export const isVersionVulnerable = (version, vulnerableRanges) => {
 
         // Check each comparison in the current range set
         for (const comparison of comparisons) {
-            console.log("comparison", comparison)
             rangeResults.push(evaluateComparison(comparison, normalizedVersion))
         }
 
