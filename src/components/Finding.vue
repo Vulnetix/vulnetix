@@ -1,7 +1,25 @@
 <script setup>
-import { versionSorter, getPastelColor, getSemVerWithoutOperator, getVersionString, isVersionVulnerable, VexAnalysisState } from '@/utils';
+import {
+    getPastelColor,
+    getSemVerWithoutOperator,
+    getVersionString,
+    isVersionVulnerable,
+    versionSorter,
+    VexAnalysisJustification,
+    VexAnalysisResponse,
+    VexAnalysisState
+} from '@/utils';
 import { onMounted } from 'vue';
 import { useTheme } from 'vuetify';
+
+const { meta_x } = useMagicKeys()
+onMounted(() => init())
+const { global } = useTheme()
+const dialog = ref(false)
+const response = ref('')
+const justification = ref('')
+const justificationText = ref('')
+const versions = ref([])
 
 const props = defineProps({
     finding: {
@@ -12,60 +30,34 @@ const props = defineProps({
         type: Object,
         required: true,
     },
-    queueRemaining: {
-        type: Number,
+    showTriageState: {
+        type: Boolean,
         required: false,
+        default: true,
     },
 })
 
-const { global } = useTheme()
+watch([meta_x], () => { dialog.value = true })
 
-const dialog = ref(false)
-const response = ref('')
-const justification = ref('')
-const justificationText = ref('')
-const versions = ref([])
+const Response = ref([
+    { value: "false_positive", text: "False Positive" },
+    { value: "not_affected", text: "Not Affected" },
+    { value: "can_not_fix", text: "Can Not Fix" },
+    { value: "will_not_fix", text: "Will Not Fix" },
+    { value: "workaround_available", text: "Workaround Available" },
+])
 
-onMounted(() => init())
-
-const Response = {
-    false_positive: "False Positive",
-    not_affected: "Not Affected",
-    can_not_fix: "Can Not Fix",
-    will_not_fix: "Will Not Fix",
-    workaround_available: "Workaround Available"
-}
-
-const Justification = {
-    code_not_present: "Code Not Present",
-    code_not_reachable: "Code Not Reachable",
-    requires_configuration: "Requires Configuration",
-    requires_dependency: "Requires Dependency",
-    requires_environment: "Requires Environment",
-    protected_by_compiler: "Protected By Compiler",
-    protected_at_runtime: "Protected At Runtime",
-    protected_at_perimeter: "Protected At Perimeter",
-    protected_by_mitigating_control: "Protected By Mitigating Control"
-}
-
-const handleNext = async () => {
-    // const findingUuid = props.finding.uuid
-    // state.finding = null
-    // state.loading = true
-    // await client.get(`/issue/${findingUuid}?seen=1`)
-    // await controller.refresh()
-    // queueStore.incrementProgress()
-}
-
-const handleTriage = () => {
-    if (!response.value || !justification.value) {
-        return
-    }
-
-    // Save result logic here
-
-    // queueStore.incrementProgress()
-}
+const Justification = ref([
+    { value: "code_not_present", text: "Code Not Present" },
+    { value: "code_not_reachable", text: "Code Not Reachable" },
+    { value: "requires_configuration", text: "Requires Configuration" },
+    { value: "requires_dependency", text: "Requires Dependency" },
+    { value: "requires_environment", text: "Requires Environment" },
+    { value: "protected_by_compiler", text: "Protected By Compiler" },
+    { value: "protected_at_runtime", text: "Protected At Runtime" },
+    { value: "protected_at_perimeter", text: "Protected At Perimeter" },
+    { value: "protected_by_mitigating_control", text: "Protected By Mitigating Control" },
+])
 
 const init = () => {
     props.finding.timeline = props.finding.timeline.map(t => {
@@ -162,18 +154,115 @@ const cvssChipColor = computed(() => {
                         <div>
                             <span class="text-h5">{{ props.finding.detectionTitle }}</span>
                             <VChip
-                                v-if="props.currentTriage.analysisState !== 'in_triage'"
+                                v-if="props.showTriageState || props.currentTriage.analysisState !== 'in_triage'"
                                 color="secondary"
                                 class="ml-2"
                             >
                                 {{ VexAnalysisState[props.currentTriage.analysisState] }}
                             </VChip>
+                            <VChip
+                                v-if="props.currentTriage.analysisResponse"
+                                color="info"
+                                class="ml-2"
+                            >
+                                {{ VexAnalysisResponse[props.currentTriage.analysisResponse] }}
+                            </VChip>
+                            <VChip
+                                v-if="props.currentTriage.analysisJustification"
+                                color="info"
+                                class="ml-2"
+                            >
+                                {{ VexAnalysisJustification[props.currentTriage.analysisJustification] }}
+                            </VChip>
                         </div>
-                        <div
-                            class="d-flex align-center"
-                            v-if="props.queueRemaining"
-                        >
-                            <span class="mr-4">{{ props.queueRemaining }} remain</span>
+                        <div class="d-flex align-end">
+                            <VDialog
+                                v-model="dialog"
+                                max-width="600"
+                            >
+                                <template v-slot:activator="{ props: activatorProps }">
+                                    <VBtn
+                                        class="text-none font-weight-regular"
+                                        variant="outlined"
+                                        v-bind="activatorProps"
+                                    >
+                                        Triage
+                                        <VChip
+                                            variant="outlined"
+                                            color="#e4e4e4"
+                                        >
+                                            &#8984;X
+                                        </VChip>
+                                    </VBtn>
+                                </template>
+
+                                <VCard>
+                                    <VCardText>
+                                        <!-- Analysis Form -->
+                                        <VRow dense>
+                                            <VCol
+                                                cols="12"
+                                                md="6"
+                                            >
+                                                <VSelect
+                                                    v-model="response"
+                                                    :items="Response"
+                                                    item-title="text"
+                                                    item-value="value"
+                                                    label="Response*"
+                                                    required
+                                                />
+                                            </VCol>
+
+                                            <VCol
+                                                cols="12"
+                                                md="6"
+                                            >
+                                                <VSelect
+                                                    v-model="justification"
+                                                    :items="Justification"
+                                                    item-title="text"
+                                                    item-value="value"
+                                                    label="Justification*"
+                                                    required
+                                                />
+                                            </VCol>
+
+                                            <VCol cols="12">
+                                                <VTextarea
+                                                    v-model="justificationText"
+                                                    label="Additional Notes"
+                                                    rows="3"
+                                                />
+                                            </VCol>
+                                        </VRow>
+
+                                        <small class="text-caption text-medium-emphasis">*indicates required
+                                            field</small>
+                                    </VCardText>
+
+                                    <VDivider />
+                                    <VSpacer />
+
+                                    <VCardActions>
+                                        <VSpacer />
+                                        <VBtn
+                                            text="Close"
+                                            variant="plain"
+                                            @click="dialog = false"
+                                        ></VBtn>
+                                        <VBtn
+                                            color="primary"
+                                            variant="plain"
+                                            text="Save"
+                                            :disabled="!response || !justification"
+                                            @click="$emit('click:saveTriage', { response, justification, justificationText }); dialog = false"
+                                        >
+                                        </VBtn>
+                                    </VCardActions>
+                                </VCard>
+                            </VDialog>
+
                         </div>
                     </VCardTitle>
 
@@ -447,7 +536,9 @@ const cvssChipColor = computed(() => {
                                     v-if="props.finding?.affectedFunctions"
                                 >
                                     <VCardText>
-                                        {{ props.finding.affectedFunctions }}
+                                        <span style="white-space: preserve-breaks;">
+                                            {{ props.finding.affectedFunctions }}
+                                        </span>
                                     </VCardText>
                                 </VCard>
                             </VCol>
@@ -531,7 +622,7 @@ const cvssChipColor = computed(() => {
                                                 <span class="font-weight-medium">EPSS Score</span>
                                                 <span class="font-monospace">{{
                                                     parseFloat(props.currentTriage.epssScore).toFixed(5)
-                                                    }}</span>
+                                                }}</span>
                                             </div>
                                             <VProgressLinear
                                                 :model-value="parseFloat(props.currentTriage.epssScore).toFixed(5)"
@@ -552,7 +643,7 @@ const cvssChipColor = computed(() => {
                                                 <span class="font-weight-medium">EPSS Percentile</span>
                                                 <span class="font-monospace">{{
                                                     parseFloat(props.currentTriage.epssPercentile).toFixed(5)
-                                                    }}%</span>
+                                                }}%</span>
                                             </div>
                                             <VProgressLinear
                                                 :model-value="parseFloat(props.currentTriage.epssPercentile).toFixed(5)"
@@ -697,92 +788,6 @@ const cvssChipColor = computed(() => {
                             </VCol>
                         </VRow>
                     </VCardText>
-
-                    <VCardActions>
-                        <VSpacer />
-                        <VDialog
-                            v-model="dialog"
-                            max-width="600"
-                        >
-                            <template v-slot:activator="{ props: activatorProps }">
-                                <VBtn
-                                    class="text-none font-weight-regular"
-                                    prepend-icon="flowbite:fix-tables-outline"
-                                    text="Triage"
-                                    variant="tonal"
-                                    v-bind="activatorProps"
-                                ></VBtn>
-                            </template>
-
-                            <VCard>
-                                <VCardText>
-                                    <!-- Analysis Form -->
-                                    <VRow dense>
-                                        <VCol
-                                            cols="12"
-                                            md="6"
-                                        >
-                                            <VSelect
-                                                v-model="response"
-                                                :items="Object.values(Response)"
-                                                label="Response*"
-                                                required
-                                            />
-                                        </VCol>
-
-                                        <VCol
-                                            cols="12"
-                                            md="6"
-                                        >
-                                            <VSelect
-                                                v-model="justification"
-                                                :items="Object.values(Justification)"
-                                                label="Justification*"
-                                                required
-                                            />
-                                        </VCol>
-
-                                        <VCol cols="12">
-                                            <VTextarea
-                                                v-model="justificationText"
-                                                label="Additional Notes"
-                                                rows="3"
-                                            />
-                                        </VCol>
-                                    </VRow>
-
-                                    <small class="text-caption text-medium-emphasis">*indicates required field</small>
-                                </VCardText>
-
-                                <VDivider />
-
-                                <VCardActions>
-                                    <VSpacer />
-
-                                    <VBtn
-                                        text="Close"
-                                        variant="plain"
-                                        @click="dialog = false"
-                                    ></VBtn>
-
-                                    <VBtn
-                                        color="primary"
-                                        text="Save"
-                                        variant="tonal"
-                                        :disabled="!response || !justification"
-                                        @click="handleTriage"
-                                    ></VBtn>
-                                </VCardActions>
-                            </VCard>
-                        </VDialog>
-                        <VBtn
-                            color="primary"
-                            @click="handleNext"
-                            v-if="props.queueRemaining"
-                        >
-                            Next Finding
-                        </VBtn>
-                    </VCardActions>
                 </VCard>
             </VCol>
         </VRow>

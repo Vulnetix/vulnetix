@@ -410,8 +410,8 @@ export class Client {
      * Performs a Browser fetch GET request with a signature using the stored secret key.
      * 
      * @param {string} path - The URL path segment, excluding the origin.
-     * @param {Object} [headers={}] - The extra headers to include in the request.
      * @param {string} [body] - The optional body of the request.
+     * @param {Object} [headers={}] - The extra headers to include in the request.
      * @returns {Promise<Response>} - A promise that resolves to the fetch API response.
      */
     async post(path, body, headers = {}) {
@@ -1912,11 +1912,13 @@ export function parseSemVer(versionString) {
     };
 }
 export function getSemVerWithoutOperator(versionString) {
+    if (!versionString) {
+        return ''
+    }
     // Regular expressions for different parts
     const operatorRegex = /^([<>]=?|={1,2}|\*|~|\^)|^.*(\.x|\.\*)/;
     let operator = '';
     let version = versionString;
-
     // Extract operator if present
     const operatorMatch = versionString.match(operatorRegex);
     if (operatorMatch && operatorMatch[0]) {

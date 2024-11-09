@@ -25,18 +25,23 @@ export async function onRequestGet(context) {
         if (!verificationResult.isValid) {
             return Response.json({ ok: false, result: verificationResult.message })
         }
-        const findingCount = await prisma.Finding.count()
+        const { searchParams } = new URL(request.url)
+        const take = parseInt(searchParams.get('take'), 10) || 1
+        const skip = parseInt(searchParams.get('skip'), 10) || 0
+
+        const where = {
+            orgId: verificationResult.session.orgId,
+            AND: {
+                triage: {
+                    every: { analysisState: 'in_triage' }
+                }
+            },
+        }
+        const findingCount = await prisma.Finding.count({ where })
         let finding, spdxJson, cdxJson;
         if (findingCount > 0) {
             finding = await prisma.Finding.findFirst({
-                where: {
-                    orgId: verificationResult.session.orgId,
-                    AND: {
-                        triage: {
-                            every: { seen: 0, analysisState: 'in_triage' }
-                        }
-                    },
-                },
+                where,
                 omit: {
                     memberEmail: true,
                 },
@@ -63,13 +68,15 @@ export async function onRequestGet(context) {
                         }
                     },
                 },
-                take: 1,
-                skip: 0,
+                take,
+                skip,
                 orderBy: {
                     createdAt: 'asc', // oldest first
                 }
             })
-
+            if (!finding) {
+                return Response.json({ ok: true, finding, findingCount })
+            }
             finding = await processFinding(prisma, env.r2artifacts, verificationResult, finding)
 
             if (finding?.spdx?.artifact?.uuid) {
