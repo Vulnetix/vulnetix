@@ -1,5 +1,5 @@
 <script setup>
-import { compareVersions, getPastelColor, getSemVerWithoutOperator, getVersionString, isVersionVulnerable, parseVersionRanges, VexAnalysisState } from '@/utils';
+import { versionSorter, getPastelColor, getSemVerWithoutOperator, getVersionString, isVersionVulnerable, VexAnalysisState } from '@/utils';
 import { onMounted } from 'vue';
 import { useTheme } from 'vuetify';
 
@@ -83,26 +83,26 @@ const init = () => {
     if (!props?.finding?.vulnerableVersionRange) {
         // Convert to array, sort, and add metadata
         Array.from(versionSet)
-            .sort((a, b) => compareVersions(a, b))
+            .sort(versionSorter)
             .forEach(version => versions.value.push({
                 version,
                 isCurrentVersion: version === getSemVerWithoutOperator(props.finding.packageVersion),
                 isVulnerable: props.finding?.fixVersion ? isVersionVulnerable(
                     version,
-                    parseVersionRanges(`< ${getSemVerWithoutOperator(props.finding.fixVersion)}`)
+                    `< ${getSemVerWithoutOperator(props.finding.fixVersion)}`
                 ) : true
             }))
         return
     }
     // Convert to array, sort, and add metadata
     Array.from(versionSet)
-        .sort((a, b) => compareVersions(a, b))
+        .sort(versionSorter)
         .forEach(version => versions.value.push({
             version,
             isCurrentVersion: version === getSemVerWithoutOperator(props.finding.packageVersion),
             isVulnerable: isVersionVulnerable(
                 version,
-                parseVersionRanges(props.finding.vulnerableVersionRange)
+                props.finding.vulnerableVersionRange
             )
         }))
 }

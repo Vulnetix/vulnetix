@@ -1977,7 +1977,7 @@ export function getVersionString(versionString, majorDefault = "0", minorDefault
     return `${major}.${minor}.${patch}`
 }
 
-export const compareVersions = (v1, v2) => {
+export const versionSorter = (v1, v2) => {
     if (!v1 || !v2) return 0
     const v1Parts = v1.split('.').map(part => {
         const matches = part.match(/(\d+)([a-z]*)/);
@@ -2000,48 +2000,113 @@ export const compareVersions = (v1, v2) => {
     return 0;
 }
 
-export const parseVersionRanges = vulnerableVersionsStr => {
-    // Normalize the string by:
-    // 1. Replace multiple spaces with single space
-    // 2. Remove spaces around comparison operators
-    const normalizedStr = vulnerableVersionsStr
+/**
+ * Determines if a version is vulnerable based on a set of version ranges
+ * 
+ * @param {string} version - The version to check (e.g., "2.10.6")
+ * @param {string} vulnerableRanges - String containing version ranges (e.g., "< 2.11.2 >= 0")
+ *                                   Multiple ranges can be separated by "||"
+ *                                   Space-separated comparisons within a range are treated as AND conditions
+ *                                   "||" separated ranges are treated as OR conditions
+ * 
+ * Examples:
+ * "< 2.11.2 >= 0" - Version must be less than 2.11.2 AND greater than or equal to 0
+ * "< 2.11.2 || >= 0 < 2.8.7" - Version must either be less than 2.11.2 OR (greater than or equal to 0 AND less than 2.8.7)
+ * 
+ * @returns {boolean} True if the version is vulnerable according to any of the ranges
+ */
+export const isVersionVulnerable = (version, vulnerableRanges) => {
+    // First normalize the version by removing any operators
+    const normalizedVersion = getSemVerWithoutOperator(version)
+
+    // Helper function to compare two version strings
+    const compareVersions = (version1, version2) => {
+        // Convert versions to arrays of numbers for comparison
+        const v1Parts = version1.split('.').map(Number)
+        const v2Parts = version2.split('.').map(Number)
+
+        // Compare each part (major, minor, patch)
+        for (let i = 0; i < 3; i++) {
+            if (v1Parts[i] !== v2Parts[i]) {
+                return v1Parts[i] - v2Parts[i]
+            }
+        }
+        return 0 // Versions are equal
+    };
+
+    // Helper function to evaluate a single comparison
+    const evaluateComparison = (comparison, targetVersion) => {
+        // Split into operator and version
+        const [operator, compareVersion] = splitVersionComparison(comparison)
+
+        console.log("operator", operator, "compareVersion", compareVersion, "targetVersion", targetVersion)
+        // Validate both versions
+        if (!isValidSemver(targetVersion) || !isValidSemver(compareVersion)) {
+            console.log("isValidSemver === false", isValidSemver(targetVersion), isValidSemver(compareVersion))
+            return false
+        }
+
+        // Get the difference between versions
+        const versionDifference = compareVersions(targetVersion, compareVersion)
+
+        console.log("versionDifference", versionDifference)
+        // Evaluate based on operator
+        switch (operator) {
+            case '<':
+                return versionDifference < 0
+            case '<=':
+                return versionDifference <= 0
+            case '>':
+                return versionDifference > 0
+            case '>=':
+                return versionDifference >= 0
+            case '=':
+            case '==':
+                return versionDifference === 0
+            default:
+                return false
+        }
+    };
+
+    // Normalize the ranges string:
+    // 1. Trim whitespace
+    // 2. Replace multiple spaces with single space
+    // 3. Remove spaces around comparison operators
+    const normalizedRanges = vulnerableRanges
         .trim()
         .replace(/\s+/g, ' ')
-        .replace(/\s*(>=|>|<=|<)\s*/g, ' $1');
+        .replace(/\s*(>=|>|<=|<)\s*/g, ' $1')
 
-    const parts = normalizedStr.split(' ').filter(i => !!i.trim());
-    const ranges = [];
+    console.log("normalizedVersion", normalizedVersion)
+    // Split into individual range sets (separated by ||)
+    const rangeSets = normalizedRanges.split('||').map(range => range.trim())
+    console.log("rangeSets", rangeSets)
 
-    for (let i = 0; i < parts.length; i += 2) {
-        const comparison = parts[i];
-        const version = parts[i + 1];
+    // Check each range set (these are OR conditions)
+    for (const rangeSet of rangeSets) {
+        // Get all comparisons in this range set (these are AND conditions)
+        const comparisons = rangeSet.split(' ').filter(i => !!i.trim())
 
-        if (comparison && version) {
-            ranges.push({
-                comparison: comparison.replace('>=', 'gte')
-                    .replace('>', 'gt')
-                    .replace('<=', 'lte')
-                    .replace('<', 'lt'),
-                version: version
-            });
+        // Track if all comparisons in this range set are true, meaning the version is within range if all are true
+        const rangeResults = []
+
+        // Check each comparison in the current range set
+        for (const comparison of comparisons) {
+            console.log("comparison", comparison)
+            rangeResults.push(evaluateComparison(comparison, normalizedVersion))
+        }
+
+        // If all comparisons in this range set matched, we can return true immediately
+        // (because range sets are OR conditions)
+        if (rangeResults.every(r => r === true)) {
+            return true
         }
     }
 
-    return ranges;
+    // If we get here, no range set was satisfied
+    return false
 }
 
-export const isVersionVulnerable = (version, vulnerableRanges) => {
-    return vulnerableRanges.every(range => {
-        const comparison = compareVersions(version, range.version);
-        switch (range.comparison) {
-            case 'gt': return comparison > 0;
-            case 'gte': return comparison >= 0;
-            case 'lt': return comparison < 0;
-            case 'lte': return comparison <= 0;
-            default: return false;
-        }
-    });
-}
 /**
  * Flattens a nested object into a single-level object, optionally converting ISO 8601 date strings to Unix timestamps.
  *

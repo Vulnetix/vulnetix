@@ -7,7 +7,6 @@ import {
     isVersionVulnerable,
     MitreCVE,
     OSV,
-    parseVersionRanges,
     VexAnalysisState
 } from "@/utils";
 import { CVSS30, CVSS31, CVSS40 } from '@pandatix/js-cvss';
@@ -98,6 +97,7 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
     finding.cwes = JSON.stringify(osvData?.database_specific?.cwe_ids || [])
     const fixVersions = []
     const vulnerableVersionRange = []
+    const affectedFunctions = []
     for (const affected of osvData.affected) {
         for (const range of affected?.ranges || []) {
             let fixed = ''
@@ -126,8 +126,11 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
             finding.advisoryUrl = affected.database_specific.source
         }
         if (affected?.ecosystem_specific?.affected_functions) {
-            finding.affectedFunctions = affected.ecosystem_specific.affected_functions.join(`\n`)
+            affected.ecosystem_specific.affected_functions.forEach(i => affectedFunctions.push(i))
         }
+    }
+    if (affectedFunctions.length) {
+        finding.affectedFunctions = [...new Set(affectedFunctions)].join(`\n`)
     }
     if (vulnerableVersionRange.length) {
         finding.vulnerableVersionRange = vulnerableVersionRange.join(' || ')
@@ -306,17 +309,17 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
             triagedAt = new Date().getTime()
         }
     }
-    // if (!isVersionVulnerable(
-    //     getSemVerWithoutOperator(finding.packageVersion),
-    //     finding?.vulnerableVersionRange ? parseVersionRanges(finding.vulnerableVersionRange) : parseVersionRanges(`< ${getSemVerWithoutOperator(finding.fixVersion)}`)
-    // )) {
-    //     analysisState = 'false_positive'
-    //     triageAutomated = 1
-    //     analysisDetail = `Vulnerbility database error: ${getSemVerWithoutOperator(finding.packageVersion)} in not within vulnerable range "${finding.vulnerableVersionRange}"`
-    //     if (!triagedAt) {
-    //         triagedAt = new Date().getTime()
-    //     }
-    // }
+    if (!isVersionVulnerable(
+        getSemVerWithoutOperator(finding.packageVersion),
+        finding?.vulnerableVersionRange ? finding.vulnerableVersionRange : `< ${getSemVerWithoutOperator(finding.fixVersion)}`
+    )) {
+        analysisState = 'false_positive'
+        triageAutomated = 1
+        analysisDetail = `${getSemVerWithoutOperator(finding.packageVersion)} in not within vulnerable range "${finding.vulnerableVersionRange}"`
+        if (!triagedAt) {
+            triagedAt = new Date().getTime()
+        }
+    }
     if (seen === 1) {
         seenAt = new Date().getTime()
     }
@@ -606,10 +609,10 @@ const makeTimeline = finding => {
 export const confidenceRules = {
     falsePositiveVersion: {
         weight: 10,
-        rationale: `Package Version is not within vulnerable range.`,
+        rationale: `Package Version is not within vulnerable range, this typically indicates a false positive SCA vulnerability.`,
         evaluate: finding => !isVersionVulnerable(
-            getSemVerWithoutOperator(finding.packageVersion),
-            finding?.vulnerableVersionRange ? parseVersionRanges(finding.vulnerableVersionRange) : parseVersionRanges(`< ${getSemVerWithoutOperator(finding.fixVersion)}`)
+            finding.packageVersion,
+            finding?.vulnerableVersionRange ? finding.vulnerableVersionRange : `< ${getSemVerWithoutOperator(finding.fixVersion)}`
         ),
     },
     databaseReviewed: {
