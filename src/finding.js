@@ -117,7 +117,7 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
             vulnerableVersionRange.push(introduced + fixed)
         }
         if (affected?.database_specific?.last_known_affected_version_range) {
-            // vulnerableVersionRange.push(affected.database_specific.last_known_affected_version_range)
+            vulnerableVersionRange.push(affected.database_specific.last_known_affected_version_range.replace('Versions before', '<'))
         }
         if (affected?.package?.ecosystem) {
             finding.packageEcosystem = affected.package.ecosystem
@@ -205,7 +205,9 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
         if (cveMetadata?.dateUpdated) {
             finding.modifiedAt = new Date(cveMetadata.dateUpdated).getTime()
         }
-        finding.vulnerableVersionRange = affectedData.versions.length > 0 ? constructVersionRangeString(affectedData.versions) : null
+        if (!finding?.vulnerableVersionRange) {
+            finding.vulnerableVersionRange = affectedData.versions.length > 0 ? constructVersionRangeString(affectedData.versions) : null
+        }
         finding.cpe = affectedData?.cpes
         finding.vendor = affectedData?.vendor
         finding.product = affectedData?.product
