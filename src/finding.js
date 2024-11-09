@@ -2,8 +2,10 @@ import {
     constructVersionRangeString,
     convertIsoDatesToTimestamps,
     EPSS,
-    getVersionString,
+    getSemVerWithoutOperator,
+    parseVersionRanges,
     isValidSemver,
+    isVersionVulnerable,
     MitreCVE,
     OSV,
     VexAnalysisState
@@ -302,12 +304,12 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
         }
     }
     // if (!isVersionVulnerable(
-    //     getVersionString(finding.packageVersion),
-    //     parseVersionRanges(finding.vulnerableVersionRange)
+    //     getSemVerWithoutOperator(finding.packageVersion),
+    //     finding?.vulnerableVersionRange ? parseVersionRanges(finding.vulnerableVersionRange) : parseVersionRanges(`< ${getSemVerWithoutOperator(finding.fixVersion)}`)
     // )) {
     //     analysisState = 'false_positive'
     //     triageAutomated = 1
-    //     analysisDetail = `Vulnerbility database error: ${getVersionString(finding.packageVersion)} in not within vulnerable range "${finding.vulnerableVersionRange}"`
+    //     analysisDetail = `Vulnerbility database error: ${getSemVerWithoutOperator(finding.packageVersion)} in not within vulnerable range "${finding.vulnerableVersionRange}"`
     //     if (!triagedAt) {
     //         triagedAt = new Date().getTime()
     //     }
@@ -604,13 +606,13 @@ export const confidenceRules = {
     //     weight: 20,
     //     evaluate: finding => ({
     //         result: !isVersionVulnerable(
-    //             getVersionString(finding.packageVersion),
-    //             parseVersionRanges(finding.vulnerableVersionRange)
+    //             getSemVerWithoutOperator(finding.packageVersion),
+    //             finding?.vulnerableVersionRange ? parseVersionRanges(finding.vulnerableVersionRange) : parseVersionRanges(`< ${getSemVerWithoutOperator(finding.fixVersion)}`)
     //         ),
-    //         rationale: `Vulnerbility database error: ${getVersionString(finding.packageVersion)} in not within vulnerable range "${finding.vulnerableVersionRange}"`,
+    //         rationale: `Vulnerbility database error: ${getSemVerWithoutOperator(finding.packageVersion)} in not within vulnerable range "${finding.vulnerableVersionRange}"`,
     //         score: !isVersionVulnerable(
-    //             getVersionString(finding.packageVersion),
-    //             parseVersionRanges(finding.vulnerableVersionRange)
+    //             getSemVerWithoutOperator(finding.packageVersion),
+    //             finding?.vulnerableVersionRange ? parseVersionRanges(finding.vulnerableVersionRange) : parseVersionRanges(`< ${getSemVerWithoutOperator(finding.fixVersion)}`)
     //         ) ? 20 : 0
     //     })
     // },
@@ -625,9 +627,9 @@ export const confidenceRules = {
     invalidPackageVersion: {
         weight: -5,
         evaluate: finding => ({
-            result: !isValidSemver(getVersionString(finding.packageVersion)),
+            result: !isValidSemver(getSemVerWithoutOperator(finding.packageVersion)),
             rationale: "Package version format is not SemVer and prone to false positive detections.",
-            score: !isValidSemver(getVersionString(finding.packageVersion)) ? -5 : 0
+            score: !isValidSemver(getSemVerWithoutOperator(finding.packageVersion)) ? -5 : 0
         })
     },
     cisaValidated: {
@@ -641,9 +643,9 @@ export const confidenceRules = {
     invalidFixVersion: {
         weight: -1,
         evaluate: finding => ({
-            result: !isValidSemver(getVersionString(finding.fixVersion)),
+            result: !isValidSemver(getSemVerWithoutOperator(finding.fixVersion)),
             rationale: "Without a valid Fix Version and known patch, the Advisory may not have been verified because it has no known fix.",
-            score: !isValidSemver(getVersionString(finding.fixVersion)) ? -1 : 0
+            score: !isValidSemver(getSemVerWithoutOperator(finding.fixVersion)) ? -1 : 0
         })
     },
     maliciousPackage: {

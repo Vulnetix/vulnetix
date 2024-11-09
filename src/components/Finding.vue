@@ -1,5 +1,5 @@
 <script setup>
-import { compareVersions, getPastelColor, getVersionString, isVersionVulnerable, parseVersionRanges, VexAnalysisState } from '@/utils';
+import { compareVersions, getPastelColor, getSemVerWithoutOperator, getVersionString, isVersionVulnerable, parseVersionRanges, VexAnalysisState } from '@/utils';
 import { onMounted } from 'vue';
 import { useTheme } from 'vuetify';
 
@@ -75,7 +75,7 @@ const init = () => {
 
     const versionSet = new Set()
     if (props.finding?.packageVersion) {
-        versionSet.add(getVersionString(props.finding.packageVersion));
+        versionSet.add(getSemVerWithoutOperator(props.finding.packageVersion));
     }
     if (props.finding?.fixVersion) {
         versionSet.add(getVersionString(props.finding.fixVersion));
@@ -86,10 +86,10 @@ const init = () => {
             .sort((a, b) => compareVersions(a, b))
             .forEach(version => versions.value.push({
                 version,
-                isCurrentVersion: version === getVersionString(props.finding.packageVersion),
+                isCurrentVersion: version === getSemVerWithoutOperator(props.finding.packageVersion),
                 isVulnerable: props.finding?.fixVersion ? isVersionVulnerable(
                     version,
-                    parseVersionRanges(`< ${getVersionString(props.finding.fixVersion)}`)
+                    parseVersionRanges(`< ${getSemVerWithoutOperator(props.finding.fixVersion)}`)
                 ) : true
             }))
         return
@@ -99,7 +99,7 @@ const init = () => {
         .sort((a, b) => compareVersions(a, b))
         .forEach(version => versions.value.push({
             version,
-            isCurrentVersion: version === getVersionString(props.finding.packageVersion),
+            isCurrentVersion: version === getSemVerWithoutOperator(props.finding.packageVersion),
             isVulnerable: isVersionVulnerable(
                 version,
                 parseVersionRanges(props.finding.vulnerableVersionRange)
@@ -192,7 +192,7 @@ const cvssChipColor = computed(() => {
                                         <VListItemTitle>
                                             Package: {{ props.finding.packageEcosystem }}:{{ props.finding.packageName
                                             }}@{{
-                                                getVersionString(props.finding.packageVersion) }}
+                                                getSemVerWithoutOperator(props.finding.packageVersion) }}
                                         </VListItemTitle>
                                     </VListItem>
 
@@ -448,25 +448,35 @@ const cvssChipColor = computed(() => {
                                 md="6"
                             >
                                 <VCard variant="outlined">
-                                    <VCardTitle class="d-flex justify-space-between">
-                                        <div class="mt-4">Risk Scores</div>
-                                        <!-- Confidence -->
-                                        <VProgressCircular
-                                            :model-value="props.finding.confidenceScore"
-                                            :color="props.finding.confidenceLevel === 'Low' ? 'warning' : props.finding.confidenceLevel === 'Reasonable' ? 'info' : 'primary'"
-                                            :size="80"
-                                            :width="15"
-                                        >
-                                            <div class="text-center">
-                                                <div class="text-subtitle-2">{{ props.finding.confidenceLevel }}
-                                                </div>
+                                    <VCardTitle>
+                                        <div class="d-flex justify-space-between">
+                                            <div class="mt-4">Risk Scores</div>
+                                            <div>
+                                                <!-- Confidence -->
+                                                <VProgressCircular
+                                                    :model-value="props.finding.confidenceScore"
+                                                    :color="props.finding.confidenceLevel === 'Low' ? 'warning' : props.finding.confidenceLevel === 'Reasonable' ? 'info' : 'primary'"
+                                                    :size="80"
+                                                    :width="15"
+                                                >
+                                                    <div class="text-center">
+                                                        <div class="text-subtitle-2">{{ props.finding.confidenceLevel }}
+                                                        </div>
+                                                    </div>
+                                                </VProgressCircular>
+                                                <VTooltip
+                                                    activator="parent"
+                                                    location="left"
+                                                    max-width="250"
+                                                >
+                                                    <template v-slot:default>
+                                                        <span style="white-space: preserve-breaks;">
+                                                            {{ props.finding.confidenceRationale.join(`\n\n`) }}
+                                                        </span>
+                                                    </template>
+                                                </VTooltip>
                                             </div>
-                                        </VProgressCircular>
-                                        <VTooltip
-                                            activator="parent"
-                                            location="top"
-                                            :text="props.finding.confidenceRationale.join(`\n\n`)"
-                                        />
+                                        </div>
                                     </VCardTitle>
                                     <VCardText>
                                         <!-- SSVC -->
@@ -578,13 +588,13 @@ const cvssChipColor = computed(() => {
                                                     (Current)
                                                 </span>
                                                 <span
-                                                    v-if="props.finding?.fixVersion && version === getVersionString(props.finding.fixVersion)"
+                                                    v-if="props.finding?.fixVersion && version.startsWith(getVersionString(props.finding.fixVersion))"
                                                     class="ml-1 text-success font-semibold"
                                                 >
                                                     (Fix)
                                                 </span>
                                                 <span
-                                                    v-if="isVulnerable && version !== props.finding?.fixVersion ? getVersionString(props.finding?.fixVersion || '') : null"
+                                                    v-if="isVulnerable && !version.startsWith(getVersionString(props.finding?.fixVersion))"
                                                     class="ml-1 text-error text-sm font-medium"
                                                 >
                                                     Vulnerable

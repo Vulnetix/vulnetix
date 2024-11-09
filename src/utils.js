@@ -1851,21 +1851,24 @@ export const convertIsoDatesToTimestamps = obj => {
  */
 export function parseSemVer(versionString) {
     // Regular expressions for different parts
-    const operatorRegex = /^([<>]=?|=|~|\^)/;
-    const versionRegex = /^v?(\d+|[x*])(?:\.(\d+|[x*]))?(?:\.(\d+|[x*]))?(?:-([0-9A-Za-z-.]+))?(?:\+([0-9A-Za-z-.]+))?$/;
+    const operatorRegex = /^([<>]=?|={1,2}|\*|~|\^)|^.*(\.x|\.\*)/;
+    const versionRegex = /^v?(\d+|[x*])(?:\.(\d+|[x*]))?(?:\.(\d+|[x*]))?(?:-?([0-9A-Za-z-.]+))?(?:\+([0-9A-Za-z-.]+))?$/;
 
     let operator = '';
     let version = versionString;
 
     // Extract operator if present
     const operatorMatch = versionString.match(operatorRegex);
-    if (operatorMatch) {
+    if (operatorMatch && operatorMatch[0]) {
         operator = operatorMatch[1];
         version = versionString.slice(operator.length).trim();
+    } else if (operatorMatch && operatorMatch[2]) {
+        operator = operatorMatch[2];
+        version = versionString.replace(operator, '.0').trim();
     }
 
-    // Handle "*" as a special case
-    if (version === '*') {
+    // Handle "*" and "x" as a special case
+    if (['*', 'x'].includes(version)) {
         return {
             operator,
             major: '*',
@@ -1880,7 +1883,15 @@ export function parseSemVer(versionString) {
     // Parse version parts
     const match = version.match(versionRegex);
     if (!match) {
-        return;
+        return {
+            operator,
+            major: '',
+            minor: '',
+            patch: '',
+            prerelease: null,
+            buildMetadata: null,
+            original: versionString
+        };
     }
 
     const [, major, minor, patch, prerelease, buildMetadata] = match;
@@ -1888,7 +1899,7 @@ export function parseSemVer(versionString) {
     // Convert version parts to numbers or keep as special characters
     const processVersionPart = (part) => {
         if (!part) return '0';
-        if (part === '*' || part === 'x') return '*';
+        if (['*', 'x'].includes(part)) return '*';
         return part;
     };
 
@@ -1901,6 +1912,24 @@ export function parseSemVer(versionString) {
         buildMetadata: buildMetadata || null,
         original: versionString
     };
+}
+export function getSemVerWithoutOperator(versionString) {
+    // Regular expressions for different parts
+    const operatorRegex = /^([<>]=?|={1,2}|\*|~|\^)|^.*(\.x|\.\*)/;
+    let operator = '';
+    let version = versionString;
+
+    // Extract operator if present
+    const operatorMatch = versionString.match(operatorRegex);
+    if (operatorMatch && operatorMatch[0]) {
+        operator = operatorMatch[1];
+        version = versionString.slice(operator.length).trim();
+    } else if (operatorMatch && operatorMatch[2]) {
+        operator = operatorMatch[2];
+        version = versionString.replace(operator, '.0').trim();
+    }
+
+    return version
 }
 /**
  * Splits a version string into comparison operator and version number
@@ -1917,24 +1946,24 @@ export function splitVersionComparison(versionString) {
 
 export const isValidSemver = version => {
     if (!version) return false;
-    const semverRegex = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
+    const semverRegex = /^v?(\d+|[x*])(?:\.(\d+|[x*]))?(?:\.(\d+|[x*]))?(?:-?([0-9A-Za-z-.]+))?(?:\+([0-9A-Za-z-.]+))?$/;
     return semverRegex.test(version);
 }
 
-export function getVersionString(versionString) {
+export function getVersionString(versionString, majorDefault = "0", minorDefault = "0", patchDefault = "0") {
     // Get clean version number for each part
     const cleanVersions = versionString.split('||').map(v => v.trim()).filter(v => !!v).map(v => {
         const [, version = ''] = splitVersionComparison(v)
         return version.trim()
     }).filter(i => !!i)
-    if (!cleanVersions.length) return ""
+    if (!cleanVersions.length) return `${majorDefault}.${minorDefault}.${patchDefault}`
     const comp = (v1, v2) => {
-        const versionRegex = /^v?(\d+|[x*])(?:\.(\d+|[x*]))?(?:\.(\d+|[x*]))?(?:-([0-9A-Za-z-.]+))?(?:\+([0-9A-Za-z-.]+))?$/;
+        const versionRegex = /^v?(\d+|[x*])(?:\.(\d+|[x*]))?(?:\.(\d+|[x*]))?(?:-?([0-9A-Za-z-.]+))?(?:\+([0-9A-Za-z-.]+))?$/;
         if (v2.includes('*.*.*')) return v1
         if (v1.includes('*.*.*')) return v2
         if (!v1.match(versionRegex)) return v2
         if (!v2.match(versionRegex)) return v1
-        const parse = (v) => v.split('.').map(part => part === '*' ? Infinity : parseInt(part));
+        const parse = (v) => v.split('.').map(part => ['*', 'x'].includes(part) ? Infinity : part);
         const [major1, minor1, patch1] = parse(v1);
         const [major2, minor2, patch2] = parse(v2);
 
@@ -1945,7 +1974,8 @@ export function getVersionString(versionString) {
     const semVer = cleanVersions.reduce((highest, current) => {
         return comp(highest, current)
     })
-    const { major, minor, patch } = parseSemVer(semVer)
+    if (!semVer) return `${majorDefault}.${minorDefault}.${patchDefault}`
+    const { major = majorDefault, minor = minorDefault, patch = patchDefault } = parseSemVer(semVer)
     return `${major}.${minor}.${patch}`
 }
 
