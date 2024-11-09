@@ -112,26 +112,26 @@ onMounted(() => {
                 :queue-remaining="state.queueRemaining"
             />
         </VCardText>
+        <VEmptyState
+            v-if="state.loading"
+            size="250"
+        >
+            <template v-slot:media>
+                <div class="mb-8">
+                    <IconVulnetix width="150" />
+                </div>
+            </template>
+
+            <template v-slot:title>
+                <div class="text-h6 text-high-emphasis">Pix is working</div>
+            </template>
+
+            <template v-slot:text>
+                <div class="text-body-1">Gathering the latest information for your issue.</div>
+                <div class="text-body-1">This should be no more than 10 seconds.</div>
+            </template>
+        </VEmptyState>
     </VCard>
-    <v-empty-state
-        v-if="state.loading"
-        size="250"
-    >
-        <template v-slot:media>
-            <div class="mb-8">
-                <IconVulnetix width="150" />
-            </div>
-        </template>
-
-        <template v-slot:title>
-            <div class="text-h6 text-high-emphasis">Pix is working</div>
-        </template>
-
-        <template v-slot:text>
-            <div class="text-body-1">Gathering the latest information for your issue.</div>
-            <div class="text-body-1">This should be no more than 10 seconds.</div>
-        </template>
-    </v-empty-state>
 </template>
 
 <style scoped>

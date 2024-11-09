@@ -470,10 +470,11 @@ export class Client {
         }
         const data = JSON.parse(respText)
         if (data?.error?.message) {
-            throw new Error(data.error.message)
+            throw new Error(data.error.message.toString())
         }
         if (["Expired", "Revoked", "Forbidden"].includes(data?.result)) {
-            window.location = `${window.location.origin}/logout`
+            console.error(data.result, data)
+            // window.location = `${window.location.origin}/logout`
         }
         return { ok: response.ok, status: response.status, statusText: response.statusText, result: data?.result, data, url }
     }

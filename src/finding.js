@@ -218,7 +218,7 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
     const confidence = evaluateAdvisoryConfidence(finding)
     finding.confidenceScore = confidence.percentage
     finding.confidenceLevel = confidence.confidenceLevel
-    finding.confidenceRationaleJSON = JSON.stringify(confidence.evaluations.filter(i => i.result).map(i => i.rationale))
+    finding.confidenceRationaleJSON = JSON.stringify(confidence.evaluations.map(i => i.rationale))
     finding.timelineJSON = makeTimeline(finding)
     const info = await prisma.Finding.update({
         where: { uuid: finding.uuid },
@@ -598,9 +598,12 @@ const makeTimeline = finding => {
             time: finding.cdx.createdAt,
         })
     }
-    timeline.forEach(t => events.push(t))
+    timeline.forEach(t => {
+        if (!t.value.startsWith(`VEX generated as `) && !t.value.endsWith(` Traiged`) && !t.value.endsWith(` Reviewed`)) {
+            events.push(t)
+        }
+    })
     const ret = [...new Map(events.map(item => [`${item.value}-${item.time}`, item])).values()]
-        .filter(i => !['Last VEX created', 'Pix Automated', 'Last finding outcome decision'].includes(i.value))
         .sort((a, b) => a.time - b.time)
 
     return retJson ? JSON.stringify(ret) : ret
@@ -608,52 +611,79 @@ const makeTimeline = finding => {
 
 export const confidenceRules = {
     falsePositiveVersion: {
-        weight: 10,
-        rationale: `Package Version is not within vulnerable range, this typically indicates a false positive SCA vulnerability.`,
-        evaluate: finding => !isVersionVulnerable(
+        title: "Vulnerable Version False Positives",
+        weight: 5,
+        rationale: {
+            pass: "Package Version falls within the vulnerable range, suggesting a true positive.",
+            fail: "Package Version is not within vulnerable range, indicating a false positive SCA vulnerability."
+        },
+        evaluate: finding => isVersionVulnerable(
             finding.packageVersion,
             finding?.vulnerableVersionRange ? finding.vulnerableVersionRange : `< ${getSemVerWithoutOperator(finding.fixVersion)}`
         ),
     },
     databaseReviewed: {
-        weight: 1,
-        rationale: `Information in this advisory has been fact checked.`,
+        title: "Database Review Status",
+        weight: 2,
+        rationale: {
+            pass: "Information in this advisory has been verified by the source database.",
+            fail: "Advisory has not undergone database review and may not be high quality."
+        },
         evaluate: finding => finding.databaseReviewed === 1,
     },
-    invalidPackageVersion: {
+    invalidSemVer: {
+        title: "SemVer Format Validation",
         weight: -2,
-        rationale: "Package version format is not SemVer and prone to false positive detections.",
+        rationale: {
+            pass: "Package version format is not SemVer and prone to false positive detections.",
+            fail: "Package version follows SemVer format, enabling accurate version comparison."
+        },
         evaluate: finding => !isValidSemver(getSemVerWithoutOperator(finding.packageVersion)),
     },
     cisaValidated: {
+        title: "CISA Vulnrichment",
         weight: 2,
-        rationale: "CISA vulnrichment provides higher confidence for information in the CVE.",
+        rationale: {
+            pass: "CISA vulnrichment provides higher confidence for information in the CVE database.",
+            fail: "Finding lacks CISA validation, reducing confidence in the assessment."
+        },
         evaluate: finding => Boolean(finding.cisaDateAdded),
     },
     noFixVersion: {
-        weight: -1,
-        rationale: "Without a Fix Version and known patch, the Advisory may not have been verified because it has no known fix.",
+        title: "Patch Availability",
+        weight: -3,
+        rationale: {
+            pass: "Without a Fix Version, the Advisory may not have been verified because it has no known fix.",
+            fail: "Fix version or vulnerable version range is available, indicating a high fidelity advisory."
+        },
         evaluate: finding => !getSemVerWithoutOperator(finding.fixVersion) && !finding?.vulnerableVersionRange,
     },
     maliciousPackage: {
-        weight: 5,
-        rationale: "All known malicious packages should be immediately assessed.",
+        title: "Known Malicious Package",
+        weight: 2,
+        rationale: {
+            pass: "Package has been identified as malicious and requires immediate assessment.",
+            fail: "Package has not been identified as malicious, as an attack on the software supply chain."
+        },
         evaluate: finding => finding.malicious === 1,
     },
     goodReferences: {
+        title: "Reference Quality Check",
         weight: 1,
-        rationale: "There are a good amount of references which indicates wide spread reporting and review.",
+        rationale: {
+            pass: "There are a good amount of references which indicates more reviews would hae occurred.",
+            fail: "Insufficient number of references may indicate limited verification or research."
+        },
         evaluate: finding => finding.references?.length >= 5,
     },
-    limitedReferences: {
-        weight: -1,
-        rationale: "There are too few references which may indicate a relatively low quality report, in terms of coverage of advisories and evidence.",
-        evaluate: finding => finding.references?.length < 5,
-    },
     exploitsAvailable: {
-        weight: 2,
-        rationale: "While exploits are often mere detection only PoC, rather than proof of real exploitation, having even a detection is a strong indication of true positive.",
-        evaluate: finding => (finding?.exploits?.length || 0) + (finding?.knownExploits?.length || 0) >= 1,
+        title: "Exploit Availability Status",
+        weight: -2,
+        rationale: {
+            pass: "No known exploits or proof of concepts available, indicating this may not be an exploitable issue.",
+            fail: "Presence of exploits or PoCs indicates verified vulnerability."
+        },
+        evaluate: finding => (finding?.exploits?.length || 0) + (finding?.knownExploits?.length || 0) === 0,
     }
 }
 
@@ -677,7 +707,7 @@ export const evaluateAdvisoryConfidence = advisory => {
             rule: key,
             result: evaluation,
             score: evaluation ? rule.weight : 0,
-            rationale: rule.rationale,
+            rationale: evaluation ? rule.rationale.pass : rule.rationale.fail,
         };
     });
 
