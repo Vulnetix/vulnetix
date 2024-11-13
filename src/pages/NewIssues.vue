@@ -137,9 +137,15 @@ class Controller {
         state.loading = false
     }
 }
-
+function onTabChange() {
+    window.location.hash = tab.value
+}
 const controller = reactive(new Controller())
 onMounted(() => {
+    const hash = window.location.hash.substring(1)
+    if (['issue', 'dependencies', 'artifacts'].includes(hash)) {
+        tab.value = hash
+    }
     Member.ensureSession()
         .then(controller.refresh)
 })
@@ -151,6 +157,7 @@ onMounted(() => {
             v-model="tab"
             align-tabs="start"
             stacked
+            @update:model-value="onTabChange"
         >
             <VTab value="issue">
                 <VIcon

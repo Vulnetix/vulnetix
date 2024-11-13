@@ -128,10 +128,17 @@ class Controller {
     }
 
 }
-
+function onTabChange() {
+    window.location.hash = tab.value
+}
 const controller = reactive(new Controller())
-onMounted(() => Member.ensureSession().then(() => controller.fetchIssue(route.params.uuid)))
-
+onMounted(() => {
+    const hash = window.location.hash.substring(1)
+    if (['issue', 'dependencies', 'artifacts'].includes(hash)) {
+        tab.value = hash
+    }
+    Member.ensureSession().then(() => controller.fetchIssue(route.params.uuid))
+})
 onBeforeRouteUpdate(async (to, from) => {
     if (to.params.uuid !== from.params.uuid) {
         await controller.fetchIssue(to.params.uuid)
@@ -145,6 +152,7 @@ onBeforeRouteUpdate(async (to, from) => {
             v-model="tab"
             align-tabs="start"
             stacked
+            @update:model-value="onTabChange"
         >
             <VTab value="issue">
                 <VIcon
