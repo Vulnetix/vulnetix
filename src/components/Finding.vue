@@ -692,7 +692,7 @@ watch([
                             <span class="text-h5">{{ props.finding.detectionTitle }}</span>
                             <VChip
                                 v-if="props.showTriageState || props.currentTriage.analysisState !== 'in_triage'"
-                                color="secondary"
+                                color="info"
                                 class="ml-2"
                             >
                                 {{ VexAnalysisState[props.currentTriage.analysisState] }}
@@ -1138,6 +1138,14 @@ watch([
                                                                     <div class="text-h5 text-medium-emphasis ps-2">
                                                                         CVSS Calculator
                                                                     </div>
+                                                                    <VChip
+                                                                        size="large"
+                                                                        class="py-3 px-4"
+                                                                        :color="cvssColorCalc || 'success'"
+                                                                        variant="outlined"
+                                                                    >
+                                                                        {{ cvssScoreCalc || 0 }}
+                                                                    </VChip>
 
                                                                     <VBtn
                                                                         icon="mdi-close"
@@ -1154,1155 +1162,1224 @@ watch([
                                                                     >
                                                                         <VTab value="v31">CVSS v3.1</VTab>
                                                                         <VTab value="v40">CVSS v4.0</VTab>
-                                                                        <VChip
-                                                                            class="ma-2"
-                                                                            :color="cvssColorCalc"
-                                                                            variant="outlined"
-                                                                        >
-                                                                            {{ cvssScoreCalc }}
-                                                                        </VChip>
                                                                     </VTabs>
 
                                                                     <VWindow v-model="activeTab">
                                                                         <!-- CVSS v3.1 Tab -->
                                                                         <VWindowItem value="v31">
                                                                             <VContainer>
-                                                                                <!-- Base Metrics Group -->
-                                                                                <div class="text-h6 mb-2">Base Metrics
-                                                                                </div>
+                                                                                <VRow>
+                                                                                    <VCol cols="6">
+                                                                                        <!-- Base Metrics Group -->
+                                                                                        <div class="text-h6 mb-2">
+                                                                                            Base Metrics
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Attack Vector (AV)</div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsAV"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="primary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.attackVector.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Attack Vector (AV)</div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsAV"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="primary"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.attackVector.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Attack Complexity (AC)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsAC"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="primary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.attackComplexity.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Attack Complexity (AC)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsAC"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="primary"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.attackComplexity.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Privileges Required (PR)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsPR"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="primary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.privilegesRequired.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Privileges Required (PR)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsPR"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="primary"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.privilegesRequired.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        User Interaction (UI)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsUI"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="primary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.userInteraction.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                User Interaction (UI)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsUI"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="primary"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.userInteraction.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Scope (S)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsS"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="primary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.scope.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Scope (S)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsS"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="primary"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.scope.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                    </VCol>
+                                                                                    <VCol cols="6">
+                                                                                        <!-- Impact Metrics -->
+                                                                                        <div class="text-h6 mb-2">
+                                                                                            Impact Metrics
+                                                                                        </div>
 
-                                                                                <!-- Impact Metrics -->
-                                                                                <div class="text-h6 mb-2">
-                                                                                    Impact Metrics
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Confidentiality (C)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsC"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="info"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.confidentiality.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Confidentiality (C)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsC"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="info"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.confidentiality.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Integrity (I)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsI"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="info"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.integrity.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Integrity (I)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsI"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="info"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.integrity.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Availability (A)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsA"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="info"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.availability.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                    </VCol>
+                                                                                    <VCol cols="6">
+                                                                                        <div class="text-h6 mb-2">
+                                                                                            Temporal Score Metrics
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Exploit Code Maturity
+                                                                                                (E)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsE"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.exploitMaturity.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Availability (A)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsA"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="info"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.availability.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Remediation Level (RL)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsRL"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.remediationLevel.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="text-h6 mb-2">
-                                                                                    Temporal Score Metrics
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Exploit Code Maturity (E)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsE"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.exploitMaturity.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Report Confidence (RC)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsRC"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.reportConfidence.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                    </VCol>
+                                                                                    <VCol cols="6">
+                                                                                        <div class="text-h6 mb-2">
+                                                                                            Environmental Score Metrics
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Attack Vector (MAV)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsMAV"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.envAttackVector.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Remediation Level (RL)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsRL"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.remediationLevel.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Attack Complexity (MAC)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsMAC"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.envAttackComplexity.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Report Confidence (RC)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsRC"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.reportConfidence.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Privileges Required
+                                                                                                (MPR)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsMPR"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.envPrivilegesRequired.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="text-h6 mb-2">
-                                                                                    Environmental Score Metrics
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Attack Vector (MAV)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsMAV"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.envAttackVector.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                User Interaction (MUI)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsMUI"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.envUserInteraction.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Attack Complexity (MAC)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsMAC"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.envAttackComplexity.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Scope (MS)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsMS"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.envScope.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Privileges Required (MPR)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsMPR"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.envPrivilegesRequired.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Confidentiality Impact
+                                                                                                (MC)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsMC"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.envConfidentialityImpact.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        User Interaction (MUI)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsMUI"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.envUserInteraction.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Integrity Impact (MI)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsMI"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.envIntegrityImpact.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Scope (MS)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsMS"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.envScope.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Availability Impact (MA)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsMA"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.envAvailabilityImpact.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Confidentiality Impact (MC)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsMC"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.envConfidentialityImpact.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Confidentiality
+                                                                                                Requirement (CR)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsCR"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.envConfidentialityRequirement.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Integrity Impact (MI)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsMI"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.envIntegrityImpact.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Integrity Requirement
+                                                                                                (IR)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsIR"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.envIntegrityRequirement.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Availability Impact (MA)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsMA"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.envAvailabilityImpact.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Confidentiality Requirement (CR)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsCR"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.envConfidentialityRequirement.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Integrity Requirement (IR)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsIR"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.envIntegrityRequirement.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Availability Requirement (AR)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v31MetricsAR"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v31Options.envAvailabilityRequirement.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Availability Requirement
+                                                                                                (AR)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v31MetricsAR"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v31Options.envAvailabilityRequirement.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                    </VCol>
+                                                                                </VRow>
                                                                             </VContainer>
                                                                         </VWindowItem>
 
                                                                         <!-- CVSS v4.0 Tab -->
                                                                         <VWindowItem value="v40">
                                                                             <VContainer>
-                                                                                <div class="text-h6 mb-2">
-                                                                                    Exploitability Metrics
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Attack
-                                                                                        Vector (AV)</div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsAV"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="primary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.attackVector.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Attack
-                                                                                        Complexity (AC)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsAC"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="primary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.attackComplexity.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Attack
-                                                                                        Requirements (AT)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsAT"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="primary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.attackRequirements.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Privileges Required (PR)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsPR"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="primary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.privilegesRequired.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        User Interaction (UI)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsUI"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="primary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.userInteraction.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="text-h6 mb-2">
-                                                                                    Vulnerable System Impact Metrics
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Confidentiality (VC)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsVC"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.systemConfidentiality.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                <VRow>
+                                                                                    <VCol cols="6">
+                                                                                        <div class="text-h6 mb-2">
+                                                                                            Exploitability Metrics
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Attack
+                                                                                                Vector (AV)</div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsAV"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="primary"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.attackVector.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Attack
+                                                                                                Complexity (AC)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsAC"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="primary"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.attackComplexity.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Attack
+                                                                                                Requirements (AT)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsAT"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="primary"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.attackRequirements.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Privileges Required (PR)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsPR"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="primary"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.privilegesRequired.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                User Interaction (UI)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsUI"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="primary"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.userInteraction.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                    </VCol>
+                                                                                    <VCol cols="6">
+                                                                                        <div class="text-h6 mb-2">
+                                                                                            Vulnerable System Impact
+                                                                                            Metrics
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Confidentiality (VC)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsVC"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="info"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.systemConfidentiality.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Integrity (VI)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsVI"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.systemIntegrity.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Integrity (VI)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsVI"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="info"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.systemIntegrity.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
 
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Availability (VA)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsVA"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.systemAvailability.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="text-h6 mb-2">
-                                                                                    Subsequent System Impact Metrics
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Confidentiality (SC)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsSC"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.subSystemConfidentiality.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Integrity (SI)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsSI"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.subSystemIntegrity.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Availability (SA)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsSA"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.subSystemAvailability.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="text-h6 mb-2">
-                                                                                    Supplemental Metrics
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Safety (S)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsS"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.safety.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Automatable (AU)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsAU"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.automatable.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Recovery (R)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsR"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.recovery.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Value Density (V)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsV"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.valueDensity.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Vulnerability Response Effort
-                                                                                        (RE)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsRE"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.vulnerabilityResponseEffort.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Provider Urgency (U)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsU"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.providerUrgency.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="text-h6 mb-2">
-                                                                                    Environmental (Modified Base
-                                                                                    Metrics)
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Attack Vector (MAV)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsMAV"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.envAttackVector.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Attack Complexity (MAC)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsMAC"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.envAttackComplexity.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Attack Requirements (MAT)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsMAT"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.envAttackRequirements.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Privileges Required (MPR)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsMPR"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.envPrivilegesRequired.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        User Interaction (MUI)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsMUI"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.envUserInteraction.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Confidentiality (MVC)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsMVC"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.envSystemConfidentiality.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Integrity (MVI)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsMVI"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.envSystemIntegrity.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Availability (MVA)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsMVA"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.envSystemAvailability.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Confidentiality (MSC)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsMSC"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.envSubSystemConfidentiality.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Integrity (MSI)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsMSI"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.envSubSystemIntegrity.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Availability (MSA)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsMSA"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.envSubSystemAvailability.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="text-h6 mb-2">
-                                                                                    Environmental (Security
-                                                                                    Requirements)
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Confidentiality Requirements
-                                                                                        (CR)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsCR"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.envConfidentialityRequirement.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Integrity Requirements (IR)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsIR"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.envIntegrityRequirement.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Availability Requirements (AR)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsAR"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.envAvailabilityRequirement.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
-                                                                                <div class="text-h6 mb-2">
-                                                                                    Threat Metrics
-                                                                                </div>
-                                                                                <div class="mb-4">
-                                                                                    <div class="text-subtitle-2 mb-1">
-                                                                                        Exploit Maturity (E)
-                                                                                    </div>
-                                                                                    <VBtnToggle
-                                                                                        v-model="v40MetricsE"
-                                                                                        mandatory
-                                                                                        divided
-                                                                                        color="secondary"
-                                                                                    >
-                                                                                        <VBtn
-                                                                                            v-for="option in v40Options.exploitMaturity.value"
-                                                                                            :key="option.value"
-                                                                                            :value="option.value"
-                                                                                            class="text-body-2"
-                                                                                        >
-                                                                                            {{ option.text }}
-                                                                                        </VBtn>
-                                                                                    </VBtnToggle>
-                                                                                </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Availability (VA)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsVA"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="info"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.systemAvailability.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="text-h6 mb-2">
+                                                                                            Subsequent System Impact
+                                                                                            Metrics
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Confidentiality (SC)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsSC"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="info"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.subSystemConfidentiality.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Integrity (SI)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsSI"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="info"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.subSystemIntegrity.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Availability (SA)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsSA"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="info"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.subSystemAvailability.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                    </VCol>
+                                                                                    <VCol cols="6">
+                                                                                        <div class="text-h6 mb-2">
+                                                                                            Supplemental Metrics
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Safety (S)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsS"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="info"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.safety.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Automatable (AU)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsAU"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="info"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.automatable.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Recovery (R)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsR"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="info"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.recovery.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Value Density (V)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsV"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="info"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.valueDensity.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Vulnerability Response
+                                                                                                Effort
+                                                                                                (RE)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsRE"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="info"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.vulnerabilityResponseEffort.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Provider Urgency (U)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsU"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="info"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.providerUrgency.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                    </VCol>
+                                                                                    <VCol cols="6">
+                                                                                        <div class="text-h6 mb-2">
+                                                                                            Environmental (Modified Base
+                                                                                            Metrics)
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Attack Vector (MAV)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsMAV"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.envAttackVector.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Attack Complexity (MAC)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsMAC"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.envAttackComplexity.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Attack Requirements
+                                                                                                (MAT)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsMAT"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.envAttackRequirements.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Privileges Required
+                                                                                                (MPR)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsMPR"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.envPrivilegesRequired.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                User Interaction (MUI)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsMUI"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.envUserInteraction.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Confidentiality (MVC)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsMVC"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.envSystemConfidentiality.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Integrity (MVI)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsMVI"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.envSystemIntegrity.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Availability (MVA)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsMVA"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.envSystemAvailability.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Confidentiality (MSC)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsMSC"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.envSubSystemConfidentiality.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Integrity (MSI)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsMSI"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.envSubSystemIntegrity.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Availability (MSA)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsMSA"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.envSubSystemAvailability.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                    </VCol>
+                                                                                    <VCol cols="6">
+                                                                                        <div class="text-h6 mb-2">
+                                                                                            Environmental (Security
+                                                                                            Requirements)
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Confidentiality
+                                                                                                Requirements
+                                                                                                (CR)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsCR"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.envConfidentialityRequirement.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Integrity Requirements
+                                                                                                (IR)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsIR"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.envIntegrityRequirement.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Availability
+                                                                                                Requirements (AR)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsAR"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.envAvailabilityRequirement.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                    </VCol>
+                                                                                    <VCol cols="6">
+                                                                                        <div class="text-h6 mb-2">
+                                                                                            Threat Metrics
+                                                                                        </div>
+                                                                                        <div class="mb-4">
+                                                                                            <div
+                                                                                                class="text-subtitle-2 mb-1">
+                                                                                                Exploit Maturity (E)
+                                                                                            </div>
+                                                                                            <VBtnToggle
+                                                                                                v-model="v40MetricsE"
+                                                                                                mandatory
+                                                                                                divided
+                                                                                                color="info"
+                                                                                            >
+                                                                                                <VBtn
+                                                                                                    v-for="option in v40Options.exploitMaturity.value"
+                                                                                                    :key="option.value"
+                                                                                                    :value="option.value"
+                                                                                                    class="text-body-2"
+                                                                                                >
+                                                                                                    {{ option.text }}
+                                                                                                </VBtn>
+                                                                                            </VBtnToggle>
+                                                                                        </div>
+                                                                                    </VCol>
+                                                                                </VRow>
                                                                             </VContainer>
                                                                         </VWindowItem>
                                                                     </VWindow>
