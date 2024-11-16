@@ -151,7 +151,6 @@ const process = async (prisma, session, repoName, spdx, spdxId, artifactUuid) =>
         createdAt: (new Date(spdx.creationInfo.created)).getTime(),
         toolName: spdx.creationInfo.creators.join(', '),
         documentDescribes: spdx?.documentDescribes?.join(','),
-        packagesCount: spdx.packages.length,
         comment: spdx.creationInfo?.comment || '',
     }
     const findingIds = []
@@ -200,6 +199,7 @@ const process = async (prisma, session, repoName, spdx, spdxId, artifactUuid) =>
                 createdAt: (new Date()).getTime(),
                 modifiedAt: (new Date(vuln.modified)).getTime(),
                 detectionTitle: vuln.id,
+                detectionDescription: vuln.details,
                 purl,
                 packageName: name,
                 packageVersion: version,

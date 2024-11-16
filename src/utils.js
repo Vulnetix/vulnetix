@@ -676,12 +676,11 @@ export class MitreCVE {
         if (!!mitreCveIntegration?.suspend) {
             throw new Error('Mitre CVE Integration is Disabled')
         }
-
-        const url = this.constructURL(cveId)
+        let url = `https://cveawg.mitre.org/api/cve/${cveId}`
         const resp = await this.fetchJSON(url)
 
-        if (isJSON(resp?.content)) {
-            const data = JSON.parse(resp.content)
+        if (resp?.content) {
+            const data = resp.content
             const createLog = await prisma.IntegrationUsageLog.create({
                 data: {
                     memberEmail,
@@ -696,10 +695,11 @@ export class MitreCVE {
             console.log(`MitreCVE.query()`, createLog)
             return data
         } else {
-            const response = await this.fetchJSON(`https://cveawg.mitre.org/api/cve-id/${cveId}`)
+            url = this.constructURL(cveId)
+            const response = await this.fetchJSON(url)
 
-            if (isJSON(response?.content)) {
-                const cveData = JSON.parse(response.content)
+            if (response?.content) {
+                const cveData = response.content
                 const log = await prisma.IntegrationUsageLog.create({
                     data: {
                         memberEmail,

@@ -85,6 +85,7 @@ function addToList(inputObject, keyName, newObject) {
 export const processFinding = async (prisma, r2adapter, verificationResult, finding, seen = 0) => {
     const isResolved = finding.triage.filter(triage => [VexAnalysisState.resolved, VexAnalysisState.resolved_with_pedigree, VexAnalysisState.false_positive, VexAnalysisState.not_affected].includes(triage.analysisState)).length
     const osvData = await new OSV().query(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail, finding.detectionTitle)
+    finding.detectionDescription = osvData.details
     finding.modifiedAt = (new Date(osvData.modified)).getTime()
     finding.publishedAt = (new Date(osvData.published)).getTime()
     finding.databaseReviewed = osvData?.database_specific?.github_reviewed ? 1 : 0
@@ -143,7 +144,7 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
     finding.malicious = osvData.id.startsWith("MAL-") ? 1 : 0
     finding.referencesJSON = JSON.stringify(osvData.references.map(reference => reference.url))
 
-    const cveId = finding.detectionTitle.startsWith('CVE-') ? finding.detectionTitle : osvData?.aliases?.filter(a => a.startsWith('CVE-')).pop()
+    const cveId = finding.detectionTitle.startsWith('CVE-') ? finding.detectionTitle : JSON.parse(finding?.aliases || '[]').filter(a => a.startsWith('CVE-')).pop()
     let cvssVector
     let cvssScore
     let cvelistv5
@@ -313,7 +314,7 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
         }
     }
     if (!isVersionVulnerable(
-        getSemVerWithoutOperator(finding.packageVersion),
+        finding.packageVersion,
         finding?.vulnerableVersionRange ? finding.vulnerableVersionRange : `< ${getSemVerWithoutOperator(finding.fixVersion)}`
     )) {
         analysisState = 'false_positive'
@@ -339,6 +340,7 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
         vexExist = !!vexData?.uuid
     }
     if (!isResolved) {
+        vexData.analysisState = analysisState
         vexData.analysisDetail = analysisDetail
         vexData.triageAutomated = triageAutomated
         vexData.triagedAt = triagedAt
@@ -360,24 +362,25 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
             },
             data: vexData,
         })
-        // console.log(`Updated VEX ${finding.detectionTitle}`, vexInfo)
+        console.log(`Updated VEX ${finding.detectionTitle} ${analysisState}`, vexInfo)
         finding.triage = finding.triage.filter(f => f.uuid != vexData.uuid)
         finding.triage.push(vexData)
     } else if (!isResolved) {
         vexData.findingUuid = finding.uuid
         vexData = await prisma.Triage.create({ data: vexData })
+        console.log(`Create VEX ${finding.detectionTitle} ${analysisState}`, info)
         finding.triage = finding.triage.filter(f => f.uuid != vexData.uuid)
         finding.triage.push(vexData)
-        finding.timelineJSON = makeTimeline(finding)
-        const info = await prisma.Finding.update({
-            where: { uuid: finding.uuid },
-            data: {
-                modifiedAt: finding.modifiedAt,
-                timelineJSON: finding.timelineJSON,
-            }
-        })
-        // console.log(`Update ${finding.detectionTitle}`, info)
     }
+    finding.timelineJSON = makeTimeline(finding)
+    const info = await prisma.Finding.update({
+        where: { uuid: finding.uuid },
+        data: {
+            modifiedAt: finding.modifiedAt,
+            timelineJSON: finding.timelineJSON,
+        }
+    })
+    console.log(`Update ${finding.detectionTitle}`, info)
     // expand JSON fields
     finding.confidenceRationale = finding?.confidenceRationaleJSON ? JSON.parse(finding.confidenceRationaleJSON) : []
     finding.references = finding?.referencesJSON ? JSON.parse(finding.referencesJSON) : []
@@ -435,6 +438,7 @@ export const findVectorString = (metrics = []) => {
 
 // Helper function to find valid CVSS vector string with version preference
 export const getCveData = async (prisma, r2adapter, verificationResult, cveId) => {
+    // let cve
     let cve = await prisma.CVEMetadata.findUnique({
         where: { cveId },
         include: {
@@ -460,7 +464,7 @@ export const fetchCVE = async (prisma, r2adapter, verificationResult, cveId) => 
         containers: { cna = {}, adp = [] }
     } = cvelistv5
     // Create or connect CNA organization
-    await prisma.cCVENumberingAuthrity.upsert({
+    await prisma.CVENumberingAuthrity.upsert({
         where: { orgId: cna.providerMetadata.orgId },
         create: {
             orgId: cna.providerMetadata.orgId,
@@ -531,7 +535,7 @@ export const fetchCVE = async (prisma, r2adapter, verificationResult, cveId) => 
     // Link ADP records
     for (const adpContainer of adp) {
         const { providerMetadata, title = '' } = adpContainer
-        await prisma.authorizedDataPublisher.upsert({
+        await prisma.AuthorizedDataPublisher.upsert({
             where: { orgId: providerMetadata.orgId },
             create: {
                 orgId: providerMetadata.orgId,
@@ -553,70 +557,128 @@ export const fetchCVE = async (prisma, r2adapter, verificationResult, cveId) => 
     return cve
 }
 
-const makeTimeline = finding => {
-    const retJson = !finding?.timeline
-    const timeline = retJson ? JSON.parse(finding?.timelineJSON || '[]') : finding?.timeline || []
-    const events = [
-        {
-            value: 'First discovered in repository',
-            time: finding.createdAt,
-        },
-        {
-            value: `Last synchronized with ${finding.source}`,
-            time: finding.modifiedAt,
-        },
-        {
-            value: 'Advisory first published',
-            time: finding.publishedAt - 1,
-        }
-    ]
-    for (const vex of finding.triage) {
-        if (vex.lastObserved) {
-            events.push({
-                value: `VEX generated as ${VexAnalysisState[vex.analysisState]}`,
-                time: vex.lastObserved,
-            })
-        }
-        if (vex.triagedAt && vex.memberEmail) {
-            events.push({
-                value: `${vex.memberEmail} Traiged`,
-                time: vex.triagedAt,
-            })
-        }
-        if (vex.seenAt && vex.memberEmail) {
-            events.push({
-                value: `${vex.memberEmail} Review`,
-                time: vex.seenAt,
-            })
-        }
+// Core event definitions that make the timeline unique by nature
+const CORE_EVENTS = {
+    discovery: finding => ({
+        value: 'First discovered in repository',
+        time: finding.createdAt
+    }),
+    sync: finding => ({
+        value: `Last synchronized with ${finding.source}`,
+        time: finding.modifiedAt
+    }),
+    advisory: finding => ({
+        value: 'Advisory first published',
+        time: finding.publishedAt - 1
+    }),
+    cisa: finding => finding.cisaDateAdded && {
+        value: 'Added to CISA KEV',
+        time: finding.cisaDateAdded
+    },
+    spdx: finding => finding.spdx?.createdAt && {
+        value: 'SPDX BOM published',
+        time: finding.spdx.createdAt
+    },
+    cdx: finding => finding.cdx?.createdAt && {
+        value: 'CycloneDX BOM published',
+        time: finding.cdx.createdAt
     }
-    if (finding.cisaDateAdded) {
-        events.push({
-            value: 'Added to CISA KEV',
-            time: finding.cisaDateAdded,
-        })
-    }
-    if (finding.spdx?.createdAt) {
-        events.push({
-            value: 'SPDX BOM published',
-            time: finding.spdx.createdAt,
-        })
-    }
-    if (finding.cdx?.createdAt) {
-        events.push({
-            value: 'CycloneDX BOM published',
-            time: finding.cdx.createdAt,
-        })
-    }
-    timeline.forEach(t => {
-        if (!t.value.startsWith(`VEX generated as `) && !t.value.endsWith(` Traiged`) && !t.value.endsWith(` Reviewed`)) {
-            events.push(t)
-        }
-    })
-    const ret = [...new Map(events.map(item => [`${item.value}-${item.time}`, item])).values()]
-        .sort((a, b) => a.time - b.time)
+}
 
-    return retJson ? JSON.stringify(ret) : ret
+// VEX event generators
+const getVexEvents = (vex) => [
+    vex.lastObserved && {
+        value: `VEX generated as ${VexAnalysisState[vex.analysisState]}`,
+        time: vex.lastObserved
+    },
+    vex.triagedAt && vex.memberEmail && {
+        value: `${vex.memberEmail} Triaged`,
+        time: vex.triagedAt
+    },
+    vex.seenAt && vex.memberEmail && {
+        value: `${vex.memberEmail} Review`,
+        time: vex.seenAt
+    }
+].filter(Boolean);
+
+export const makeTimeline = finding => {
+    const retJson = !finding?.timeline;
+    const existingTimeline = retJson ?
+        JSON.parse(finding?.timelineJSON || '[]') :
+        finding?.timeline || [];
+
+    // Generate all core events
+    const events = Object.values(CORE_EVENTS)
+        .map(generator => generator(finding))
+        .filter(Boolean);
+
+    // Add VEX events
+    finding.triage?.forEach(vex => {
+        events.push(...getVexEvents(vex));
+    });
+
+    // Add custom events that don't match core or VEX patterns
+    const systemEventValues = new Set([
+        ...Object.values(CORE_EVENTS).map(gen => gen(finding)?.value),
+        'VEX generated as',
+        'Triaged',
+        'Review'
+    ].filter(Boolean));
+
+    const isCustomEvent = event =>
+        !systemEventValues.has(event.value) &&
+        !event.value.startsWith('VEX generated as') &&
+        !event.value.endsWith('Triaged') &&
+        !event.value.endsWith('Review');
+
+    const customEvents = existingTimeline.filter(isCustomEvent);
+    events.push(...customEvents);
+
+    // Sort by time
+    const sortedEvents = events.sort((a, b) => a.time - b.time);
+
+    return retJson ? JSON.stringify(sortedEvents) : sortedEvents;
+}
+
+export function defaultCVSSVector(vectorString) {
+    if (!vectorString || typeof vectorString !== 'string') {
+        return false
+    }
+    const versionMatch = vectorString.match(/CVSS:(\d\.\d)/)
+    if (!versionMatch) {
+        return false
+    }
+    const version = versionMatch[1]
+
+    let requiredVectors
+    if (version === '4.0') {
+        requiredVectors = {
+            'AV:N': false,
+            'AC:L': false,
+            'AT:N': false,
+            'PR:N': false,
+            'UI:N': false
+        }
+    } else if (version === '3.0' || version === '3.1') {
+        requiredVectors = {
+            'AV:N': false,
+            'AC:L': false,
+            'PR:N': false,
+            'UI:N': false,
+            'S:U': false
+        }
+    } else {
+        return false // Unsupported version
+    }
+
+    const metrics = vectorString.split('/')
+    for (const metric of metrics) {
+        if (requiredVectors.hasOwnProperty(metric)) {
+            requiredVectors[metric] = true
+        }
+    }
+
+    return Object.values(requiredVectors).every(value => value === true)
 }
 
 export const confidenceRules = {
@@ -631,6 +693,15 @@ export const confidenceRules = {
             finding.packageVersion,
             finding?.vulnerableVersionRange ? finding.vulnerableVersionRange : `< ${getSemVerWithoutOperator(finding.fixVersion)}`
         ),
+    },
+    defaultCVSSVector: {
+        title: "CVSS Vectors are all defaults",
+        weight: -2,
+        rationale: {
+            pass: "CVSS Vectors are all defaults, indicating the scoring may have set CIA values only to produce the desired scorerather than a thoughtful score.",
+            fail: "CVSS Vectors are not default values, indicating thoughtful scoring, or no score was provided, or a custom score was set."
+        },
+        evaluate: finding => finding.triage.some(vex => defaultCVSSVector(vex.cvssVector)),
     },
     databaseReviewed: {
         title: "Database Review Status",

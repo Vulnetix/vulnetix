@@ -117,8 +117,6 @@ export async function onRequestPost(context) {
                 createdAt: (new Date(cdx.metadata.timestamp)).getTime(),
                 toolName: cdx.metadata.tools.map(t => `${t?.vendor} ${t?.name} ${t?.version}`.trim()).join(', '),
                 externalReferencesCount: cdx.metadata.component?.externalReferences?.length || 0,
-                componentsCount: cdx.components?.length || 0,
-                dependenciesCount: cdx.dependencies?.length || 0,
             }
             const info = await prisma.CycloneDXInfo.upsert({
                 where: {
@@ -163,6 +161,7 @@ export async function onRequestPost(context) {
                         createdAt: (new Date()).getTime(),
                         modifiedAt: (new Date(vuln.modified)).getTime(),
                         detectionTitle: vuln.id,
+                        detectionDescription: vuln.details,
                         purl: referenceLocator,
                         packageName: name,
                         packageVersion: version,

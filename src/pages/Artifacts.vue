@@ -63,13 +63,13 @@ class Controller {
                             let analysis;
                             let source;
                             if (artifact?.cdx) {
-                                dependencies = artifact.cdx?.dependenciesCount
+                                dependencies = artifact.cdx?.dependencies?.length || 0
                                 repoName = artifact.cdx?.repoName
                                 source = artifact.cdx?.source
                                 versionInfo = `CycloneDX-${artifact.cdx?.cdxVersion}`
                             }
                             if (artifact?.spdx) {
-                                dependencies = artifact.spdx?.packagesCount
+                                dependencies = artifact.spdx?.dependencies?.length || 0
                                 repoName = artifact.spdx?.repoName
                                 source = artifact.spdx?.source
                                 versionInfo = artifact.spdx?.spdxVersion
@@ -364,7 +364,7 @@ function updateArtifactsFromFiles(files) {
             contentType: fileData.contentType,
             uuid: fileData.artifactUuid,
             url: `https://artifacts.vulnetix.app/${artifactType.toLowerCase()}/${fileData.artifactUuid}.json`,
-            dependencies: fileData.dependenciesCount || fileData.packagesCount,
+            dependencies: fileData.dependencies.length || fileData.dependencies.length,
         }
 
         // Add type-specific properties

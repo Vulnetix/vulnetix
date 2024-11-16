@@ -128,17 +128,21 @@ class Controller {
     }
 
 }
+
 function onTabChange() {
-    window.location.hash = tab.value
+    window.history.replaceState({ ...history.state }, '', `${window.location.origin}/issue/${state.finding.uuid}#${tab.value}`)
 }
+
 const controller = reactive(new Controller())
+
 onMounted(() => {
     const hash = window.location.hash.substring(1)
-    if (['issue', 'dependencies', 'artifacts'].includes(hash)) {
+    if (['issue', 'dependencies', 'artifacts', 'related'].includes(hash)) {
         tab.value = hash
     }
     Member.ensureSession().then(() => controller.fetchIssue(route.params.uuid))
 })
+
 onBeforeRouteUpdate(async (to, from) => {
     if (to.params.uuid !== from.params.uuid) {
         await controller.fetchIssue(to.params.uuid)
@@ -152,6 +156,7 @@ onBeforeRouteUpdate(async (to, from) => {
             v-model="tab"
             align-tabs="start"
             stacked
+            grow
             @update:model-value="onTabChange"
         >
             <VTab value="issue">
@@ -181,6 +186,16 @@ onBeforeRouteUpdate(async (to, from) => {
                 ></VIcon>
                 <span class="mt-2">
                     Artifacts
+                </span>
+            </VTab>
+
+            <VTab value="related">
+                <VIcon
+                    size="large"
+                    icon="fluent-mdl2:relationship"
+                ></VIcon>
+                <span class="mt-2">
+                    Related
                 </span>
             </VTab>
         </VTabs>
@@ -275,6 +290,10 @@ onBeforeRouteUpdate(async (to, from) => {
 
         <VTabsWindowItem value="artifacts">
             artifacts
+        </VTabsWindowItem>
+
+        <VTabsWindowItem value="related">
+            related
         </VTabsWindowItem>
     </VTabsWindow>
 </template>

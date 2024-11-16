@@ -40,7 +40,7 @@ export async function onRequestGet(context) {
             name: true,
             createdAt: true,
             toolName: true,
-            packagesCount: true,
+            dependencies: true,
             artifact: {
                 select: {
                     downloadLinks: {
@@ -140,7 +140,6 @@ export async function onRequestPost(context) {
                 createdAt: (new Date(spdx.creationInfo.created)).getTime(),
                 toolName: spdx.creationInfo.creators.join(', '),
                 documentDescribes: spdx?.documentDescribes?.join(','),
-                packagesCount: spdx.packages.length,
                 comment: spdx.creationInfo?.comment || '',
             }
             const info = await prisma.SPDXInfo.upsert({
@@ -188,6 +187,7 @@ export async function onRequestPost(context) {
                         createdAt: (new Date()).getTime(),
                         modifiedAt: (new Date(vuln.modified)).getTime(),
                         detectionTitle: vuln.id,
+                        detectionDescription: vuln.details,
                         purl: referenceLocator,
                         packageName: name,
                         packageVersion: version,

@@ -174,16 +174,16 @@ model SarifResults {
 }
 
 model CycloneDXInfo {
-  cdxId                   String   @id
+  cdxId                   String       @id
   source                  String
   memberEmail             String
-  member                  Member   @relation(fields: [memberEmail], references: [email])
+  member                  Member       @relation(fields: [memberEmail], references: [email])
   orgId                   String
-  org                     Org      @relation(fields: [orgId], references: [uuid])
+  org                     Org          @relation(fields: [orgId], references: [uuid])
   repoName                String?
-  repo                    GitRepo? @relation(fields: [repoName, orgId], references: [fullName, orgId])
+  repo                    GitRepo?     @relation(fields: [repoName, orgId], references: [fullName, orgId])
   artifactUuid            String
-  artifact                Artifact @relation(fields: [artifactUuid], references: [uuid])
+  artifact                Artifact     @relation(fields: [artifactUuid], references: [uuid])
   cdxVersion              String
   serialNumber            String?
   name                    String?
@@ -191,33 +191,53 @@ model CycloneDXInfo {
   createdAt               Int
   toolName                String?
   externalReferencesCount Int
-  componentsCount         Int
-  dependenciesCount       Int
-
-  findings Finding[]
+  findings                Finding[]
+  dependencies            Dependency[]
 }
 
 model SPDXInfo {
-  spdxId            String    @id
+  spdxId            String       @id
   source            String
   memberEmail       String
-  member            Member    @relation(fields: [memberEmail], references: [email])
+  member            Member       @relation(fields: [memberEmail], references: [email])
   orgId             String
-  org               Org       @relation(fields: [orgId], references: [uuid])
+  org               Org          @relation(fields: [orgId], references: [uuid])
   repoName          String?
-  repo              GitRepo?  @relation(fields: [repoName, orgId], references: [fullName, orgId])
+  repo              GitRepo?     @relation(fields: [repoName, orgId], references: [fullName, orgId])
   artifactUuid      String
-  artifact          Artifact  @relation(fields: [artifactUuid], references: [uuid])
+  artifact          Artifact     @relation(fields: [artifactUuid], references: [uuid])
   spdxVersion       String
   dataLicense       String?
   name              String?
+  version           String?
   documentNamespace String?
   createdAt         Int
   toolName          String?
   documentDescribes String?
-  packagesCount     Int
   comment           String?
   findings          Finding[]
+  dependencies      Dependency[]
+}
+
+model Dependency {
+  uuid             String         @id @default(uuid())
+  name             String
+  version          String
+  license          String?
+  packageEcosystem String?
+  isDev            Int            @default(0)
+  isDirect         Int            @default(0)
+  isIndirect       Int            @default(0)
+  isTransitive     Int            @default(0)
+  isShared         Int            @default(0)
+  isPeer           Int            @default(0)
+  dependsOnUuid    String?
+  dependsOn        Dependency?    @relation("DependsOn", fields: [dependsOnUuid], references: [uuid])
+  dependencies     Dependency[]   @relation("DependsOn")
+  spdxId           String?
+  spdx             SPDXInfo?      @relation(fields: [spdxId], references: [spdxId])
+  cdxId            String?
+  cdx              CycloneDXInfo? @relation(fields: [cdxId], references: [cdxId])
 }
 
 model IntegrationUsageLog {
@@ -248,6 +268,7 @@ model Finding {
   modifiedAt                 Int
   publishedAt                Int?
   detectionTitle             String
+  detectionDescription       String?
   purl                       String?
   cpe                        String?
   databaseReviewed           Int?

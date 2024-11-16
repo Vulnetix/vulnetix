@@ -10,8 +10,10 @@ import {
     VexAnalysisState
 } from '@/utils';
 import { CVSS31, CVSS40 } from '@pandatix/js-cvss';
+import VCodeBlock from '@wdns/vue-code-block';
 import { onMounted } from 'vue';
 import { useTheme } from 'vuetify';
+import { VAlert } from 'vuetify/lib/components/index.mjs';
 
 const { meta_x, meta_v } = useMagicKeys()
 onMounted(() => init())
@@ -168,6 +170,10 @@ const cvssChipColor = computed(() => {
     if (cvssVersion.value.startsWith('4')) return 'primary'
     if (cvssVersion.value.startsWith('3')) return 'secondary'
     return getPastelColor()
+})
+
+const packageString = computed(() => {
+    return [props.finding.packageEcosystem, [props.finding.packageName, getSemVerWithoutOperator(props.finding.packageVersion)].filter(i => !!i).join('@')].filter(i => !!i).join(':')
 })
 
 // CVSS v3.1 metric defaults
@@ -815,9 +821,7 @@ watch([
                                             <VIcon icon="mdi-package-variant" />
                                         </template>
                                         <VListItemTitle>
-                                            Package: {{ props.finding.packageEcosystem }}:{{ props.finding.packageName
-                                            }}@{{
-                                                getSemVerWithoutOperator(props.finding.packageVersion) }}
+                                            Package: {{ packageString }}
                                         </VListItemTitle>
                                     </VListItem>
 
@@ -1069,12 +1073,26 @@ watch([
                                 <VCard
                                     variant="outlined"
                                     title="Vulnerable Paths"
-                                    v-if="props.finding?.affectedFunctions"
                                 >
                                     <VCardText>
-                                        <span style="white-space: preserve-breaks;">
-                                            {{ props.finding.affectedFunctions }}
-                                        </span>
+                                        <VCodeBlock
+                                            autodetect
+                                            highlightjs
+                                            code-block-radius="1em"
+                                            :cssPath="global.name.value === 'dark' ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/atom-one-dark.min.css' : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/atom-one-light.min.css'"
+                                            :theme="global.name.value === 'dark' ? 'atom-one-dark' : 'atom-one-light'"
+                                            v-if="props.finding?.affectedFunctions"
+                                            :code="props.finding.affectedFunctions"
+                                        />
+                                        <VAlert
+                                            v-else
+                                            style="white-space: preserve-breaks;"
+                                            icon="mdi:warning"
+                                            color="warning"
+                                            variant="tonal"
+                                        >
+                                            Advisory provided no reviewed details.
+                                        </VAlert>
                                     </VCardText>
                                 </VCard>
                             </VCol>
@@ -2439,7 +2457,7 @@ watch([
                                                     class="font-weight-bold"
                                                 >{{
                                                     cvssScore
-                                                    }} / 10.0</span>
+                                                }} / 10.0</span>
                                             </div>
                                             <VProgressLinear
                                                 :model-value="cvssScore"
@@ -2459,7 +2477,7 @@ watch([
                                                 <span class="font-weight-medium">EPSS Score</span>
                                                 <span class="font-monospace">{{
                                                     parseFloat(props.currentTriage.epssScore).toFixed(5)
-                                                    }}</span>
+                                                }}</span>
                                             </div>
                                             <VProgressLinear
                                                 :model-value="parseFloat(props.currentTriage.epssScore).toFixed(5)"
@@ -2480,7 +2498,7 @@ watch([
                                                 <span class="font-weight-medium">EPSS Percentile</span>
                                                 <span class="font-monospace">{{
                                                     parseFloat(props.currentTriage.epssPercentile).toFixed(5)
-                                                    }}%</span>
+                                                }}%</span>
                                             </div>
                                             <VProgressLinear
                                                 :model-value="parseFloat(props.currentTriage.epssPercentile).toFixed(5)"
