@@ -33,7 +33,7 @@ export async function onRequestGet(context) {
             orgId: verificationResult.session.orgId,
             AND: {
                 triage: {
-                    every: { analysisState: 'in_triage' }
+                    is: { analysisState: 'in_triage' }
                 }
             },
         }

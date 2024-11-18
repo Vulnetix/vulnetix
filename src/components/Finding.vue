@@ -46,7 +46,7 @@ const props = defineProps({
         default: true,
     },
 })
-
+// Intentionally not using the VEX classes here, to provide UX that makes sense
 const Response = ref([
     { value: "false_positive", text: "False Positive" },
     { value: "not_affected", text: "Not Affected" },
@@ -54,7 +54,6 @@ const Response = ref([
     { value: "will_not_fix", text: "Will Not Fix" },
     { value: "workaround_available", text: "Workaround Available" },
 ])
-
 const Justification = ref([
     { value: "code_not_present", text: "Code Not Present" },
     { value: "code_not_reachable", text: "Code Not Reachable" },
@@ -2457,7 +2456,7 @@ watch([
                                                     class="font-weight-bold"
                                                 >{{
                                                     cvssScore
-                                                }} / 10.0</span>
+                                                    }} / 10.0</span>
                                             </div>
                                             <VProgressLinear
                                                 :model-value="cvssScore"
@@ -2477,7 +2476,7 @@ watch([
                                                 <span class="font-weight-medium">EPSS Score</span>
                                                 <span class="font-monospace">{{
                                                     parseFloat(props.currentTriage.epssScore).toFixed(5)
-                                                }}</span>
+                                                    }}</span>
                                             </div>
                                             <VProgressLinear
                                                 :model-value="parseFloat(props.currentTriage.epssScore).toFixed(5)"
@@ -2498,7 +2497,7 @@ watch([
                                                 <span class="font-weight-medium">EPSS Percentile</span>
                                                 <span class="font-monospace">{{
                                                     parseFloat(props.currentTriage.epssPercentile).toFixed(5)
-                                                }}%</span>
+                                                    }}%</span>
                                             </div>
                                             <VProgressLinear
                                                 :model-value="parseFloat(props.currentTriage.epssPercentile).toFixed(5)"

@@ -32,7 +32,7 @@ export async function onRequestGet(context) {
                 orgId: verificationResult.session.orgId,
                 AND: {
                     triage: {
-                        is: { seen: 0, analysisState: 'in_triage', }
+                        some: { analysisState: { in: ['resolved', 'resolved_with_pedigree', 'false_positive', 'not_affected'] } }
                     }
                 },
             },
@@ -40,7 +40,11 @@ export async function onRequestGet(context) {
                 memberEmail: true,
             },
             include: {
-                triage: true,
+                triage: {
+                    orderBy: {
+                        triagedAt: 'desc'
+                    }
+                },
                 spdx: {
                     include: {
                         repo: true
@@ -55,7 +59,7 @@ export async function onRequestGet(context) {
             take,
             skip,
             orderBy: {
-                createdAt: 'asc',
+                modifiedAt: 'desc',
             }
         })
 

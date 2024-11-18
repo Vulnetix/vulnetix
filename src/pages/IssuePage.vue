@@ -126,7 +126,6 @@ class Controller {
         }
         state.loading = false
     }
-
 }
 
 function onTabChange() {
