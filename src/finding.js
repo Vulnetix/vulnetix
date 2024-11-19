@@ -822,3 +822,212 @@ export const evaluateAdvisoryConfidence = advisory => {
         evaluations,
     };
 }
+
+// Helper function to create PURL from download location
+export function createPurlFromUrl(location, name, version) {
+    if (!location || location === 'NOASSERTION') return null
+
+    try {
+        const url = new URL(location.replace(/^git\+/, ''))
+        const [owner, repo] = url.pathname.split('/').filter(Boolean)
+
+        // If it's a GitHub URL
+        if (url.hostname === 'github.com') {
+            return `pkg:github/${owner}/${repo}@${version}`
+        }
+
+        // For git URLs without specific host
+        if (location.startsWith('git://')) {
+            return `pkg:git/${owner}/${repo}@${version}`
+        }
+
+        // Generic URL
+        return `pkg:generic/${name}@${version}?download_url=${encodeURIComponent(location)}`
+
+    } catch (e) {
+        // If URL parsing fails, return null
+        return null
+    }
+}
+
+// Helper function to extract ecosystem from purl
+export function getEcosystemFromPurl(purl) {
+    if (!purl) return null
+    const match = purl.match(/pkg:([^/]+)/)
+    return match ? match[1] : null
+}
+
+// Helper function to extract license from SPDX package
+export function extractLicense(pkg) {
+    if (pkg?.licenseDeclared) {
+        return pkg.licenseDeclared
+    }
+    if (pkg?.licenseInfoFromFiles && pkg.licenseInfoFromFiles.length > 0) {
+        return pkg.licenseInfoFromFiles.join(',')
+    }
+
+    return null
+}
+
+// Helper function to extract name and version from SPDXID 
+export function parsePackageRef(spdxId, name) {
+    // Format is typically "SPDXRef-name-version"
+    const match = spdxId.match(/SPDXRef-(.+)-([0-9].+)$/)
+    if (!match) return {
+        name,
+        version: spdxId.replace(`SPDXRef-${name}-`, '')
+    }
+
+    return {
+        name: match[1],
+        version: match[2]
+    }
+}
+
+export function parseSPDXComponents(spdxJson) {
+    const components = new Map()
+    const relationships = []
+    const packageEcosystem = 'generic' // TODO: There may be a SPDX solution
+
+    // First pass: Create all component records
+    spdxJson.packages.forEach(pkg => {
+        const parsedRef = parsePackageRef(pkg.SPDXID);
+        if (!parsedRef) return;
+
+        const { name, version } = parsedRef;
+        const license = extractLicense(pkg)
+
+        components.set(pkg.SPDXID, {
+            uuid: crypto.randomUUID(),
+            name,
+            version,
+            license,
+            packageEcosystem,
+            isTransitive: 1, // Default all to transitive
+            isDirect: 0,     // We'll update direct deps later
+        })
+    })
+
+    // Second pass: Process relationships
+    if (spdxJson.relationships) {
+        spdxJson.relationships.forEach(rel => {
+            // Only process DEPENDS_ON relationships
+            if (rel.relationshipType !== 'DEPENDS_ON') return;
+
+            const sourceComp = components.get(rel.spdxElementId)
+            const targetComp = components.get(rel.relatedSpdxElement)
+
+            if (!sourceComp || !targetComp) return;
+
+            // If this is a dependency of the root package, mark as direct
+            if (sourceComp.name === spdxJson.name) {
+                targetComp.isDirect = 1
+                targetComp.isTransitive = 0
+            }
+
+            relationships.push({
+                uuid: crypto.randomUUID(),
+                dependsOnUuid: targetComp.uuid,
+                name: targetComp.name,
+                version: targetComp.version,
+                license: targetComp.license,
+                packageEcosystem: targetComp.packageEcosystem,
+                isTransitive: targetComp.isTransitive,
+                isDirect: targetComp.isDirect,
+            })
+        })
+    }
+
+    return relationships
+}
+
+export function parseCycloneDXComponents(cdxJson) {
+    const components = new Map()
+    const dependencies = []
+    const rootPackage = cdxJson.metadata.component
+
+    // First pass: Create all component records
+    cdxJson.components.forEach(component => {
+        if (!component?.['bom-ref']) {
+            console.log('bom-ref missing', component)
+            return;
+        }
+
+        const packageEcosystem = getEcosystemFromPurl(component.purl)
+        const name = component?.group ? [component.group, component.name].join('/') : component.name
+        const license = component.licenses.filter(l => l?.license?.id).map(l => l.license.id).join(',')
+
+        components.set(component['bom-ref'], {
+            uuid: crypto.randomUUID(),
+            name,
+            version: component.version,
+            license,
+            packageEcosystem,
+            isTransitive: 1, // Default all to transitive
+            isDirect: 0,     // We'll update direct deps later
+        })
+    })
+
+    // Add root package if not already present
+    const rootRef = rootPackage['bom-ref']
+    if (!components.has(rootRef)) {
+        components.set(rootRef, {
+            uuid: crypto.randomUUID(),
+            name: rootPackage.name,
+            version: rootPackage.version,
+            license: null,
+            packageEcosystem: getEcosystemFromPurl(rootPackage.purl),
+            isTransitive: 0,
+            isDirect: 0,
+        })
+    }
+
+    // Second pass: Process dependencies
+    cdxJson.dependencies.forEach(dep => {
+        const parentRef = dep.ref
+        const parentComponent = components.get(parentRef)
+
+        if (!parentComponent) return;
+
+        // If this is the root package's dependencies, mark them as direct
+        if (parentRef === rootRef) {
+            dep.dependsOn?.forEach(childRef => {
+                const childComponent = components.get(childRef)
+                if (childComponent) {
+                    childComponent.isDirect = 1
+                    childComponent.isTransitive = 0
+
+                    dependencies.push({
+                        uuid: crypto.randomUUID(),
+                        dependsOnUuid: childComponent.uuid,
+                        name: childComponent.name,
+                        version: childComponent.version,
+                        license: childComponent.license,
+                        packageEcosystem: childComponent.packageEcosystem,
+                        isTransitive: 0,
+                        isDirect: 1,
+                    })
+                }
+            })
+        } else {
+            // Process transitive dependencies
+            dep.dependsOn?.forEach(childRef => {
+                const childComponent = components.get(childRef);
+                if (childComponent) {
+                    dependencies.push({
+                        uuid: crypto.randomUUID(),
+                        dependsOnUuid: childComponent.uuid,
+                        name: childComponent.name,
+                        version: childComponent.version,
+                        license: childComponent.license,
+                        packageEcosystem: childComponent.packageEcosystem,
+                        isTransitive: 1,
+                        isDirect: 0,
+                    })
+                }
+            })
+        }
+    })
+
+    return dependencies
+}

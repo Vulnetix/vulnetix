@@ -154,17 +154,24 @@ class Controller {
                         if (isSARIF(json)) {
                             sarif.push(json)
                         }
-                    } catch (e) { }
+                    } catch (e) {
+                        console.log(json, e)
+                    }
                     try {
                         if (isSPDX(json)) {
                             spdx.push(json)
                         }
-                    } catch (e) { }
+                    } catch (e) {
+                        console.log(json, e)
+                    }
                     try {
                         if (isCDX(json)) {
                             cdx.push(json)
                         }
-                    } catch (e) { }
+                    } catch (e) {
+                        console.log(json, e)
+                        // state.uploadError = typeof e === "string" ? e : `${e.code} ${e.message}`
+                    }
                 }
             }
             let success = false
@@ -492,7 +499,7 @@ function updateArtifactsFromFiles(files) {
                                     <template v-slot:selection="{ fileNames }">
                                         <template
                                             v-for="(fileName, index) in fileNames"
-                                            :key="fileName"
+                                            :key="index"
                                         >
                                             <VChip
                                                 v-if="index < 2"

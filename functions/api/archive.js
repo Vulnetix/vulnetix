@@ -36,9 +36,6 @@ export async function onRequestGet(context) {
                     }
                 },
             },
-            omit: {
-                memberEmail: true,
-            },
             include: {
                 triage: {
                     orderBy: {

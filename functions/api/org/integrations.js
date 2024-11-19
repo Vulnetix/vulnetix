@@ -25,10 +25,9 @@ export async function onRequestGet(context) {
     }
     const githubApps = await prisma.GitHubApp.findMany({
         where: {
-            memberEmail: verificationResult.session.memberEmail,
+            orgId: verificationResult.session.orgId,
         },
         omit: {
-            memberEmail: true,
             accessToken: true,
         },
     })

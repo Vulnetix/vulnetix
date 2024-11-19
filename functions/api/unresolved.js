@@ -34,9 +34,6 @@ export async function onRequestGet(context) {
                     triage: { every: { analysisState: { in: ['exploitable', 'in_triage'] } } }
                 },
             },
-            omit: {
-                memberEmail: true,
-            },
             include: {
                 triage: {
                     orderBy: {
