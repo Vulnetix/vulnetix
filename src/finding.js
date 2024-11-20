@@ -871,13 +871,12 @@ export function extractLicense(pkg) {
 
 // Helper function to extract name and version from SPDXID 
 export function parsePackageRef(spdxId, name) {
-    // Format is typically "SPDXRef-name-version"
-    const match = spdxId.match(/SPDXRef-(.+)-([0-9].+)$/)
+    // Format is "SPDXRef-name-version" where version can be alphanumeric
+    const match = spdxId.match(/SPDXRef-(.+)-([a-zA-Z0-9].+)$/)
     if (!match) return {
         name,
         version: spdxId.replace(`SPDXRef-${name}-`, '')
     }
-
     return {
         name: match[1],
         version: match[2]
