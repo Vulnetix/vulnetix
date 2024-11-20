@@ -84,7 +84,6 @@ function addToList(inputObject, keyName, newObject) {
 
 export const processFinding = async (prisma, r2adapter, verificationResult, finding, seen = 0) => {
     const isResolved = finding.triage.filter(triage => [VexAnalysisState.resolved, VexAnalysisState.resolved_with_pedigree, VexAnalysisState.false_positive, VexAnalysisState.not_affected].includes(triage.analysisState)).length > 0
-    console.log('isResolved', isResolved)
     const osvData = await new OSV().query(prisma, verificationResult.session.orgId, verificationResult.session.memberEmail, finding.detectionTitle)
     finding.detectionDescription = osvData.details
     finding.modifiedAt = (new Date(osvData.modified)).getTime()
@@ -363,13 +362,13 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
             },
             data: vexData,
         })
-        console.log(`Updated VEX ${finding.detectionTitle} ${analysisState}`, vexInfo)
+        // console.log(`Updated VEX ${finding.detectionTitle} ${analysisState}`, vexInfo)
         finding.triage = finding.triage.filter(f => f.uuid != vexData.uuid)
         finding.triage.push(vexData)
     } else if (!isResolved) {
         vexData.findingUuid = finding.uuid
         vexData = await prisma.Triage.create({ data: vexData })
-        console.log(`Create VEX ${finding.detectionTitle} ${analysisState}`, vexData)
+        // console.log(`Create VEX ${finding.detectionTitle} ${analysisState}`, vexData)
         finding.triage = finding.triage.filter(f => f.uuid != vexData.uuid)
         finding.triage.push(vexData)
     }
@@ -381,7 +380,7 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
             timelineJSON: finding.timelineJSON,
         }
     })
-    console.log(`Update ${finding.detectionTitle}`, info)
+    // console.log(`Update ${finding.detectionTitle}`, info)
     // expand JSON fields
     finding.confidenceRationale = finding?.confidenceRationaleJSON ? JSON.parse(finding.confidenceRationaleJSON) : []
     finding.references = finding?.referencesJSON ? JSON.parse(finding.referencesJSON) : []
