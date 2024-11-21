@@ -142,7 +142,7 @@ export const processFinding = async (prisma, r2adapter, verificationResult, find
         finding.fixVersion = fixVersions.join(' || ')
     }
     finding.fixAutomatable = !!finding.vulnerableVersionRange && !!finding.fixVersion ? 1 : 0
-    finding.malicious = osvData.id.startsWith("MAL-") ? 1 : 0
+    finding.malicious = osvData.id.startsWith("MAL-") || osvData?.aliases?.filter(a => a.startsWith("MAL-"))?.length ? 1 : 0
     finding.referencesJSON = JSON.stringify(osvData.references.map(reference => reference.url))
 
     const cveId = finding.detectionTitle.startsWith('CVE-') ? finding.detectionTitle : JSON.parse(finding?.aliases || '[]').filter(a => a.startsWith('CVE-')).pop()
@@ -565,11 +565,11 @@ export const fetchCVE = async (prisma, r2adapter, verificationResult, cveId) => 
 // Core event definitions that make the timeline unique by nature
 const CORE_EVENTS = {
     discovery: finding => ({
-        value: 'First discovered in repository',
+        value: 'Reported',
         time: finding.createdAt
     }),
     sync: finding => ({
-        value: `Last synchronized with ${finding.source}`,
+        value: `Last update from ${finding.source}`,
         time: finding.modifiedAt
     }),
     advisory: finding => ({
@@ -592,8 +592,12 @@ const CORE_EVENTS = {
 
 // VEX event generators
 const getVexEvents = (vex) => [
-    vex.lastObserved && {
+    vex.createdAt && {
         value: `VEX generated as ${VexAnalysisState[vex.analysisState]}`,
+        time: vex.createdAt
+    },
+    vex.lastObserved && vex.lastObserved !== vex.createdAt && {
+        value: `Discovered`,
         time: vex.lastObserved
     },
     vex.triagedAt && vex.memberEmail && {
@@ -625,14 +629,21 @@ export const makeTimeline = finding => {
     // Add custom events that don't match core or VEX patterns
     const systemEventValues = new Set([
         ...Object.values(CORE_EVENTS).map(gen => gen(finding)?.value),
+        'First discovered in repository',
         'VEX generated as',
+        'Last synchronized with',
         'Triaged',
-        'Review'
+        'Review',
+        'Discovered'
     ].filter(Boolean));
 
     const isCustomEvent = event =>
+        event?.value &&
         !systemEventValues.has(event.value) &&
+        !event.value.startsWith('First discovered in ') &&
         !event.value.startsWith('VEX generated as') &&
+        !event.value.startsWith('Last synchronized with') &&
+        !event.value.startsWith('Discovered') &&
         !event.value.endsWith('Triaged') &&
         !event.value.endsWith('Review');
 
