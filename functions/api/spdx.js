@@ -128,7 +128,7 @@ export async function onRequestPost(context) {
             const artifact = await saveArtifact(prisma, env.r2artifacts, spdxStr, crypto.randomUUID(), `spdx`)
             const artifactUuid = originalSpdx?.artifactUuid || artifact?.uuid
             const dependencies = []
-            for (const dep of parseSPDXComponents(spdx)) {
+            for (const dep of await parseSPDXComponents(spdx, spdxId)) {
                 const info = await prisma.Dependency.upsert({
                     where: {
                         spdx_dep: {
@@ -139,7 +139,7 @@ export async function onRequestPost(context) {
                     },
                     update: {
                         license: dep.license,
-                        dependsOnUuid: dep.dependsOnUuid
+                        childOfKey: dep.childOfKey
                     },
                     create: { ...dep, spdxId }
                 })

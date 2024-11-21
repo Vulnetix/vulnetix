@@ -114,7 +114,7 @@ export async function onRequestPost(context) {
                     },
                     update: {
                         license: dep.license,
-                        dependsOnUuid: dep.dependsOnUuid
+                        childOfKey: dep.childOfKey
                     },
                     create: { ...dep, cdxId }
                 })

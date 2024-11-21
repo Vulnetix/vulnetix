@@ -89,7 +89,7 @@ export async function onRequestGet(context) {
         const findingIds = await process(prisma, verificationResult.session, repoName, spdx, spdxId, originalSpdx?.artifactUuid || artifact?.uuid)
         findings = [...findings, ...findingIds]
         const dependencies = []
-        for (const dep of parseSPDXComponents(spdx)) {
+        for (const dep of await parseSPDXComponents(spdx, spdxId)) {
             const info = await prisma.Dependency.upsert({
                 where: {
                     spdx_dep: {
@@ -100,7 +100,7 @@ export async function onRequestGet(context) {
                 },
                 update: {
                     license: dep.license,
-                    dependsOnUuid: dep.dependsOnUuid
+                    childOfKey: dep.childOfKey
                 },
                 create: { ...dep, spdxId }
             })
