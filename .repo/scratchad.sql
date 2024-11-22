@@ -10,13 +10,18 @@
 -- SELECT *
 -- FROM Triage
 -- WHERE findingUuid = "c00f2661-a1fc-4a72-83af-5894580ee510";
-SELECT A."accessToken",
-    A."avatarUrl",
-    A."created",
-    A."expires",
-    A."installationId",
-    A."login",
-    A."memberEmail",
-    B."orgId"
-FROM "GitHubApp" A
-    INNER JOIN "Member" B ON A."memberEmail" = B."email";
+--
+-- SELECT *
+-- FROM `Dependency`
+-- WHERE `cdxId` = "141a4b7cfe7265df570652e5a4e348fcbd9168a0";
+DELETE FROM Finding;
+DELETE FROM Triage;
+DELETE FROM GitRepo;
+DELETE FROM SARIFInfo;
+DELETE FROM SarifResults;
+DELETE FROM CycloneDXInfo;
+DELETE FROM SPDXInfo;
+DELETE FROM IntegrationUsageLog;
+DELETE FROM Link;
+DELETE FROM Artifact;
+DELETE FROM Dependency;
