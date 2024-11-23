@@ -33,7 +33,9 @@ model Org {
   sarif                 SARIFInfo[]
   cdx                   CycloneDXInfo[]
   spdx                  SPDXInfo[]
-  GitHubApp             GitHubApp[]
+  gitHubApps            GitHubApp[]
+  products              Product[]
+  repos                 ProductRepos[]
 }
 
 model IntegrationConfig {
@@ -64,6 +66,7 @@ model Member {
   sessions              Session[]
   integration_usage_log IntegrationUsageLog[]
   triage_activity       Triage[]
+  ownedProducts         Product[]             @relation("productOwner")
 }
 
 model MemberKey {
@@ -99,6 +102,51 @@ model GitHubApp {
   avatarUrl      String?
 }
 
+model Tags {
+  uuid     String        @id @default(uuid())
+  name     String
+  url      String?
+  products ProductTags[]
+}
+
+model ProductTags {
+  product     Product @relation(fields: [productUuid], references: [uuid])
+  productUuid String
+  Tags        Tags    @relation(fields: [tagsUuid], references: [uuid])
+  tagsUuid    String
+
+  @@id([productUuid, tagsUuid])
+}
+
+model Product {
+  uuid              String         @id @default(uuid())
+  name              String
+  source            String
+  orgId             String
+  org               Org            @relation(fields: [orgId], references: [uuid])
+  repos             ProductRepos[]
+  createdAt         Int
+  monitored         Int            @default(0)
+  monitoredSchedule String         @default("0 7 * * mon-fri") // 7AM weekdays
+  lastMonitored     Int
+  businessCritical  Int            @default(0)
+  tags              ProductTags[]
+  productTagsUuid   String?
+  ownerEmail        String?
+  owner             Member?        @relation("productOwner", fields: [ownerEmail], references: [email])
+}
+
+model ProductRepos {
+  repoName    String
+  repo        GitRepo @relation(fields: [repoName, orgId], references: [fullName, orgId])
+  productUuid String
+  product     Product @relation(fields: [productUuid], references: [uuid])
+  orgId       String
+  org         Org     @relation(fields: [orgId], references: [uuid])
+
+  @@id([repoName, productUuid])
+}
+
 model GitRepo {
   fullName      String
   orgId         String
@@ -117,6 +165,7 @@ model GitRepo {
   archived      Int             @default(0)
   visibility    String
   avatarUrl     String?
+  products      ProductRepos[]
   sarif         SARIFInfo[]
   spdx          SPDXInfo[]
   cdx           CycloneDXInfo[]
@@ -362,18 +411,6 @@ model AuthorizedDataPublisher {
   cves      CVEADP[]
 }
 
-// model Lifecycle {
-//   uuid  String   @id @default(uuid())
-//   event String // list enum String
-//   date  DateTime
-//   Collection     Collection? @relation(fields: [collectionUuid], references: [uuid])
-//   collectionUuid String?
-//   Leaf           Leaf?       @relation(fields: [leafUuid], references: [uuid])
-//   leafUuid       String?
-//   Product        Product?    @relation(fields: [productUuid], references: [uuid])
-//   productUuid    String?
-// }
-
 model Link {
   id           Int           @id @default(autoincrement())
   url          String
@@ -399,6 +436,18 @@ model Artifact {
   spdx          SPDXInfo[]
   vex           Triage[]
 }
+
+// model Lifecycle {
+//   uuid  String   @id @default(uuid())
+//   event String // list enum String
+//   date  DateTime
+//   Collection     Collection? @relation(fields: [collectionUuid], references: [uuid])
+//   collectionUuid String?
+//   Leaf           Leaf?       @relation(fields: [leafUuid], references: [uuid])
+//   leafUuid       String?
+//   Product        Product?    @relation(fields: [productUuid], references: [uuid])
+//   productUuid    String?
+// }
 
 // model Identity {
 //   id             String      @id @default(cuid())
@@ -427,11 +476,4 @@ model Artifact {
 //   lifecycle   Lifecycle[]
 //   Product     Product?    @relation(fields: [productUuid], references: [uuid])
 //   productUuid String?
-// }
-
-// model Product {
-//   uuid      String      @id @default(uuid())
-//   name      String
-//   lifecycle Lifecycle[]
-//   leafs     Leaf[]
 // }

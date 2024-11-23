@@ -13,6 +13,11 @@ import Notifications from '@core/components/Notifications.vue'
 // import vulncheckIcon from '@images/icons/logo/vulncheck-logo.png'
 import VerticalNavLayout from '@layouts/components/VerticalNavLayout.vue'
 import VerticalNavLink from '@layouts/components/VerticalNavLink.vue'
+import { useTheme } from 'vuetify'
+
+
+const { global } = useTheme()
+const { meta_i } = useMagicKeys()
 
 // const icons = {
 //     'osv': osvIcon,
@@ -36,6 +41,11 @@ watch(NotificationsStore, () => {
         return notification
     })
 }, { deep: true })
+
+const importGithub = () => {
+    console.log('Select repos and branches', +new Date)
+}
+watch([meta_i], importGithub)
 </script>
 
 <template>
@@ -56,13 +66,57 @@ watch(NotificationsStore, () => {
 
                 <VSpacer />
 
-                <IconBtn
-                    href="https://github.com/vulnetix"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                <v-btn-group
+                    divided
+                    class="me-4"
                 >
-                    <VIcon icon="bxl-github" />
-                </IconBtn>
+                    <v-btn
+                        @click="importGithub"
+                        :color="global.name.value === 'dark' ? '#fff' : '#272727'"
+                        prepend-icon="iconoir:git-solid"
+                        text="Import"
+                    />
+
+                    <v-btn
+                        :color="global.name.value === 'dark' ? '#fff' : '#272727'"
+                        size="small"
+                        icon
+                    >
+                        <v-icon icon="mdi-menu-down"></v-icon>
+
+                        <v-menu
+                            :theme="global.name.value === 'dark' ? 'light' : 'dark'"
+                            activator="parent"
+                            location="bottom end"
+                            transition="fade-transition"
+                        >
+                            <v-list
+                                density="compact"
+                                min-width="250"
+                                rounded="lg"
+                                slim
+                            >
+                                <v-list-item
+                                    prepend-icon="mdi-github"
+                                    title="Connect GitHub"
+                                    link
+                                    href="https://github.com/apps/vulnetix/installations/new"
+                                    target="_blank"
+                                ></v-list-item>
+
+                                <v-divider class="my-2"></v-divider>
+
+                                <v-list-item min-height="24">
+                                    <template v-slot:subtitle>
+                                        <div class="text-caption">
+                                            More sources coming soon
+                                        </div>
+                                    </template>
+                                </v-list-item>
+                            </v-list>
+                        </v-menu>
+                    </v-btn>
+                </v-btn-group>
 
                 <Notifications
                     class="me-2"
