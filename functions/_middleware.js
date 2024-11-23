@@ -1,4 +1,11 @@
-import { AuthResult, Client, ensureStrReqBody, hexStringToUint8Array, isJSON } from "@/utils";
+import {
+    AuthResult,
+    Client,
+    ensureStrReqBody,
+    hexStringToUint8Array,
+    isJSON,
+    unauthenticatedRoutes,
+} from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 
@@ -73,7 +80,11 @@ export const authentication = async context => {
     if (request.cf.botManagement.verifiedBot || request.cf.botManagement.score <= 60) {
         return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } }), { status: 403 })
     }
-    if (!url.pathname.startsWith('/api/')) {
+    const authRequired =
+        !unauthenticatedRoutes.static.includes(url.pathname) &&
+        !unauthenticatedRoutes.prefixes.map(i => url.pathname.startsWith(i)).includes(true)
+
+    if (!authRequired || !url.pathname.startsWith('/api/')) {
         return await next()
     }
     const method = request.method.toUpperCase()

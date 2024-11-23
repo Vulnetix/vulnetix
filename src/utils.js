@@ -1,3 +1,18 @@
+export const unauthenticatedRoutes = {
+    static: [
+        "/",
+        '/register',
+        '/api/register',
+        '/logout'
+    ],
+    prefixes: [
+        '/login',
+        '/sso',
+        '/api/login',
+        '/api/github/install',
+    ],
+}
+
 export class VexAnalysisState {
     static get resolved() { return "Resolved" }
     static get resolved_with_pedigree() { return "Resolved With Pedigree" }

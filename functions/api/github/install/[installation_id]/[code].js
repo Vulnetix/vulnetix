@@ -132,7 +132,7 @@ export async function onRequestGet(context) {
         data.logger(`/github/install session kid=${token}`, sessionInfo)
         const appData = {
             installationId: parseInt(params.installation_id, 10),
-            memberEmail: response.member.email,
+            org: { connect: { uuid: response.member.orgId } },
             accessToken: oauthData.access_token,
             login: content.login,
             avatarUrl: content?.avatar_url,
