@@ -19,6 +19,7 @@ const initialState = {
     info: "",
     loading: false,
     finding: null,
+    branches: [],
     currentTriage: null,
 }
 
@@ -47,6 +48,7 @@ class Controller {
                     })
                 }
                 state.finding = data.finding
+                state.branches = [...new Set([data.finding?.spdx?.repo?.defaultBranch, data.finding?.spdx?.repo?.defaultBranch].filter(i => !!i))]
                 state.currentTriage = data.finding.triage.sort((a, b) =>
                     a.lastObserved - b.lastObserved
                 ).pop()
@@ -152,58 +154,57 @@ onBeforeRouteUpdate(async (to, from) => {
 
 <template>
     <VContainer class="d-flex justify-space-between align-center">
-        <VTabs
-            v-model="tab"
-            align-tabs="start"
-            stacked
-            grow
-            @update:model-value="onTabChange"
-        >
-            <VTab value="issue">
-                <VIcon
-                    size="large"
-                    icon="eos-icons:critical-bug-outlined"
-                ></VIcon>
-                <span class="mt-2">
-                    Issue Details
-                </span>
-            </VTab>
+        <VRow dense>
+            <VCol cols="10">
+                <VTabs
+                    v-model="tab"
+                    align-tabs="start"
+                    stacked
+                    grow
+                    @update:model-value="onTabChange"
+                >
+                    <VTab value="issue">
+                        <VIcon
+                            size="large"
+                            icon="eos-icons:critical-bug-outlined"
+                        ></VIcon>
+                        <span class="mt-2">
+                            Issue Details
+                        </span>
+                    </VTab>
 
-            <VTab value="dependencies">
-                <VIcon
-                    size="large"
-                    icon="tabler:packages"
-                ></VIcon>
-                <span class="mt-2">
-                    Dependency Graph
-                </span>
-            </VTab>
+                    <VTab value="dependencies">
+                        <VIcon
+                            size="large"
+                            icon="tabler:packages"
+                        ></VIcon>
+                        <span class="mt-2">
+                            Dependency Graph
+                        </span>
+                    </VTab>
 
-            <VTab value="artifacts">
-                <VIcon
-                    size="large"
-                    icon="eos-icons:file-system-outlined"
-                ></VIcon>
-                <span class="mt-2">
-                    Artifacts
-                </span>
-            </VTab>
+                    <VTab value="artifacts">
+                        <VIcon
+                            size="large"
+                            icon="eos-icons:file-system-outlined"
+                        ></VIcon>
+                        <span class="mt-2">
+                            Artifacts
+                        </span>
+                    </VTab>
 
-            <VTab value="related">
-                <VIcon
-                    size="large"
-                    icon="fluent-mdl2:relationship"
-                ></VIcon>
-                <span class="mt-2">
-                    Related
-                </span>
-            </VTab>
-        </VTabs>
-
-        <div class="d-flex align-end">
-            <span class="mr-4 text-h5">
-            </span>
-        </div>
+                    <VTab value="related">
+                        <VIcon
+                            size="large"
+                            icon="fluent-mdl2:relationship"
+                        ></VIcon>
+                        <span class="mt-2">
+                            Related
+                        </span>
+                    </VTab>
+                </VTabs>
+            </VCol>
+        </VRow>
     </VContainer>
 
     <VTabsWindow v-model="tab">
@@ -257,6 +258,7 @@ onBeforeRouteUpdate(async (to, from) => {
                     <Finding
                         v-if="state.finding"
                         :finding="state.finding"
+                        :branches="state.branches"
                         :current-triage="state.currentTriage"
                         @click:saveTriage="controller.handleTriage"
                         @vectorUpdated="controller.vectorUpdated"

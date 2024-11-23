@@ -18,6 +18,7 @@ const initialState = {
     info: "",
     loading: false,
     finding: null,
+    branches: [],
     triageLoaders: {},
     currentTriage: null,
     queueTotal: 0,
@@ -57,6 +58,7 @@ class Controller {
                     })
                 }
                 state.finding = data.finding
+                state.branches = [...new Set([data.finding?.spdx?.repo?.defaultBranch, data.finding?.spdx?.repo?.defaultBranch].filter(i => !!i))]
                 state.queueTotal = data.findingCount
                 state.currentTriage = data.finding.triage.sort((a, b) =>
                     a.lastObserved - b.lastObserved
@@ -154,78 +156,90 @@ onMounted(() => {
 
 <template>
     <VContainer class="d-flex justify-space-between align-center">
-        <VTabs
-            v-model="tab"
-            align-tabs="start"
-            stacked
-            grow
-            @update:model-value="onTabChange"
-        >
-            <VTab value="issue">
-                <VIcon
-                    size="large"
-                    icon="eos-icons:critical-bug-outlined"
-                ></VIcon>
-                <span class="mt-2">
-                    Issue Details
-                </span>
-            </VTab>
+        <VRow dense>
+            <VCol cols="10">
+                <VTabs
+                    v-model="tab"
+                    align-tabs="start"
+                    stacked
+                    grow
+                    @update:model-value="onTabChange"
+                >
+                    <VTab value="issue">
+                        <VIcon
+                            size="large"
+                            icon="eos-icons:critical-bug-outlined"
+                        ></VIcon>
+                        <span class="mt-2">
+                            Issue Details
+                        </span>
+                    </VTab>
 
-            <VTab value="dependencies">
-                <VIcon
-                    size="large"
-                    icon="tabler:packages"
-                ></VIcon>
-                <span class="mt-2">
-                    Dependency Graph
-                </span>
-            </VTab>
+                    <VTab value="dependencies">
+                        <VIcon
+                            size="large"
+                            icon="tabler:packages"
+                        ></VIcon>
+                        <span class="mt-2">
+                            Dependency Graph
+                        </span>
+                    </VTab>
 
-            <VTab value="artifacts">
-                <VIcon
-                    size="large"
-                    icon="eos-icons:file-system-outlined"
-                ></VIcon>
-                <span class="mt-2">
-                    Artifacts
-                </span>
-            </VTab>
+                    <VTab value="artifacts">
+                        <VIcon
+                            size="large"
+                            icon="eos-icons:file-system-outlined"
+                        ></VIcon>
+                        <span class="mt-2">
+                            Artifacts
+                        </span>
+                    </VTab>
 
-            <VTab value="related">
-                <VIcon
-                    size="large"
-                    icon="fluent-mdl2:relationship"
-                ></VIcon>
-                <span class="mt-2">
-                    Related
-                </span>
-            </VTab>
-        </VTabs>
-
-        <div
-            class="d-flex align-end"
-            v-if="state.queueTotal"
-        >
-            <VTextField
-                v-model="queueProgress"
-                density="compact"
-                variant="outlined"
-                flat
-                type="number"
-                :min="1"
-                :max="state.queueTotal"
-                class="me-2"
-                @change="handleSkip"
-            />
-            <span class="mr-4 text-h5">
-                of {{ state.queueTotal }}
-            </span>
-        </div>
+                    <VTab value="related">
+                        <VIcon
+                            size="large"
+                            icon="fluent-mdl2:relationship"
+                        ></VIcon>
+                        <span class="mt-2">
+                            Related
+                        </span>
+                    </VTab>
+                </VTabs>
+            </VCol>
+            <VCol cols="2">
+                <VRow
+                    class="d-flex justify-center align-center"
+                    dense
+                    v-if="state.queueTotal"
+                >
+                    <VCol cols="6">
+                        <VTextField
+                            v-model="queueProgress"
+                            density="compact"
+                            variant="outlined"
+                            flat
+                            autofocus
+                            focused
+                            reverse
+                            type="number"
+                            :min="1"
+                            :max="state.queueTotal"
+                            class="me-2 text-end text-h5"
+                            @change="handleSkip"
+                        />
+                    </VCol>
+                    <VCol cols="6">
+                        <span class="text-h5">
+                            of {{ state.queueTotal }}
+                        </span>
+                    </VCol>
+                </VRow>
+            </VCol>
+        </VRow>
     </VContainer>
 
     <VTabsWindow v-model="tab">
         <VTabsWindowItem value="issue">
-
             <VCard>
                 <VProgressLinear
                     :active="state.loading"
@@ -275,6 +289,7 @@ onMounted(() => {
                     <Finding
                         v-if="state.finding"
                         :finding="state.finding"
+                        :branches="state.branches"
                         :current-triage="state.currentTriage"
                         @click:saveTriage="controller.handleTriage"
                         @vectorUpdated="controller.vectorUpdated"

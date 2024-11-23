@@ -14,12 +14,14 @@ import VCodeBlock from '@wdns/vue-code-block';
 import { onMounted } from 'vue';
 import { useTheme } from 'vuetify';
 
-const { meta_x, meta_v } = useMagicKeys()
+const { meta_o, meta_c, meta_f } = useMagicKeys()
 onMounted(() => init())
 const emit = defineEmits(["vector-updated"]);
 
 const { global } = useTheme()
+const fixDialog = ref(false)
 const triageDialog = ref(false)
+const branchChoice = ref('')
 const response = ref('')
 const justification = ref('')
 const justificationText = ref('')
@@ -33,6 +35,10 @@ const cvssScoreCalc = ref('')
 const props = defineProps({
     finding: {
         type: Object,
+        required: true,
+    },
+    branches: {
+        type: Array,
         required: true,
     },
     currentTriage: {
@@ -618,8 +624,9 @@ function saveVector() {
     cvssDialog.value = false
 }
 
-watch([meta_x], () => { triageDialog.value = true })
-watch([meta_v], () => { cvssDialog.value = true })
+watch([meta_f], () => { fixDialog.value = true })
+watch([meta_o], () => { triageDialog.value = true })
+watch([meta_c], () => { cvssDialog.value = true })
 watch([
     activeTab,
     v31MetricsAV,
@@ -723,21 +730,96 @@ watch([
                 </div>
                 <div class="d-flex align-end">
                     <VDialog
+                        v-if="props.branches.length"
+                        v-model="fixDialog"
+                        max-width="600"
+                    >
+                        <template v-slot:activator="{ props: activatorProps }">
+                            <VBtn
+                                class="me-2 text-none font-weight-regular"
+                                variant="outlined"
+                                v-bind="activatorProps"
+                            >
+                                Fix
+                                <VChip
+                                    class="ms-1"
+                                    variant="outlined"
+                                    color="#e4e4e4"
+                                >
+                                    &#8984;F
+                                </VChip>
+                            </VBtn>
+                        </template>
+
+                        <VCard>
+                            <VCardText>
+                                <!-- Analysis Form -->
+                                <VRow dense>
+                                    <VCol
+                                        cols="12"
+                                        md="6"
+                                    >
+                                        <VSelect
+                                            v-model="branchChoice"
+                                            :items="branches"
+                                            item-title="text"
+                                            item-value="value"
+                                            label="Branch"
+                                            required
+                                        />
+                                    </VCol>
+
+                                    <VCol
+                                        cols="12"
+                                        md="6"
+                                    >
+                                        PR details
+                                    </VCol>
+
+                                    <VCol cols="12">
+                                        Repo details
+                                    </VCol>
+                                </VRow>
+                            </VCardText>
+
+                            <VDivider />
+                            <VSpacer />
+
+                            <VCardActions>
+                                <VSpacer />
+                                <VBtn
+                                    text="Close"
+                                    variant="plain"
+                                    @click="fixDialog = false"
+                                ></VBtn>
+                                <VBtn
+                                    color="primary"
+                                    variant="plain"
+                                    text="Create PR"
+                                    @click="$emit('click:createPR', branchChoice); fixDialog = false"
+                                >
+                                </VBtn>
+                            </VCardActions>
+                        </VCard>
+                    </VDialog>
+                    <VDialog
                         v-model="triageDialog"
                         max-width="600"
                     >
                         <template v-slot:activator="{ props: activatorProps }">
                             <VBtn
                                 class="text-none font-weight-regular"
+                                color="info"
                                 variant="outlined"
                                 v-bind="activatorProps"
                             >
                                 Triage
                                 <VChip
+                                    class="ms-1"
                                     variant="outlined"
                                     color="#e4e4e4"
                                 >
-                                    &#8984;X
+                                    &#8984;O
                                 </VChip>
                             </VBtn>
                         </template>
