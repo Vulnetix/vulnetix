@@ -698,6 +698,13 @@ watch([
                         class="ml-2"
                     >
                         {{ VexAnalysisState[props.currentTriage.analysisState] }}
+                        <VTooltip
+                            v-if="props.currentTriage?.analysisDetail"
+                            activator="parent"
+                            location="top"
+                        >
+                            {{ props.currentTriage.analysisDetail }}
+                        </VTooltip>
                     </VChip>
                     <VChip
                         v-if="props.currentTriage.analysisResponse"
@@ -811,6 +818,52 @@ watch([
                         cols="12"
                         md="6"
                     >
+                        <div class="d-flex flex-wrap gap-2">
+                            <VChip
+                                v-for="alias in props.finding.aliases"
+                                :key="alias"
+                                color="primary"
+                                variant="outlined"
+                            >
+                                {{ alias }}
+                            </VChip>
+
+                            <VChip
+                                v-if="props.finding.malicious"
+                                color="error"
+                                class="ml-2"
+                            >
+                                Malicious Package
+                                <VIcon
+                                    end
+                                    icon="mdi-alert-circle"
+                                />
+                            </VChip>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 mt-2">
+                            {{ props.finding.detectionDescription }}
+                        </div>
+                    </VCol>
+                    <VCol
+                        cols="12"
+                        md="6"
+                    >
+                        <div class="d-flex flex-wrap gap-2 mb-2">
+                            <VChip
+                                v-for="cwe in props.finding.cwes"
+                                :key="cwe"
+                                color="info"
+                            >
+                                <a
+                                    class="text-none"
+                                    target="_blank"
+                                    :href="`https://cwe.mitre.org/data/definitions/${cwe.replace('CWE-', '')}.html`"
+                                >
+                                    {{ cwe }}
+                                </a>
+                            </VChip>
+                        </div>
+
                         <VList density="compact">
                             <VListItem>
                                 <template v-slot:prepend>
@@ -840,43 +893,6 @@ watch([
                             </VListItem>
                         </VList>
                     </VCol>
-
-                    <VCol
-                        cols="12"
-                        md="6"
-                    >
-                        <div class="d-flex flex-wrap gap-2">
-                            <VChip
-                                v-for="alias in props.finding.aliases"
-                                :key="alias"
-                                color="primary"
-                                variant="outlined"
-                            >
-                                {{ alias }}
-                            </VChip>
-
-                            <VChip
-                                v-for="cwe in props.finding.cwes"
-                                :key="cwe"
-                                color="info"
-                            >
-                                {{ cwe }}
-                            </VChip>
-
-                            <VChip
-                                v-if="props.finding.malicious"
-                                color="error"
-                                class="ml-2"
-                            >
-                                Malicious Package
-                                <VIcon
-                                    end
-                                    icon="mdi-alert-circle"
-                                />
-                            </VChip>
-                        </div>
-                    </VCol>
-
                     <VCol
                         cols="12"
                         md="6"
@@ -2397,7 +2413,7 @@ watch([
                                             class="font-weight-bold"
                                         >{{
                                             cvssScore
-                                        }} / 10.0</span>
+                                            }} / 10.0</span>
                                     </div>
                                     <VProgressLinear
                                         :model-value="cvssScore"
@@ -2417,7 +2433,7 @@ watch([
                                         <span class="font-weight-medium">EPSS Score</span>
                                         <span class="font-monospace">{{
                                             parseFloat(props.currentTriage.epssScore).toFixed(5)
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                     <VProgressLinear
                                         :model-value="parseFloat(props.currentTriage.epssScore).toFixed(5)"
@@ -2438,7 +2454,7 @@ watch([
                                         <span class="font-weight-medium">EPSS Percentile</span>
                                         <span class="font-monospace">{{
                                             parseFloat(props.currentTriage.epssPercentile).toFixed(5)
-                                        }}%</span>
+                                            }}%</span>
                                     </div>
                                     <VProgressLinear
                                         :model-value="parseFloat(props.currentTriage.epssPercentile).toFixed(5)"
@@ -2520,8 +2536,17 @@ watch([
                                             <div
                                                 class="pt-1 headline font-weight-bold"
                                                 :style="`color: ${global.name.value === 'dark' ? event.color : 'rgb(var(--v-theme-on-surface-bright))'};`"
-                                                v-text="new Date(event.time).toLocaleDateString()"
-                                            ></div>
+                                            >
+                                                <time :datetime="(new Date(event.time)).toISOString()">
+                                                    {{ new Date(event.time).toLocaleDateString() }}
+                                                    <VTooltip
+                                                        activator="parent"
+                                                        location="top"
+                                                    >
+                                                        {{ (new Date(event.time)).toLocaleString() }}
+                                                    </VTooltip>
+                                                </time>
+                                            </div>
                                         </template>
                                         <template v-slot:default>
                                             <VCard>
