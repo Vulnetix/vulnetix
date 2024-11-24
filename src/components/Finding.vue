@@ -1,4 +1,5 @@
 <script setup>
+import TruncatableText from '@/components/TruncatableText.vue';
 import {
     getPastelColor,
     getSemVerWithoutOperator,
@@ -11,6 +12,9 @@ import {
 } from '@/utils';
 import { CVSS31, CVSS40 } from '@pandatix/js-cvss';
 import VCodeBlock from '@wdns/vue-code-block';
+import DOMPurify from 'dompurify';
+import hljs from 'highlight.js';
+import { marked } from 'marked';
 import { onMounted } from 'vue';
 import { useTheme } from 'vuetify';
 
@@ -104,6 +108,17 @@ const init = () => {
                 props.finding.vulnerableVersionRange
             )
         }))
+}
+
+DOMPurify.addHook('afterSanitizeElements', (currentNode, hookEvent, config) => {
+    if (currentNode?.nodeName === "CODE") {
+        currentNode.innerHTML = hljs.highlightAuto(currentNode.innerText).value
+    }
+})
+
+const md = (input) => {
+    const dirty = marked(input)
+    return DOMPurify.sanitize(dirty, { FORBID_TAGS: ['style', 'script'], USE_PROFILES: { html: true } });
 }
 
 const scoreColor = computed(() => {
@@ -923,7 +938,13 @@ watch([
                             </VChip>
                         </div>
                         <div class="d-flex flex-wrap gap-2 mt-2">
-                            {{ props.finding.detectionDescription }}
+                            <TruncatableText :maxHeight="60">
+                                <div
+                                    style="white-space: preserve-breaks;"
+                                    v-html="md(props.finding.detectionDescription)"
+                                >
+                                </div>
+                            </TruncatableText>
                         </div>
                     </VCol>
                     <VCol
@@ -1173,7 +1194,6 @@ watch([
                                     autodetect
                                     highlightjs
                                     code-block-radius="1em"
-                                    :cssPath="global.name.value === 'dark' ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/atom-one-dark.min.css' : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/atom-one-light.min.css'"
                                     :theme="global.name.value === 'dark' ? 'atom-one-dark' : 'atom-one-light'"
                                     v-if="props.finding?.affectedFunctions"
                                     :code="props.finding.affectedFunctions"
@@ -2495,7 +2515,7 @@ watch([
                                             class="font-weight-bold"
                                         >{{
                                             cvssScore
-                                            }} / 10.0</span>
+                                        }} / 10.0</span>
                                     </div>
                                     <VProgressLinear
                                         :model-value="cvssScore"
@@ -2515,7 +2535,7 @@ watch([
                                         <span class="font-weight-medium">EPSS Score</span>
                                         <span class="font-monospace">{{
                                             parseFloat(props.currentTriage.epssScore).toFixed(5)
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                     <VProgressLinear
                                         :model-value="parseFloat(props.currentTriage.epssScore).toFixed(5)"
@@ -2536,7 +2556,7 @@ watch([
                                         <span class="font-weight-medium">EPSS Percentile</span>
                                         <span class="font-monospace">{{
                                             parseFloat(props.currentTriage.epssPercentile).toFixed(5)
-                                            }}%</span>
+                                        }}%</span>
                                     </div>
                                     <VProgressLinear
                                         :model-value="parseFloat(props.currentTriage.epssPercentile).toFixed(5)"
@@ -2695,6 +2715,9 @@ watch([
 </template>
 
 <style scoped>
+@import 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/atom-one-dark.min.css';
+@import 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/atom-one-light.min.css';
+
 .text-capitalize {
     text-transform: capitalize;
 }
