@@ -78,7 +78,13 @@ export async function onRequestGet(context) {
         }
     }
 
-    return Response.json({ githubApps, gitRepos })
+    return Response.json({
+        githubApps, gitRepos: gitRepos.map(r => {
+            r.orgId = r.org.connect.uuid
+            delete r.org
+            return r
+        })
+    })
 }
 const store = async (prisma, session, repo) => {
     const create = {
