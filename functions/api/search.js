@@ -11,7 +11,7 @@ export async function onRequestGet(context) {
     } = context
     try {
         const take = parseInt(data.searchParams.get('take'), 10) || 5
-        const { inclusive, exclude, terms } = parseSearchQuery(searchParams.get('q'))
+        const { inclusive, exclude, terms } = parseSearchQuery(data.searchParams.get('q'))
         const findings = []
         const where = { orgId: data.session.orgId, OR: [], NOT: [] }
 

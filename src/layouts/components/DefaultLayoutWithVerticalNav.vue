@@ -283,8 +283,7 @@ function clearAlerts() {
                                         <span v-else>{{ repo.fullName }}</span>
                                         <VChip
                                             x-small
-                                            :color="repo.visibility === 'private' ? '#FFB6C1' : '#98FB98'"
-                                            text-color="#2F4F4F"
+                                            :color="repo.visibility === 'private' ? 'info' : 'primary'"
                                             class="ml-2"
                                         >
                                             {{ repo.visibility }}
@@ -292,8 +291,7 @@ function clearAlerts() {
                                         <VChip
                                             v-if="repo.archived"
                                             x-small
-                                            color="#E6E6FA"
-                                            text-color="#2F4F4F"
+                                            color="error"
                                             class="ml-2"
                                         >
                                             archived
@@ -476,7 +474,7 @@ function clearAlerts() {
 }
 
 .repo-list {
-    border-left: 4px solid #6495ED;
+    border-left: 4px solid rgb(var(--v-theme-info));
     position: relative;
     height: 100vh;
     display: flex;
@@ -510,11 +508,11 @@ function clearAlerts() {
 }
 
 .license-info {
-    color: #98FB98;
+    color: rgb(var(--v-theme-primary));
 }
 
 .license-info.no-license {
-    color: #FFE4B5;
+    color: rgb(var(--v-theme-secondary));
 }
 
 .v-list-item {
@@ -524,7 +522,6 @@ function clearAlerts() {
 }
 
 .repo-link {
-    color: #6495ED;
     text-decoration: none;
 }
 

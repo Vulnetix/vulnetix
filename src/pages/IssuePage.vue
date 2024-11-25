@@ -2,7 +2,7 @@
 import DependencyGraph from '@/components/DependencyGraph.vue';
 import Finding from '@/components/Finding.vue';
 import { useMemberStore } from '@/stores/member';
-import { Client, getPastelColor, VexAnalysisState } from '@/utils';
+import { Client, getPastelColor, VexAnalysisResponse, VexAnalysisState } from '@/utils';
 import IconVulnetix from '@images/IconVulnetix.vue';
 import { reactive } from 'vue';
 import { useRoute } from 'vue-router';
@@ -93,16 +93,13 @@ class Controller {
             return
         }
         try {
-            if (VexAnalysisState?.[input.response]) {
+            if (VexAnalysisResponse?.[input.response]) {
+                analysisResponse = input.response
+            } else if (VexAnalysisState?.[input.response]) {
                 analysisState = input.response
-            } else if (input.response === "can_not_fix") {
-                analysisResponse = input.response
-            } else if (input.response === "will_not_fix") {
-                analysisResponse = input.response
-            } else if (input.response === "workaround_available") {
-                analysisResponse = input.response
-            } else {
-                return
+                if (['not_affected', 'false_positive'].includes(input.response)) {
+                    analysisResponse = "can_not_fix"
+                }
             }
             state.loading = true
             const { data } = await client.post(`/issue/${findingUuid}`, {

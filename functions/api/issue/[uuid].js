@@ -52,13 +52,14 @@ export async function onRequestPost(context) {
             && VexAnalysisResponse?.[data.json.analysisResponse]
             && VexAnalysisJustification?.[data.json.analysisJustification]
         ) {
-            const where = {
-                findingUuid: uuid,
-                AND: {
-                    analysisState: 'in_triage'
-                }
+            let triage = null
+            const triageRecords = await data.prisma.Triage.findMany({ where: { findingUuid: uuid } })
+            if (triageRecords && triageRecords.filter(t => t.analysisState === 'in_triage')) {
+                triage = triageRecords.filter(t => t.analysisState === 'in_triage').pop()
             }
-            const triage = await data.prisma.Triage.findFirst({ where })
+            if (!triage && triageRecords) {
+                triage = triageRecords.sort((a, b) => b.lastObserved - a.lastObserved).pop()
+            }
             const triageData = {
                 uuid: crypto.randomUUID(),
                 findingUuid: uuid,
@@ -71,6 +72,7 @@ export async function onRequestPost(context) {
                 lastObserved: new Date().getTime(),
                 seen: 1,
                 triageAutomated: 0,
+                memberEmail: data.session.memberEmail
             }
             if (triage) {
                 triageData.uuid = triage.uuid
@@ -106,7 +108,7 @@ export async function onRequestPost(context) {
                 info = await data.prisma.Triage.create({ data: triageData })
             }
             data.logger(`Upsert Triage ${triageData.uuid}`, info)
-            return Response.json({ ok: true, triage })
+            return Response.json({ ok: true, triage: triageData })
         }
 
         return Response.json({ ok: false, error: { message: "Required arguments not provided" } })

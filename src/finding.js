@@ -85,6 +85,9 @@ function addToList(inputObject, keyName, newObject) {
 
 export const processFinding = async (prisma, r2adapter, session, finding, seen = 0) => {
     const isResolved = finding.triage.filter(triage => [VexAnalysisState.resolved, VexAnalysisState.resolved_with_pedigree, VexAnalysisState.false_positive, VexAnalysisState.not_affected].includes(triage.analysisState)).length > 0
+    if (isResolved) {
+        return finding
+    }
     const osvData = await new OSV().query(prisma, session.orgId, session.memberEmail, finding.detectionTitle)
     finding.detectionDescription = osvData.details
     finding.modifiedAt = (new Date(osvData.modified)).getTime()
@@ -223,34 +226,32 @@ export const processFinding = async (prisma, r2adapter, session, finding, seen =
     finding.confidenceLevel = confidence.confidenceLevel
     finding.confidenceRationaleJSON = JSON.stringify(confidence.evaluations.map(i => i.rationale))
     finding.timelineJSON = makeTimeline(finding)
-    if (!isResolved) {
-        const info = await prisma.Finding.update({
-            where: { uuid: finding.uuid },
-            data: {
-                detectionTitle: finding.detectionTitle,
-                createdAt: finding.createdAt,
-                modifiedAt: finding.modifiedAt,
-                publishedAt: finding.publishedAt,
-                databaseReviewed: finding.databaseReviewed,
-                cisaDateAdded: finding.cisaDateAdded,
-                aliases: finding.aliases,
-                cwes: finding.cwes,
-                packageEcosystem: finding.packageEcosystem,
-                advisoryUrl: finding.advisoryUrl,
-                fixVersion: finding.fixVersion,
-                fixAutomatable: finding.fixAutomatable,
-                vulnerableVersionRange: finding.vulnerableVersionRange,
-                affectedFunctions: finding.affectedFunctions,
-                cpe: finding.cpe,
-                vendor: finding.vendor,
-                product: finding.product,
-                malicious: finding.malicious,
-                referencesJSON: finding.referencesJSON,
-                timelineJSON: finding.timelineJSON,
-            }
-        })
-        // console.log(`Update ${finding.detectionTitle}`, info)
-    }
+    await prisma.Finding.update({
+        where: { uuid: finding.uuid },
+        data: {
+            detectionTitle: finding.detectionTitle,
+            createdAt: finding.createdAt,
+            modifiedAt: finding.modifiedAt,
+            publishedAt: finding.publishedAt,
+            databaseReviewed: finding.databaseReviewed,
+            cisaDateAdded: finding.cisaDateAdded,
+            aliases: finding.aliases,
+            cwes: finding.cwes,
+            packageEcosystem: finding.packageEcosystem,
+            advisoryUrl: finding.advisoryUrl,
+            fixVersion: finding.fixVersion,
+            fixAutomatable: finding.fixAutomatable,
+            vulnerableVersionRange: finding.vulnerableVersionRange,
+            affectedFunctions: finding.affectedFunctions,
+            cpe: finding.cpe,
+            vendor: finding.vendor,
+            product: finding.product,
+            malicious: finding.malicious,
+            referencesJSON: finding.referencesJSON,
+            timelineJSON: finding.timelineJSON,
+        }
+    })
+
     let scores
     if (cveId) {
         const epss = new EPSS()
@@ -275,14 +276,18 @@ export const processFinding = async (prisma, r2adapter, session, finding, seen =
     // Exploitation
     // TechnicalImpact
     // Automatable
-    // MissionWellbeingImpact        
-    let { analysisState = 'in_triage', triageAutomated = 0, triagedAt = null, seenAt = null, analysisDetail = null } = (finding.triage.sort((a, b) => a.lastObserved - b.lastObserved).pop() || {})
+    // MissionWellbeingImpact
+    let vexData = finding.triage.sort((a, b) => a.lastObserved - b.lastObserved).pop() ||
+        finding.triage.filter(t => t.analysisState === "in_triage").pop() ||
+        { analysisState: 'in_triage' }
+
+    let vexExist = !!vexData?.uuid
     if (finding.exploits.length || finding.knownExploits.length) {
-        analysisState = 'exploitable'
-        triageAutomated = 1
-        analysisDetail = `Known exploitation`
-        if (!triagedAt) {
-            triagedAt = new Date().getTime()
+        vexData.analysisState = 'exploitable'
+        vexData.triageAutomated = 1
+        vexData.analysisDetail = `Known exploitation`
+        if (!vexData.triagedAt) {
+            vexData.triagedAt = new Date().getTime()
         }
     } else if (
         (cvssVector && (
@@ -291,65 +296,49 @@ export const processFinding = async (prisma, r2adapter, session, finding, seen =
             ['E:A', 'E:P', 'E:U'].some(substring => cvss.v4?.score?.includes(substring))
         ))
     ) {
-        analysisState = 'exploitable'
-        triageAutomated = 1
-        analysisDetail = `CVSS provided exploitability vector, without known exploits in the database.`
-        if (!triagedAt) {
-            triagedAt = new Date().getTime()
+        vexData.analysisState = 'exploitable'
+        vexData.triageAutomated = 1
+        vexData.analysisDetail = `CVSS provided exploitability vector, without known exploits in the database.`
+        if (!vexData.triagedAt) {
+            vexData.triagedAt = new Date().getTime()
         }
     } else if (
         // https://www.first.org/epss/articles/prob_percentile_bins
         epssPercentile > 0.954 // EPSS is best used when there is no other evidence of active exploitation
     ) {
-        analysisState = 'exploitable'
-        triageAutomated = 1
-        analysisDetail = `EPSS Percentile greater than 95.4% which is a critical prediction.`
-        if (!triagedAt) {
-            triagedAt = new Date().getTime()
+        vexData.analysisState = 'exploitable'
+        vexData.triageAutomated = 1
+        vexData.analysisDetail = `EPSS Percentile greater than 95.4% which is a critical prediction.`
+        if (!vexData.triagedAt) {
+            vexData.triagedAt = new Date().getTime()
         }
     }
-    if (analysisState === 'exploitable') {
-        triageAutomated = 1
-        if (!triagedAt) {
-            triagedAt = new Date().getTime()
-        }
-    }
+
     if (!isVersionVulnerable(
         finding.packageVersion,
         finding?.vulnerableVersionRange ? finding.vulnerableVersionRange : `< ${getSemVerWithoutOperator(finding.fixVersion)}`
     )) {
-        analysisState = 'false_positive'
-        triageAutomated = 1
-        analysisDetail = `${getSemVerWithoutOperator(finding.packageVersion)} in not within vulnerable range "${finding.vulnerableVersionRange}"`
-        if (!triagedAt) {
-            triagedAt = new Date().getTime()
+        vexData.analysisState = 'false_positive'
+        vexData.triageAutomated = 1
+        vexData.analysisDetail = `${getSemVerWithoutOperator(finding.packageVersion)} in not within vulnerable range "${finding.vulnerableVersionRange}"`
+        if (!vexData.triagedAt) {
+            vexData.triagedAt = new Date().getTime()
         }
     }
-    if (seen === 1) {
-        seenAt = new Date().getTime()
+    if (seen) {
+        vexData.seen = 1
+        vexData.seenAt = new Date().getTime()
     }
-    let vexExist = finding.triage.filter(t => t.analysisState === analysisState).length !== 0
-    let vexData = finding.triage.filter(t => t.analysisState === analysisState).pop() || {}
-    if (!vexExist && finding.triage.length === 0) {
-        vexData.analysisState = analysisState
+    if (!vexExist) {
         vexData.createdAt = new Date().getTime()
         vexData.lastObserved = new Date().getTime()
-    } else {
-        vexData = finding.triage.sort((a, b) =>
-            a.lastObserved - b.lastObserved
-        ).pop()
-        vexExist = !!vexData?.uuid
     }
-    if (!isResolved) {
-        vexData.analysisState = analysisState
-        vexData.analysisDetail = analysisDetail
-        vexData.triageAutomated = triageAutomated
-        vexData.triagedAt = triagedAt
-        vexData.seen = seen
-        vexData.seenAt = seenAt
+    if (cvssVector) {
+        vexData.cvssVector = cvssVector
     }
-    vexData.cvssVector = cvssVector
-    vexData.cvssScore = cvssScore
+    if (cvssScore) {
+        vexData.cvssScore = cvssScore
+    }
     if (epssPercentile) {
         vexData.epssPercentile = epssPercentile.toString()
     }
@@ -366,7 +355,7 @@ export const processFinding = async (prisma, r2adapter, session, finding, seen =
         // console.log(`Updated VEX ${finding.detectionTitle} ${analysisState}`, vexInfo)
         finding.triage = finding.triage.filter(f => f.uuid != vexData.uuid)
         finding.triage.push(vexData)
-    } else if (!isResolved) {
+    } else {
         vexData.findingUuid = finding.uuid
         vexData = await prisma.Triage.create({ data: vexData })
         // console.log(`Create VEX ${finding.detectionTitle} ${analysisState}`, vexData)
@@ -377,7 +366,6 @@ export const processFinding = async (prisma, r2adapter, session, finding, seen =
     const info = await prisma.Finding.update({
         where: { uuid: finding.uuid },
         data: {
-            modifiedAt: finding.modifiedAt,
             timelineJSON: finding.timelineJSON,
         }
     })
@@ -593,21 +581,17 @@ const CORE_EVENTS = {
 // VEX event generators
 const getVexEvents = (vex) => [
     vex.createdAt && {
-        value: `VEX generated as ${VexAnalysisState[vex.analysisState]}`,
+        value: `Triage started`,
         time: vex.createdAt
     },
     vex.lastObserved && vex.lastObserved !== vex.createdAt && {
-        value: `Discovered`,
+        value: `Last Observed`,
         time: vex.lastObserved
     },
     vex.triagedAt && vex.memberEmail && {
-        value: `${vex.memberEmail} Triaged`,
+        value: `VEX ${VexAnalysisState[vex.analysisState]}`,
         time: vex.triagedAt
     },
-    vex.seenAt && vex.memberEmail && {
-        value: `${vex.memberEmail} Review`,
-        time: vex.seenAt
-    }
 ].filter(Boolean);
 
 export const makeTimeline = finding => {
@@ -632,7 +616,9 @@ export const makeTimeline = finding => {
         'First discovered in repository',
         'VEX generated as',
         'Last synchronized with',
+        'Triage started',
         'Triaged',
+        'Last Observed',
         'Review',
         'Discovered'
     ].filter(Boolean));
@@ -641,7 +627,7 @@ export const makeTimeline = finding => {
         event?.value &&
         !systemEventValues.has(event.value) &&
         !event.value.startsWith('First discovered in ') &&
-        !event.value.startsWith('VEX generated as') &&
+        !event.value.startsWith('VEX ') &&
         !event.value.startsWith('Last synchronized with') &&
         !event.value.startsWith('Discovered') &&
         !event.value.endsWith('Triaged') &&
@@ -849,16 +835,16 @@ export function createPurlFromUrl(location, name, version) {
 
         // If it's a GitHub URL
         if (url.hostname === 'github.com') {
-            return `pkg:github/${owner}/${repo}@${version}`
+            return `pkg: github / ${owner} / ${repo}@${version}`
         }
 
         // For git URLs without specific host
         if (location.startsWith('git://')) {
-            return `pkg:git/${owner}/${repo}@${version}`
+            return `pkg: git / ${owner} / ${repo}@${version}`
         }
 
         // Generic URL
-        return `pkg:generic/${name}@${version}?download_url=${encodeURIComponent(location)}`
+        return `pkg: generic / ${name}@${version} ? download_url = ${encodeURIComponent(location)}`
 
     } catch (e) {
         // If URL parsing fails, return null
@@ -885,7 +871,7 @@ export function parsePackageRef(spdxId, name) {
     }
     return {
         name,
-        version: spdxId.replace(`SPDXRef-${name}-`, '')
+        version: spdxId.replace(`SPDXRef - ${name} - `, '')
     }
 }
 
@@ -1057,7 +1043,7 @@ export const parseCycloneDXComponents = async (cdxJson, namespace) => {
         const ecosystem = detectPackageEcosystem(component, name);
 
         components.set(component['bom-ref'], {
-            key: await hex(`${namespace}${name}${version || ''}`),
+            key: await hex(`${namespace}${name}${version || ''} `),
             name,
             version,
             license,

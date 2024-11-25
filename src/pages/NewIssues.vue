@@ -2,7 +2,7 @@
 import DependencyGraph from '@/components/DependencyGraph.vue';
 import Finding from '@/components/Finding.vue';
 import { useMemberStore } from '@/stores/member';
-import { Client, getPastelColor, VexAnalysisState } from '@/utils';
+import { Client, getPastelColor, VexAnalysisResponse, VexAnalysisState } from '@/utils';
 import IconVulnetix from '@images/IconVulnetix.vue';
 import { reactive } from 'vue';
 
@@ -104,17 +104,13 @@ class Controller {
             return
         }
         try {
-            if (VexAnalysisState?.[input.response]) {
+            if (VexAnalysisResponse?.[input.response]) {
+                analysisResponse = input.response
+            } else if (VexAnalysisState?.[input.response]) {
                 analysisState = input.response
-            } else if (input.response === "can_not_fix") {
-                analysisResponse = input.response
-            } else if (input.response === "will_not_fix") {
-                analysisResponse = input.response
-            } else if (input.response === "workaround_available") {
-                analysisResponse = input.response
-            } else {
-                state.loading = false
-                return
+                if (['not_affected', 'false_positive'].includes(input.response)) {
+                    analysisResponse = "can_not_fix"
+                }
             }
             state.loading = true
             const { data } = await client.post(`/issue/${findingUuid}`, {
@@ -123,14 +119,18 @@ class Controller {
                 analysisState,
                 analysisResponse,
             })
+            if (data?.ok) {
+                queueProgress.value++
+                await controller.refresh()
+            } else {
+                console.error(data)
+                state.error = "Encountered a server error, please refresh the page and try again."
+            }
+
             if (data?.error?.message) {
                 state.error = data.error.message
                 state.loading = false
                 return
-            }
-            if (data.ok) {
-                queueProgress.value++
-                await controller.refresh()
             }
 
         } catch (e) {
