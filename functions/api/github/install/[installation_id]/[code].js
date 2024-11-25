@@ -34,7 +34,7 @@ export async function onRequestGet(context) {
         if (!oauthData?.access_token) {
             return Response.json({ ok: false, error: { message: 'OAuth authorization failed' } })
         }
-        const gh = new GitHub(oauthData.access_token)
+        const gh = new GitHub(data.prisma, data?.session?.orgId, data?.session?.memberEmail, oauthData.access_token)
         const created = (new Date()).getTime()
         const response = { ok: false, installationId: parseInt(params.installation_id, 10), session: {}, member: {} }
         const { content, error, tokenExpiry } = await gh.getUser()

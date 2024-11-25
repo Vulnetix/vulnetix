@@ -10,15 +10,6 @@ export async function onRequestGet(context) {
         next, // used for middleware or to fetch assets
         data, // arbitrary space for passing data between middlewares
     } = context
-    const githubIntegration = await data.prisma.IntegrationConfig.findFirst({
-        where: {
-            orgId: data.session.orgId,
-            AND: { name: `github` },
-        }
-    })
-    if (!!githubIntegration?.suspend) {
-        return Response.json({ ok: false, error: { message: 'GitHub Disabled' } })
-    }
     const repoName = `${params.org}/${params.repo}`
     const errors = []
     const files = []
@@ -34,8 +25,8 @@ export async function onRequestGet(context) {
             data.logger(`github_apps kid=${data.session.kid} installationId=${app.installationId}`)
             throw new Error('github_apps invalid')
         }
-        const gh = new GitHub(app.accessToken)
-        const { content, error } = await gh.getRepoSpdx(data.prisma, data.session.orgId, data.session.memberEmail, repoName)
+        const gh = new GitHub(data.prisma, data.session.orgId, data.session.memberEmail, app.accessToken)
+        const { content, error } = await gh.getRepoSpdx(repoName)
         if (error?.message) {
             if ("Bad credentials" === error.message) {
                 app.expires = (new Date()).getTime()
@@ -103,8 +94,8 @@ export async function onRequestGet(context) {
         },
     })
     for (const memberKey of memberKeys) {
-        const gh = new GitHub(memberKey.secret)
-        const { content, error } = await gh.getRepoSpdx(data.prisma, data.session.orgId, data.session.memberEmail, repoName)
+        const gh = new GitHub(data.prisma, data.session.orgId, data.session.memberEmail, memberKey.secret)
+        const { content, error } = await gh.getRepoSpdx(repoName)
         if (error?.message) {
             errors.push({ error, app: { login: memberKey.keyLabel } })
             continue

@@ -36,6 +36,7 @@ model Org {
   gitHubApps            GitHubApp[]
   products              Product[]
   repos                 ProductRepos[]
+  branches              GitBranch[]
 }
 
 model IntegrationConfig {
@@ -169,9 +170,22 @@ model GitRepo {
   sarif         SARIFInfo[]
   spdx          SPDXInfo[]
   cdx           CycloneDXInfo[]
-  Finding       Finding[]
+  findings      Finding[]
+  branches      GitBranch[]
 
   @@id([fullName, orgId])
+}
+
+model GitBranch {
+  name      String
+  repoName  String
+  repo      GitRepo @relation(fields: [repoName, orgId], references: [fullName, orgId])
+  commitSha String
+  protected Int     @default(0)
+  orgId     String
+  org       Org     @relation(fields: [orgId], references: [uuid])
+
+  @@id([repoName, name])
 }
 
 model SARIFInfo {

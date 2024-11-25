@@ -606,9 +606,14 @@ export const makeTimeline = finding => {
         .filter(Boolean);
 
     // Add VEX events
-    finding.triage?.forEach(vex => {
-        events.push(...getVexEvents(vex));
-    });
+    finding.triage?.sort((a, b) => a.id - b.id)?.forEach(vex => {
+        for (const evt of getVexEvents(vex)) {
+            if (events.filter(e => e.value === evt.value).length) {
+                continue
+            }
+            events.push(evt)
+        }
+    })
 
     // Add custom events that don't match core or VEX patterns
     const systemEventValues = new Set([

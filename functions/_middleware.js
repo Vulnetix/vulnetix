@@ -21,7 +21,8 @@ export const errorHandling = async context => {
     try {
         return await next()
     } catch (err) {
-        return new Response(`${err.message}\n${err.stack}`, { status: 500 })
+        console.error(err.message, err.stack)
+        return new Response(err.message, { status: 500 })
     }
 }
 

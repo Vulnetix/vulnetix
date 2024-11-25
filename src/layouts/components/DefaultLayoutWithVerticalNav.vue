@@ -66,17 +66,31 @@ const loadRepos = async () => {
         }
         loadingBar.value = true
         const { data } = await client.get(`/github/repos`)
+        const tracker = []
         for (const repo of data?.gitRepos || []) {
+            if (!repo?.fullName) continue
             branches.value[repo.fullName] = [repo.defaultBranch]
             selectedBranches.value[repo.fullName] = repo.defaultBranch
             gitRepos.value.push(repo)
+            tracker.push(loadBranches(repo.fullName))
         }
+        await Promise.all(tracker)
 
     } catch (e) {
         console.error(e)
         errorMessage.value = `${e.code} ${e.message}`
     }
     loadingBar.value = false
+}
+
+const loadBranches = async repoName => {
+    try {
+        const { data } = await client.get(`/github/repos/${repoName}/branches`)
+        branches.value[repoName] = data?.branches?.map(branch => branch.name) || [selectedBranches.value[repoName]]
+
+    } catch (e) {
+        console.error(e)
+    }
 }
 
 watch([meta_i], loadRepos)
@@ -190,25 +204,6 @@ function clearAlerts() {
 
                     <VCard>
                         <VToolbar class="import-toolbar">
-                            <VBtn
-                                icon="mdi-close"
-                                @click="dialog = false"
-                            />
-
-                            <VToolbarTitle>Import Repositories</VToolbarTitle>
-
-                            <VSpacer />
-
-                            <VToolbarItems>
-                                <VBtn
-                                    color="primary"
-                                    prepend-icon="mdi:content-save-plus"
-                                    @click="importGithub"
-                                    text="Import Selected"
-                                />
-                            </VToolbarItems>
-                        </VToolbar>
-                        <VCardText>
                             <VProgressLinear
                                 :active="loadingBar"
                                 :indeterminate="loadingBar"
@@ -253,6 +248,26 @@ function clearAlerts() {
                                 border="start"
                                 variant="tonal"
                             />
+                            <VBtn
+                                icon="mdi-close"
+                                @click="dialog = false"
+                            />
+
+                            <VToolbarTitle>Import Repositories</VToolbarTitle>
+
+                            <VSpacer />
+
+                            <VToolbarItems>
+                                <VBtn
+                                    :disabled="loadingBar"
+                                    color="primary"
+                                    prepend-icon="mdi:content-save-plus"
+                                    @click="importGithub"
+                                    text="Import Selected"
+                                />
+                            </VToolbarItems>
+                        </VToolbar>
+                        <VCardText>
                             <VList>
                                 <VSpacer class="mt-12" />
                                 <VListItem
@@ -260,17 +275,29 @@ function clearAlerts() {
                                     :key="k"
                                     class="mb-3"
                                 >
-                                    <VListItemAction>
+                                    <VListItemTitle class="font-weight-bold">
                                         <VCheckbox
                                             v-model="selectedRepos"
                                             :value="repo.fullName"
                                             multiple
                                             color="primary"
-                                            class="align-self-start mt-1"
+                                            class="mt-1 me-2"
                                         ></VCheckbox>
-                                    </VListItemAction>
-
-                                    <VListItemTitle class="font-weight-bold">
+                                        <VChip
+                                            x-small
+                                            :color="repo.visibility === 'private' ? 'info' : 'primary'"
+                                            class="me-2"
+                                        >
+                                            {{ repo.visibility }}
+                                        </VChip>
+                                        <VChip
+                                            v-if="repo.archived"
+                                            x-small
+                                            color="error"
+                                            class="me-2"
+                                        >
+                                            archived
+                                        </VChip>
                                         <a
                                             v-if="repo.source === 'GitHub'"
                                             :href="`https://github.com/${repo.fullName}`"
@@ -281,21 +308,6 @@ function clearAlerts() {
                                             {{ repo.fullName }}
                                         </a>
                                         <span v-else>{{ repo.fullName }}</span>
-                                        <VChip
-                                            x-small
-                                            :color="repo.visibility === 'private' ? 'info' : 'primary'"
-                                            class="ml-2"
-                                        >
-                                            {{ repo.visibility }}
-                                        </VChip>
-                                        <VChip
-                                            v-if="repo.archived"
-                                            x-small
-                                            color="error"
-                                            class="ml-2"
-                                        >
-                                            archived
-                                        </VChip>
                                     </VListItemTitle>
 
                                     <VListItemSubtitle class="mt-2">
@@ -304,10 +316,13 @@ function clearAlerts() {
                                                 cols="12"
                                                 sm="6"
                                             >
-                                                <div class="d-flex align-center mb-1">
+                                                <div
+                                                    class="d-flex align-center mb-1"
+                                                    style="height: 32px;"
+                                                >
                                                     <VIcon
                                                         small
-                                                        class="mr-1"
+                                                        class="branch-icon me-2"
                                                     >mdi-source-branch</VIcon>
                                                     <VSelect
                                                         v-model="selectedBranches[repo.fullName]"
@@ -359,19 +374,17 @@ function clearAlerts() {
                         </VCardText>
                         <VCardActions class="actions-section">
                             <VBtn
-                                text
+                                :disabled="loadingBar"
+                                text="Select All"
                                 color="primary"
                                 @click="selectAll"
-                            >
-                                Select All
-                            </VBtn>
+                            />
                             <VBtn
-                                text
+                                :disabled="loadingBar"
+                                text="Deselect All"
                                 color="primary"
                                 @click="deselectAll"
-                            >
-                                Deselect All
-                            </VBtn>
+                            />
                             <VSpacer></VSpacer>
                             <VChip>
                                 {{ selectedRepos.length }} selected
@@ -537,5 +550,20 @@ function clearAlerts() {
 
 :deep(.v-input__details) {
     display: none;
+}
+
+.v-input {
+    display: inline-flex;
+    margin-top: 0 !important;
+    align-self: self-start;
+}
+
+.v-list-item-title {
+    display: flex;
+    align-items: center;
+}
+
+.branch-icon {
+    align-self: center;
 }
 </style>

@@ -9,15 +9,6 @@ export async function onRequestGet(context) {
         next, // used for middleware or to fetch assets
         data, // arbitrary space for passing data between middlewares
     } = context
-    const githubIntegration = await data.prisma.IntegrationConfig.findFirst({
-        where: {
-            orgId: data.session.orgId,
-            AND: { name: `github` },
-        }
-    })
-    if (!!githubIntegration?.suspend) {
-        return Response.json({ ok: false, error: { message: 'GitHub Disabled' } })
-    }
     const githubApps = []
     const gitRepos = []
     const installs = await data.prisma.GitHubApp.findMany({
@@ -31,8 +22,8 @@ export async function onRequestGet(context) {
             data.logger(`github_apps kid=${data.session.kid} installationId=${app.installationId}`)
             throw new Error('github_apps invalid')
         }
-        const gh = new GitHub(app.accessToken)
-        const { content, error } = await gh.getRepos(data.prisma, data.session.orgId, data.session.memberEmail)
+        const gh = new GitHub(data.prisma, data.session.orgId, data.session.memberEmail, app.accessToken)
+        const { content, error } = await gh.getRepos()
         if (error?.message) {
             if ("Bad credentials" === error.message) {
                 app.expires = (new Date()).getTime()
@@ -49,9 +40,8 @@ export async function onRequestGet(context) {
 
             return Response.json({ error, app })
         }
-        for (const repo of content) {
-            gitRepos.push(await store(data.prisma, data.session, repo))
-        }
+        const repos = await Promise.all(content.map(repo => store(data.prisma, data.session, repo)))
+        gitRepos.push(...repos)
         githubApps.push({
             installationId: parseInt(app.installationId, 10),
             login: app.login,
@@ -68,22 +58,17 @@ export async function onRequestGet(context) {
         },
     })
     for (const memberKey of memberKeys) {
-        const gh = new GitHub(memberKey.secret)
-        const { content, error } = await gh.getRepos(data.prisma, data.session.orgId, data.session.memberEmail)
+        const gh = new GitHub(data.prisma, data.session.orgId, data.session.memberEmail, memberKey.secret)
+        const { content, error } = await gh.getRepos()
         if (error?.message) {
             return Response.json({ error, app: { login: memberKey.keyLabel } })
         }
-        for (const repo of content) {
-            gitRepos.push(await store(data.prisma, data.session, repo))
-        }
+        const repos = await Promise.all(content.map(repo => store(data.prisma, data.session, repo)))
+        gitRepos.push(...repos)
     }
 
     return Response.json({
-        githubApps, gitRepos: gitRepos.map(r => {
-            r.orgId = r.org.connect.uuid
-            delete r.org
-            return r
-        })
+        githubApps, gitRepos
     })
 }
 const store = async (prisma, session, repo) => {
