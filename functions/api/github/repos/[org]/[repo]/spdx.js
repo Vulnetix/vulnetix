@@ -159,21 +159,23 @@ const process = async (prisma, session, repoName, spdx, spdxId, artifactUuid) =>
     }
     const findingIds = []
 
-    const info = await prisma.SPDXInfo.upsert({
+    const lookup = await prisma.SPDXInfo.findUnique({
         where: {
             spdxId,
             orgId: session.orgId,
-        },
-        update: {
-            comment: spdxData.comment
-        },
-        create: {
-            ...spdxData,
-            artifact: { connect: { uuid: artifactUuid } },
-            repo: { connect: { fullName_orgId: { fullName: repoName, orgId: session.orgId } } },
-            org: { connect: { uuid: session.orgId } },
-        },
+        }
     })
+    if (!lookup?.spdxId) {
+        const infoAdd = await prisma.SPDXInfo.create({
+            data: {
+                ...spdxData,
+                org: { connect: { uuid: session.orgId } },
+                repo: { connect: { fullName_orgId: { fullName: repoName, orgId: session.orgId } } },
+                artifact: { connect: { uuid: artifactUuid } },
+            }
+        })
+        // console.log(`Create SPDX ${spdxId}`, infoAdd)
+    }
 
     // console.log(`/github/repos/spdx ${repoName} kid=${session.kid}`, info)
     const osvQueries = spdx.packages.flatMap(pkg => {

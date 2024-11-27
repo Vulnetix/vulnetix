@@ -1548,12 +1548,9 @@ export const isSARIF = input => {
  */
 export const saveArtifact = async (prisma, r2adapter, strContent, artifactUuid, artifactType) => {
     const objectPath = `${artifactType}/${artifactUuid}.json`
-    const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
-    const reportInfo = await r2adapter.put(objectPath, strContent, putOptions)
     const link = {
         url: `https://artifacts.vulnetix.app/${objectPath}`,
         contentType: 'application/json',
-        artifactUuid
     }
     const artifact = {
         uuid: artifactUuid,
@@ -1576,28 +1573,29 @@ export const saveArtifact = async (prisma, r2adapter, strContent, artifactUuid, 
     } else if ('sarif' === artifactType.toLowerCase()) {
         link.contentType = 'application/sarif+json'
     }
-    const linkInfo = await prisma.Link.create({ data: link })
-
-    const lookup = await prisma.Artifact.findUnique({ where: { uuid: artifactUuid } })
-    const newData = { ...artifact }
-    if (lookup?.uuid) {
-        const infoUpd = await prisma.Artifact.update({
-            where: {
-                uuid: lookup.uuid
-            },
-            data: {
-                date: artifact.date,
-                type: artifact.type,
-                bomFormat: artifact.bomFormat,
+    const putOptions = { httpMetadata: { contentType: 'application/json', contentEncoding: 'utf8' } }
+    const artifactInfo = await r2adapter.put(objectPath, strContent, putOptions)
+    // console.log('artifactInfo', artifactInfo)
+    const artifactLookup = await prisma.Artifact.findUnique({ where: { uuid: artifactUuid }, include: { downloadLinks: true } })
+    // console.log('artifactLookup', artifactLookup)
+    if (artifactLookup?.downloadLinks) {
+        for (const dlLink of artifactLookup.downloadLinks) {
+            if (dlLink.url === link.url) {
+                return artifactLookup
             }
-        })
-        console.log(`Update Artifact ${artifactUuid}`, infoUpd)
-    } else {
-        const infoAdd = await prisma.Artifact.create({ data: newData })
-        console.log(`Create Artifact ${artifactUuid}`, infoAdd)
+        }
     }
-
-    artifact.downloadLinks = [linkInfo]
+    link.artifact = {
+        connectOrCreate: {
+            where: {
+                uuid: artifactUuid,
+            },
+            create: artifact,
+        },
+    }
+    const newLink = await prisma.Link.create({ data: link })
+    // console.log('newLink', newLink)
+    artifact.downloadLinks = [newLink]
     return artifact
 }
 

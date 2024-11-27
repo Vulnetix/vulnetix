@@ -25,7 +25,7 @@ const initialState = {
         { title: 'SPDX', children: [] },
         { title: 'SARIF', children: [] },
         { title: 'VEX', children: [] },
-        // { title: 'VDR', children: [] },
+        { title: 'VDR', children: [] },
     ],
 }
 const state = reactive({
@@ -50,74 +50,7 @@ class Controller {
             while (hasMore) {
                 const { data } = await client.get(`/artifact/files?take=${pageSize}&skip=${skip}`)
                 if (data.ok && data?.artifacts) {
-                    for (const artifact of data.artifacts) {
-                        const { uuid, downloadLink, type, bomFormat, analysisKey } = artifact
-                        const { contentType, url } = downloadLink
-                        for (let group of state.artifacts) {
-                            const ext = contentType?.includes("json") ? 'json' : 'txt'
-                            let repoName;
-                            let dependencies;
-                            let results;
-                            let versionInfo;
-                            let findingTitle;
-                            let analysis;
-                            let source;
-                            if (artifact?.cdx) {
-                                dependencies = artifact.cdx?.dependencies?.length || 0
-                                repoName = artifact.cdx?.repoName
-                                source = artifact.cdx?.source
-                                versionInfo = `CycloneDX-${artifact.cdx?.cdxVersion}`
-                            }
-                            if (artifact?.spdx) {
-                                dependencies = artifact.spdx?.dependencies?.length || 0
-                                repoName = artifact.spdx?.repoName
-                                source = artifact.spdx?.source
-                                versionInfo = artifact.spdx?.spdxVersion
-                            }
-                            if (artifact?.sarif) {
-                                results = artifact.sarif?.resultsCount
-                                repoName = artifact.sarif?.fullName
-                                source = artifact.sarif?.source
-                                versionInfo = artifact.sarif?.toolName
-                                if (artifact.sarif?.toolVersion) {
-                                    versionInfo = `${versionInfo}-${artifact.sarif?.toolVersion}`
-                                }
-                            }
-                            if (artifact?.vex) {
-                                findingTitle = artifact.vex?.findingTitle
-                                source = artifact.vex?.source
-                                if (artifact.vex?.analysisState) {
-                                    analysis = VexAnalysisState[artifact.vex.analysisState]
-                                }
-                                if (artifact.vex?.analysisJustification) {
-                                    analysis = `${analysis}, ${VexAnalysisJustification[artifact.vex.analysisJustification]}`
-                                }
-                                if (artifact.vex?.analysisResponse) {
-                                    analysis = `${analysis}, ${VexAnalysisResponse[artifact.vex.analysisResponse]}`
-                                }
-                            }
-                            const file = { contentType, ext, lastModified: artifact.date, uuid, source, url, analysis, findingTitle, dependencies, repoName, results, versionInfo }
-                            file.key = crypto.randomUUID()
-                            group.key = crypto.randomUUID()
-                            if (group.title === "SARIF" && contentType?.includes("sarif")) {
-                                file.title = analysisKey || `${uuid}.${ext}`
-                                group = addFileToSourceSubgroup(group, file)
-                                break
-                            } else if (group.title === "VEX" && type === "VEX") {
-                                file.title = artifact.vex.findingTitle
-                                group = addFileToSourceSubgroup(group, file)
-                                break
-                            } else if (group.title === bomFormat) {
-                                if (bomFormat === "CycloneDX") {
-                                    file.title = [artifact.cdx.name, artifact.cdx.version].filter(a => !!a).join('@')
-                                } else if (bomFormat === "SPDX") {
-                                    file.title = [artifact.spdx.name, artifact.spdx.version].filter(a => !!a).join('@')
-                                }
-                                group = addFileToSourceSubgroup(group, file)
-                                break
-                            }
-                        }
-                    }
+                    data.artifacts.forEach(updateArtifact)
                 } else {
                     break
                 }
@@ -181,7 +114,7 @@ class Controller {
                     state.uploadError = "SARIF data upload failed."
                 } else {
                     success = true
-                    updateArtifactsFromFiles(data.sarif)
+                    data.sarif.forEach(updateArtifact)
                 }
             }
             if (spdx.length) {
@@ -190,7 +123,7 @@ class Controller {
                     state.uploadError = "SPDX data upload failed."
                 } else {
                     success = true
-                    updateArtifactsFromFiles(data.files)
+                    data.files.forEach(updateArtifact)
                 }
             }
             if (cdx.length) {
@@ -199,7 +132,7 @@ class Controller {
                     state.uploadError = "CDX data upload failed."
                 } else {
                     success = true
-                    updateArtifactsFromFiles(data.files)
+                    data.files.forEach(updateArtifact)
                 }
             }
             if (success) {
@@ -335,63 +268,72 @@ function addFileToSourceSubgroup(group, file) {
 
     return group
 }
-function updateArtifactsFromFiles(files) {
-    for (const fileData of files) {
-        let targetArtifact, artifactType;
-
-        if (fileData?.cdxId) {
-            artifactType = "CycloneDX"
-        } else if (fileData?.spdxId) {
-            artifactType = "SPDX"
-        } else if (fileData?.sarifId) {
-            artifactType = "SARIF"
-        } else {
-            console.warn("Unknown file type:", fileData)
-            return // Skip this file if we can't determine its type
+function updateArtifact(artifact) {
+    const { uuid, downloadLink, type, bomFormat, analysisKey } = artifact
+    const { contentType, url } = downloadLink
+    for (let group of state.artifacts) {
+        const ext = contentType?.includes("json") ? 'json' : 'txt'
+        let repoName;
+        let dependencies;
+        let results;
+        let versionInfo;
+        let findingTitle;
+        let analysis;
+        let source;
+        if (artifact?.cdx) {
+            dependencies = artifact.cdx?.dependencies?.length || 0
+            repoName = artifact.cdx?.repoName
+            source = artifact.cdx?.source
+            versionInfo = `CycloneDX-${artifact.cdx?.cdxVersion}`
         }
-        targetArtifact = state.artifacts.find(a => a.title === artifactType)
-
-        if (!targetArtifact) {
-            state.artifacts.push({ title: artifactType, children: [] })
-            targetArtifact = state.artifacts.find(a => a.title === artifactType)
+        if (artifact?.spdx) {
+            dependencies = artifact.spdx?.dependencies?.length || 0
+            repoName = artifact.spdx?.repoName
+            source = artifact.spdx?.source
+            versionInfo = artifact.spdx?.spdxVersion
         }
-
-        // Ensure the 'children' array exists and has an 'upload' object
-        if (!targetArtifact.children.length || !targetArtifact.children.some(child => child.title === "upload")) {
-            targetArtifact.children.push({ title: "upload", children: [] })
+        if (artifact?.sarif) {
+            results = artifact.sarif?.resultsCount
+            repoName = artifact.sarif?.fullName
+            source = artifact.sarif?.source
+            versionInfo = artifact.sarif?.toolName
+            if (artifact.sarif?.toolVersion) {
+                versionInfo = `${versionInfo}-${artifact.sarif?.toolVersion}`
+            }
         }
-
-        const uploadObject = targetArtifact.children.find(child => child.title === "upload")
-
-        // Create the new file object
-        const newFile = {
-            title: `${fileData.artifactUuid}.json`,
-            ext: "json", // Assuming all files are JSON
-            lastModified: fileData.createdAt,
-            contentType: fileData.contentType,
-            uuid: fileData.artifactUuid,
-            url: `https://artifacts.vulnetix.app/${artifactType.toLowerCase()}/${fileData.artifactUuid}.json`,
-            dependencies: fileData.dependencies.length || fileData.dependencies.length,
+        if (artifact?.vex) {
+            findingTitle = artifact.vex?.findingTitle
+            source = artifact.vex?.source
+            if (artifact.vex?.analysisState) {
+                analysis = VexAnalysisState[artifact.vex.analysisState]
+            }
+            if (artifact.vex?.analysisJustification) {
+                analysis = `${analysis}, ${VexAnalysisJustification[artifact.vex.analysisJustification]}`
+            }
+            if (artifact.vex?.analysisResponse) {
+                analysis = `${analysis}, ${VexAnalysisResponse[artifact.vex.analysisResponse]}`
+            }
         }
-
-        // Add type-specific properties
-        if (fileData.cdxId) {
-            newFile.cdxId = fileData.cdxId
-            newFile.versionInfo = `CycloneDX-${fileData.cdxVersion}`
-        } else if (fileData.spdxId) {
-            newFile.spdxId = fileData.spdxId
-            newFile.versionInfo = fileData.spdxVersion
-        } else if (fileData.reportId) {
-            newFile.reportId = fileData.reportId
-            newFile.versionInfo = [fileData.toolName, fileData.toolVersion].filter(a => !!a).join('-')
-            newFile.results = fileData.resultsCount || 0 // Assuming SARIF has a resultsCount
+        const file = { contentType, ext, lastModified: artifact.date, uuid, source, url, analysis, findingTitle, dependencies, repoName, results, versionInfo }
+        file.key = crypto.randomUUID()
+        group.key = crypto.randomUUID()
+        if (group.title === "SARIF" && contentType?.includes("sarif")) {
+            file.title = analysisKey || `${uuid}.${ext}`
+            group = addFileToSourceSubgroup(group, file)
+            break
+        } else if (group.title === "VEX" && type === "VEX") {
+            file.title = artifact.vex.findingTitle
+            group = addFileToSourceSubgroup(group, file)
+            break
+        } else if (group.title === bomFormat) {
+            if (bomFormat === "CycloneDX") {
+                file.title = [artifact.cdx.name, artifact.cdx.version].filter(a => !!a).join('@')
+            } else if (bomFormat === "SPDX") {
+                file.title = [artifact.spdx.name, artifact.spdx.version].filter(a => !!a).join('@')
+            }
+            group = addFileToSourceSubgroup(group, file)
+            break
         }
-
-        // Remove the 'isEmpty' property if it exists
-        uploadObject.children = uploadObject.children.filter(item => !item?.isEmpty)
-
-        // Add the new file to the upload object's children
-        uploadObject.children.push(newFile)
     }
 }
 </script>
