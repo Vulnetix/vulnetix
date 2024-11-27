@@ -115,24 +115,40 @@ export async function onRequestPost(context) {
                 createdAt: cdx.metadata?.timestamp ? new Date(cdx.metadata.timestamp).getTime() : new Date().getTime(),
                 toolName: cdx.metadata.tools.map(t => `${t?.vendor} ${t?.name} ${t?.version}`.trim()).join(', '),
             }
-            const info = await data.prisma.CycloneDXInfo.upsert({
+
+            const lookup = await data.prisma.CycloneDXInfo.findUnique({
                 where: {
                     cdxId,
                     orgId: data.session.orgId,
-                },
-                update: {
-                    createdAt: cdxData.createdAt,
-                    serialNumber: cdxData.serialNumber
-                },
-                create: {
-                    ...cdxData,
-                    org: { connect: { uuid: data.session.orgId } },
-                    artifact: { connect: { uuid: artifactUuid } },
                 }
             })
-            data.logger(`/upload/cdx ${cdxId} kid=${data.session.kid}`, info)
+            if (lookup?.cdxId) {
+                const infoUpd = await data.prisma.CycloneDXInfo.update({
+                    where: {
+                        cdxId: lookup.cdxId
+                    },
+                    data: {
+                        createdAt: cdxData.createdAt,
+                        serialNumber: cdxData.serialNumber,
+                    }
+                })
+                data.logger(`Update CycloneDX ${cdxId}`, infoUpd)
+            } else {
+                const infoAdd = await data.prisma.CycloneDXInfo.create({
+                    data: {
+                        ...cdxData,
+                        org: { connect: { uuid: data.session.orgId } },
+                        artifact: { connect: { uuid: artifactUuid } },
+                    }
+                })
+                data.logger(`Create CycloneDX ${cdxId}`, infoAdd)
+            }
+            cdxData.orgId = data.session.orgId
             cdxData.dependencies = dependencies
-            files.push(cdxData)
+            artifact.downloadLink = artifact.downloadLinks.sort((a, b) => b.id - a.id)?.pop()
+            delete artifact.downloadLinks
+            artifact.cdx = cdxData
+            files.push(artifact)
 
             const osvQueries = cdx.components.flatMap(component => {
                 const queries = [{

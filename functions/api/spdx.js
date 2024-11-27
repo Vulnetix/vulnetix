@@ -140,24 +140,40 @@ export async function onRequestPost(context) {
                 documentDescribes: spdx?.documentDescribes?.join(','),
                 comment: spdx.creationInfo?.comment || '',
             }
-            const info = await data.prisma.SPDXInfo.upsert({
+
+            const lookup = await data.prisma.SPDXInfo.findUnique({
                 where: {
                     spdxId,
                     orgId: data.session.orgId,
-                },
-                update: {
-                    createdAt: spdxData.createdAt,
-                    comment: spdxData.comment
-                },
-                create: {
-                    ...spdxData,
-                    org: { connect: { uuid: data.session.orgId } },
-                    artifact: { connect: { uuid: artifactUuid } },
                 }
             })
-            data.logger(`/github/repos/spdx ${spdxId} kid=${data.session.kid}`, info)
+            if (lookup?.spdxId) {
+                const infoUpd = await data.prisma.SPDXInfo.update({
+                    where: {
+                        spdxId: lookup.spdxId
+                    },
+                    data: {
+                        createdAt: spdxData.createdAt,
+                        comment: spdxData.comment,
+                    }
+                })
+                data.logger(`Update SPDX ${spdxId}`, infoUpd)
+            } else {
+                const infoAdd = await data.prisma.SPDXInfo.create({
+                    data: {
+                        ...spdxData,
+                        org: { connect: { uuid: data.session.orgId } },
+                        artifact: { connect: { uuid: artifactUuid } },
+                    }
+                })
+                data.logger(`Create SPDX ${spdxId}`, infoAdd)
+            }
+            spdxData.orgId = data.session.orgId
             spdxData.dependencies = dependencies
-            files.push(spdxData)
+            artifact.downloadLink = artifact.downloadLinks.sort((a, b) => b.id - a.id)?.pop()
+            delete artifact.downloadLinks
+            artifact.spdx = spdxData
+            files.push(artifact)
 
             const osvQueries = spdx.packages.flatMap(pkg => {
                 const { version } = parsePackageRef(pkg.SPDXID, pkg.name)
