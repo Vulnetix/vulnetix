@@ -159,22 +159,22 @@ const process = async (prisma, session, repoName, spdx, spdxId, artifactUuid) =>
     }
     const findingIds = []
 
-    const lookup = await data.prisma.SPDXInfo.findUnique({
+    const lookup = await prisma.SPDXInfo.findUnique({
         where: {
             spdxId,
-            orgId: data.session.orgId,
+            orgId: session.orgId,
         }
     })
     if (!lookup?.spdxId) {
-        const infoAdd = await data.prisma.SPDXInfo.create({
+        const infoAdd = await prisma.SPDXInfo.create({
             data: {
                 ...spdxData,
-                org: { connect: { uuid: data.session.orgId } },
+                org: { connect: { uuid: session.orgId } },
                 repo: { connect: { fullName_orgId: { fullName: repoName, orgId: session.orgId } } },
                 artifact: { connect: { uuid: artifactUuid } },
             }
         })
-        data.logger(`Create SPDX ${spdxId}`, infoAdd)
+        // console.log(`Create SPDX ${spdxId}`, infoAdd)
     }
 
     // console.log(`/github/repos/spdx ${repoName} kid=${session.kid}`, info)
