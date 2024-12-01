@@ -155,6 +155,42 @@ onMounted(() => {
 </script>
 
 <template>
+    <VAlert
+        v-if="state.error"
+        color="error"
+        icon="$error"
+        title="Error"
+        :text="state.error"
+        border="start"
+        variant="tonal"
+    />
+    <VAlert
+        v-if="state.warning"
+        color="warning"
+        icon="$warning"
+        title="Warning"
+        :text="state.warning"
+        border="start"
+        variant="tonal"
+    />
+    <VAlert
+        v-if="state.success"
+        color="success"
+        icon="$success"
+        title="Success"
+        :text="state.success"
+        border="start"
+        variant="tonal"
+    />
+    <VAlert
+        v-if="state.info"
+        color="info"
+        icon="$info"
+        title="Information"
+        :text="state.info"
+        border="start"
+        variant="tonal"
+    />
     <VContainer class="d-flex justify-space-between align-center">
         <VRow dense>
             <VCol cols="10">
@@ -247,43 +283,6 @@ onMounted(() => {
                     color="primary"
                     absolute
                     bottom
-                >
-                </VProgressLinear>
-                <VAlert
-                    v-if="state.error"
-                    color="error"
-                    icon="$error"
-                    title="Error"
-                    :text="state.error"
-                    border="start"
-                    variant="tonal"
-                />
-                <VAlert
-                    v-if="state.warning"
-                    color="warning"
-                    icon="$warning"
-                    title="Warning"
-                    :text="state.warning"
-                    border="start"
-                    variant="tonal"
-                />
-                <VAlert
-                    v-if="state.success"
-                    color="success"
-                    icon="$success"
-                    title="Success"
-                    :text="state.success"
-                    border="start"
-                    variant="tonal"
-                />
-                <VAlert
-                    v-if="state.info"
-                    color="info"
-                    icon="$info"
-                    title="Information"
-                    :text="state.info"
-                    border="start"
-                    variant="tonal"
                 />
                 <VCardText>
                     <Finding
@@ -318,6 +317,13 @@ onMounted(() => {
         </VTabsWindowItem>
 
         <VTabsWindowItem value="dependencies">
+            <VProgressLinear
+                :active="state.loading"
+                :indeterminate="state.loading"
+                color="primary"
+                absolute
+                bottom
+            />
             <DependencyGraph
                 v-if="state.finding?.spdx?.dependencies"
                 :dependencies="state.finding.spdx.dependencies"
@@ -329,10 +335,24 @@ onMounted(() => {
         </VTabsWindowItem>
 
         <VTabsWindowItem value="artifacts">
+            <VProgressLinear
+                :active="state.loading"
+                :indeterminate="state.loading"
+                color="primary"
+                absolute
+                bottom
+            />
             artifacts
         </VTabsWindowItem>
 
         <VTabsWindowItem value="related">
+            <VProgressLinear
+                :active="state.loading"
+                :indeterminate="state.loading"
+                color="primary"
+                absolute
+                bottom
+            />
             related
         </VTabsWindowItem>
     </VTabsWindow>

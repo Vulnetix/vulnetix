@@ -976,27 +976,27 @@ export const extractVersion = (pkg, name) => {
     // Try to extract from PURL if available
     const purlRef = pkg.externalRefs?.find(ref =>
         ref.referenceType === 'purl' && ref.referenceLocator
-    );
+    )
     if (purlRef?.referenceLocator) {
-        const purlMatch = purlRef.referenceLocator.match(/@([^/]+)$/);
-        if (purlMatch) return purlMatch[1];
+        const purlMatch = purlRef.referenceLocator.match(/@([^/]+)$/)
+        if (purlMatch) return purlMatch[1]
     }
 
-    return "0.0.0";
+    return "0.0.0"
 }
 
 // Parse components while preserving all available metadata
 export const parseSPDXComponents = async (spdxJson, namespace) => {
-    const components = new Map();
-    const relationships = [];
+    const components = new Map()
+    const relationships = []
 
     // Process all packages
     for (const pkg of spdxJson.packages || []) {
         // const { name, version } = parsePackageRef(pkg.SPDXID, pkg.name)
-        const name = pkg.name;
-        const version = extractVersion(pkg, name);
-        const license = extractLicense(pkg);
-        const ecosystem = detectPackageEcosystem(pkg, name);
+        const name = pkg.name
+        const version = extractVersion(pkg, name)
+        const license = extractLicense(pkg)
+        const ecosystem = detectPackageEcosystem(pkg, name)
 
         components.set(pkg.SPDXID, {
             key: await hex(`${namespace}${name}${version || ''}`),
@@ -1006,15 +1006,15 @@ export const parseSPDXComponents = async (spdxJson, namespace) => {
             packageEcosystem: ecosystem,
             isTransitive: 1,
             isDirect: 0
-        });
+        })
     }
 
     // Process relationships
     for (const rel of spdxJson.relationships || []) {
         if (rel.relationshipType !== 'DEPENDS_ON') continue;
 
-        const sourceComp = components.get(rel.spdxElementId);
-        const targetComp = components.get(rel.relatedSpdxElement);
+        const sourceComp = components.get(rel.spdxElementId)
+        const targetComp = components.get(rel.relatedSpdxElement)
 
         if (!sourceComp || !targetComp) continue;
 
@@ -1028,45 +1028,67 @@ export const parseSPDXComponents = async (spdxJson, namespace) => {
             isDirect: sourceComp.isDirect ? 1 : 0,
             childOfKey: sourceComp.key,
             spdxId: rel.relatedSpdxElement
-        });
+        })
     }
 
-    return relationships;
+    return relationships
 };
 
 // Similar improvements for CycloneDX parser
 export const parseCycloneDXComponents = async (cdxJson, namespace) => {
-    const components = new Map();
-    const dependencies = [];
+    const components = new Map()
+    const dependencies = []
+    const parentRef = cdxJson.metadata.component["bom-ref"]
+    const name = cdxJson.metadata.component.name;
+    const version = extractVersion(cdxJson.metadata.component, name)
+    const license = extractLicense(cdxJson.metadata.component)
+    const ecosystem = detectPackageEcosystem(cdxJson.metadata.component, name)
+    components.set(parentRef, {
+        ref: parentRef,
+        key: await hex(`${namespace}${parentRef}`),
+        name,
+        version,
+        license,
+        packageEcosystem: ecosystem
+    })
 
     for (const component of cdxJson.components || []) {
         if (!component?.['bom-ref']) continue;
 
         const name = component.name;
-        const version = extractVersion(component, name);
-        const license = extractLicense(component);
-        const ecosystem = detectPackageEcosystem(component, name);
+        const version = extractVersion(component, name)
+        const license = extractLicense(component)
+        const ecosystem = detectPackageEcosystem(component, name)
 
         components.set(component['bom-ref'], {
-            key: await hex(`${namespace}${name}${version || ''} `),
+            ref: component['bom-ref'],
+            key: await hex(`${namespace}${component['bom-ref']}`),
             name,
             version,
             license,
-            packageEcosystem: ecosystem,
-            isTransitive: 1,
-            isDirect: 0
-        });
+            packageEcosystem: ecosystem
+        })
     }
-
-    // Process dependencies
     for (const dep of cdxJson.dependencies || []) {
-        if (!dep?.ref || !dep?.dependsOn) continue;
+        if (!dep?.ref) continue;
 
         const parentComponent = components.get(dep.ref);
         if (!parentComponent) continue;
 
+        if (!dep?.dependsOn || parentRef === dep.ref) {
+            dependencies.push({
+                key: parentComponent.key,
+                name: parentComponent.name,
+                version: parentComponent.version,
+                license: parentComponent.license,
+                packageEcosystem: parentComponent.packageEcosystem,
+                isDirect: 1,
+            })
+            if (!dep?.dependsOn) continue;
+        }
+
         for (const childRef of dep.dependsOn) {
-            const childComponent = components.get(childRef);
+            const childComponent = components.get(childRef)
             if (!childComponent) continue;
 
             dependencies.push({
@@ -1075,13 +1097,196 @@ export const parseCycloneDXComponents = async (cdxJson, namespace) => {
                 version: childComponent.version,
                 license: childComponent.license,
                 packageEcosystem: childComponent.packageEcosystem,
-                isTransitive: parentComponent.isDirect ? 0 : 1,
-                isDirect: parentComponent.isDirect ? 1 : 0,
+                isDirect: parentRef === dep.ref ? 1 : 0,
+                isTransitive: parentRef !== dep.ref ? 1 : 0,
                 childOfKey: parentComponent.key,
-                cdxId: childRef
-            });
+            })
         }
     }
 
-    return dependencies;
-};
+    return dependencies
+}
+
+/**
+ * Base time conversion utilities
+ */
+const TimeUtil = {
+    msToHours: (ms) => ms / (1000 * 60 * 60),
+    msToDays: (ms) => ms / (1000 * 60 * 60 * 24),
+    formatDuration: (ms) => {
+        const days = Math.floor(TimeUtil.msToDays(ms))
+        const hours = Math.floor(TimeUtil.msToHours(ms) % 24)
+        return `${days}d ${hours}h`
+    }
+}
+
+export function calculateAdvisoryMetrics(finding) {
+    const initialReport = finding.createdAt;
+    const firstPublished = finding.publishedAt;
+    const lastModified = finding.modifiedAt;
+    const triageStart = finding.triage.sort((a, b) => a.createdAt - b.createdAt).pop()?.createdAt
+    const triagedAt = finding.triage.sort((a, b) => a.triagedAt - b.triagedAt).pop()?.triagedAt
+
+    return {
+        timeToInitialPublication: TimeUtil.formatDuration(firstPublished - initialReport),
+        lastModified: TimeUtil.formatDuration(Date.now() - lastModified),
+        timeToDiscover: TimeUtil.formatDuration(triageStart - firstPublished),
+        timeToTriage: triagedAt ? TimeUtil.formatDuration(triagedAt - firstPublished) : 'Not triaged',
+    }
+}
+
+export function determineExploitMaturity(finding) {
+    if (finding.knownExploits?.length) return 'Active'
+    if (finding.cisaDateAdded) return 'Imminent'
+    if (finding.knownRansomwareCampaignUse) return 'Weaponized'
+    return 'Theoretical'
+}
+
+export function calculateExposureWindow(finding) {
+    const published = finding.publishedAt
+    const triageStart = finding.triage.sort((a, b) => a.createdAt - b.createdAt).pop()?.createdAt
+    return {
+        totalExposure: TimeUtil.formatDuration(Date.now() - published),
+        delayExposure: triageStart ? TimeUtil.formatDuration(triageStart - published) : 'Ongoing'
+    }
+}
+
+/**
+ * Calculates time from publication to CISA KEV addition
+ * @param {Object} finding - The vulnerability finding object
+ * @returns {Object} Time to KEV metrics
+ */
+export function calculateTimeToKEV(finding) {
+    const publishedAt = finding.publishedAt
+    const cisaDateAdded = finding.cisaDateAdded
+
+    if (!publishedAt || !cisaDateAdded) {
+        return {
+            timeToKEVDays: null,
+            humanReadable: 'Unable to calculate - missing required timestamps'
+        }
+    }
+
+    const timeToKEVMs = cisaDateAdded - publishedAt
+    const timeToKEVDays = Math.floor(timeToKEVMs / (1000 * 60 * 60 * 24))
+
+    return {
+        timeToKEVDays,
+        humanReadable: `${timeToKEVDays} days`
+    }
+}
+
+/**
+ * Timeline Analysis Functions for Security Advisory Reviews
+ */
+
+export function findTimelineEvent(timeline, eventName) {
+    return timeline
+        .filter(event => event.value.includes(eventName))
+        .sort((a, b) => b.time - a.time)
+        .shift();
+}
+
+/**
+ * Calculates time to NVD review completion
+ * @param {Object} finding - The vulnerability finding object
+ * @returns {Object} Time to NVD metrics
+ */
+export function calculateTimeToNVDReview(finding) {
+    const publishedAt = finding.publishedAt;
+    const nvdReview = findTimelineEvent(finding.timeline, "NIST Advisory NVD review")?.time;
+
+    if (!publishedAt || !nvdReview) {
+        return {
+            timeToNVDDays: null,
+            humanReadable: 'NVD has not reviewed'
+        };
+    }
+
+    const timeToNVDMs = nvdReview - publishedAt;
+    const timeToNVDDays = Math.floor(timeToNVDMs / (1000 * 60 * 60 * 24));
+
+    return {
+        timeToNVDDays,
+        humanReadable: `${timeToNVDDays} days`
+    };
+}
+
+/**
+ * Calculates time to GitHub Advisory review completion
+ * @param {Object} finding - The vulnerability finding object
+ * @returns {Object} Time to GitHub review metrics
+ */
+export function calculateTimeToGitHubReview(finding) {
+    const publishedAt = finding.publishedAt;
+    const githubReview = findTimelineEvent(finding.timeline, "GitHub Advisory review")?.time;
+
+    if (!publishedAt || !githubReview) {
+        return {
+            timeToGitHubDays: null,
+            humanReadable: 'GitHub has not reviewed'
+        };
+    }
+
+    const timeToGitHubMs = githubReview - publishedAt;
+    const timeToGitHubDays = Math.floor(timeToGitHubMs / (1000 * 60 * 60 * 24));
+
+    return {
+        timeToGitHubDays,
+        humanReadable: `${timeToGitHubDays} days`
+    };
+}
+
+/**
+ * Calculates observation window metrics
+ * @param {Object} finding - The vulnerability finding object
+ * @returns {Object} Observation window metrics
+ */
+export function calculateObservationWindow(finding) {
+    const lastObserved = findTimelineEvent(finding.timeline, "Last Observed")?.time;
+    const firstPublished = finding.publishedAt;
+    const triageStart = finding.triage.sort((a, b) => a.createdAt - b.createdAt).shift()?.createdAt;
+
+    if (!lastObserved || !firstPublished) {
+        return {
+            observationWindowDays: null,
+            humanReadable: 'Unable to calculate Observation Window'
+        };
+    }
+
+    const observationWindowMs = lastObserved - firstPublished;
+    const observationWindowDays = Math.floor(observationWindowMs / (1000 * 60 * 60 * 24));
+    const triageDelayMs = triageStart ? triageStart - firstPublished : null;
+
+    return {
+        observationWindowDays,
+        humanReadable: `${observationWindowDays} days`,
+        triageDelay: triageDelayMs ? TimeUtil.formatDuration(triageDelayMs) : 'No triage initiated'
+    };
+}
+
+/**
+ * Comprehensive advisory review timeline analysis
+ * @param {Object} finding - The vulnerability finding object
+ * @returns {Object} Complete advisory review metrics
+ */
+export function analyzeAdvisoryReviewTimeline(finding) {
+    const nvdMetrics = calculateTimeToNVDReview(finding);
+    const githubMetrics = calculateTimeToGitHubReview(finding);
+    const kevMetrics = calculateTimeToKEV(finding);
+    const observationMetrics = calculateObservationWindow(finding);
+
+    const reviewEvents = finding.timeline
+        .filter(event => event.value.toLowerCase().includes('review'))
+        .sort((a, b) => a.time - b.time);
+
+    return {
+        nvdReview: nvdMetrics,
+        githubReview: githubMetrics,
+        kevAddition: kevMetrics,
+        observation: observationMetrics,
+        hasNvdReview: !!nvdMetrics.timeToNVDDays,
+        hasGithubReview: !!githubMetrics.timeToGitHubDays,
+        hasKevAddition: !!kevMetrics.timeToKEVDays,
+    }
+}

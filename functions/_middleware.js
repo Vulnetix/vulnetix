@@ -60,17 +60,17 @@ export const setup = async context => {
     data.logger = () => { }
     if (env.LOGGER === "DEBUG") {
         data.logger = console.log
-        clientOptions.log = [
-            {
-                emit: "event",
-                level: "query",
-            },
-        ]
+        // clientOptions.log = [
+        //     {
+        //         emit: "event",
+        //         level: "query",
+        //     },
+        // ]
     }
     data.prisma = new PrismaClient(clientOptions)
-    data.prisma.$on("query", async e => {
-        data.logger(`${e.query} ${e.params}`)
-    })
+    // data.prisma.$on("query", async e => {
+    //     data.logger(`${e.query} ${e.params}`)
+    // })
 
     return await next()
 }

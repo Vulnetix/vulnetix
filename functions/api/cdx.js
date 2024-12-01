@@ -60,8 +60,8 @@ export async function onRequestPost(context) {
             if (!isCDX(cdx)) {
                 return Response.json({ ok: false, error: { message: 'CDX is missing necessary fields.' } })
             }
-            const componentsJSON = JSON.stringify(cdx.components)
-            const cdxId = await hex(cdx.metadata?.component?.name + componentsJSON)
+            const componentsJSON = JSON.stringify(cdx.components.map(c => c?.["bom-ref"]).filter(v => !!v).sort())
+            const cdxId = await hex(cdx.metadata.component["bom-ref"] + componentsJSON)
 
             const originalCdx = await data.prisma.CycloneDXInfo.findFirst({
                 where: {
@@ -95,11 +95,11 @@ export async function onRequestPost(context) {
                             childOfKey: dep.childOfKey
                         }
                     })
-                    data.logger(`Update CycloneDX ${cdxId} Dep ${dep.name}`, infoUpd)
+                    // data.logger(`Update CycloneDX ${cdxId} Dep ${dep.name}`, infoUpd)
                     dependencies.push(newData)
                 } else {
                     const infoAdd = await data.prisma.Dependency.create({ data: newData })
-                    data.logger(`Create CycloneDX ${cdxId} Dep ${dep.name}`, infoAdd)
+                    // data.logger(`Create CycloneDX ${cdxId} Dep ${dep.name}`, infoAdd)
                     dependencies.push(newData)
                 }
             }

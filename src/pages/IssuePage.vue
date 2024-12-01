@@ -213,8 +213,7 @@ onBeforeRouteUpdate(async (to, from) => {
                     color="primary"
                     absolute
                     bottom
-                >
-                </VProgressLinear>
+                />
                 <VAlert
                     v-if="state.error"
                     color="error"

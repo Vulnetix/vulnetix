@@ -112,7 +112,7 @@ const init = () => {
 
 DOMPurify.addHook('afterSanitizeElements', (currentNode, hookEvent, config) => {
     if (currentNode?.nodeName === "CODE") {
-        currentNode.innerHTML = hljs.highlightAuto(currentNode.innerText).value
+        currentNode.innerHTML = hljs.highlightAuto(currentNode.innerHTML).value
     }
 })
 
@@ -967,34 +967,63 @@ watch([
                             </VChip>
                         </div>
 
-                        <VList density="compact">
-                            <VListItem>
-                                <template v-slot:prepend>
-                                    <VIcon icon="mdi-package-variant" />
-                                </template>
-                                <VListItemTitle>
-                                    Package: {{ packageString }}
-                                </VListItemTitle>
-                            </VListItem>
+                        <div class="d-flex justify-space-between">
+                            <VList density="compact">
+                                <VListItem>
+                                    <template v-slot:prepend>
+                                        <VIcon icon="mdi-package-variant" />
+                                    </template>
+                                    <VListItemTitle>
+                                        Package: {{ packageString }}
+                                    </VListItemTitle>
+                                </VListItem>
 
-                            <VListItem v-if="props.finding.vendor || props.finding.product">
-                                <template v-slot:prepend>
-                                    <VIcon icon="mdi-domain" />
-                                </template>
-                                <VListItemTitle>
-                                    {{ props.finding.vendor }} {{ props.finding.product }}
-                                </VListItemTitle>
-                            </VListItem>
+                                <VListItem v-if="props.finding.vendor || props.finding.product">
+                                    <template v-slot:prepend>
+                                        <VIcon icon="mdi-domain" />
+                                    </template>
+                                    <VListItemTitle>
+                                        {{ props.finding.vendor }} {{ props.finding.product }}
+                                    </VListItemTitle>
+                                </VListItem>
 
-                            <VListItem v-if="props.finding?.cpe">
-                                <template v-slot:prepend>
-                                    <VIcon icon="hugeicons:package-search" />
-                                </template>
-                                <VListItemTitle>
-                                    CPE: {{ props.finding.cpe }}
-                                </VListItemTitle>
-                            </VListItem>
-                        </VList>
+                                <VListItem v-if="props.finding?.cpe">
+                                    <template v-slot:prepend>
+                                        <VIcon icon="hugeicons:package-search" />
+                                    </template>
+                                    <VListItemTitle>
+                                        CPE: {{ props.finding.cpe }}
+                                    </VListItemTitle>
+                                </VListItem>
+                            </VList>
+
+                            <div>
+                                <div class="text-center text-subtitle-2 mb-4">Confidence</div>
+                                <VProgressCircular
+                                    :model-value="props.finding.confidenceScore"
+                                    :color="props.finding.confidenceLevel === 'Low' ? 'warning' : props.finding.confidenceLevel === 'Reasonable' ? 'info' : 'primary'"
+                                    :size="80"
+                                    :width="15"
+                                >
+                                    <div class="text-center">
+                                        <div class="text-subtitle-2">{{ props.finding.confidenceLevel }}
+                                        </div>
+                                    </div>
+                                </VProgressCircular>
+                                <VTooltip
+                                    v-if="props.finding?.confidenceRationale"
+                                    activator="parent"
+                                    location="left"
+                                    max-width="250"
+                                >
+                                    <template v-slot:default>
+                                        <span style="white-space: preserve-breaks;">
+                                            {{ props.finding.confidenceRationale.join(`\n\n`) }}
+                                        </span>
+                                    </template>
+                                </VTooltip>
+                            </div>
+                        </div>
                     </VCol>
                     <VCol
                         cols="12"
@@ -1220,32 +1249,6 @@ watch([
                             <VCardTitle>
                                 <div class="d-flex justify-space-between">
                                     <div class="mt-4">Risk Scores</div>
-                                    <div>
-                                        <!-- Confidence -->
-                                        <VProgressCircular
-                                            :model-value="props.finding.confidenceScore"
-                                            :color="props.finding.confidenceLevel === 'Low' ? 'warning' : props.finding.confidenceLevel === 'Reasonable' ? 'info' : 'primary'"
-                                            :size="80"
-                                            :width="15"
-                                        >
-                                            <div class="text-center">
-                                                <div class="text-subtitle-2">{{ props.finding.confidenceLevel }}
-                                                </div>
-                                            </div>
-                                        </VProgressCircular>
-                                        <VTooltip
-                                            v-if="props.finding?.confidenceRationale"
-                                            activator="parent"
-                                            location="left"
-                                            max-width="250"
-                                        >
-                                            <template v-slot:default>
-                                                <span style="white-space: preserve-breaks;">
-                                                    {{ props.finding.confidenceRationale.join(`\n\n`) }}
-                                                </span>
-                                            </template>
-                                        </VTooltip>
-                                    </div>
                                 </div>
                             </VCardTitle>
                             <VCardText>
@@ -2609,7 +2612,7 @@ watch([
                                             (Fix)
                                         </span>
                                         <span
-                                            v-if="isVulnerable && !version.startsWith(getVersionString(props.finding?.fixVersion))"
+                                            v-if="isVulnerable"
                                             class="ml-1 text-error text-sm font-medium"
                                         >
                                             Vulnerable
