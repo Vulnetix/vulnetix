@@ -996,22 +996,24 @@ export const parseSPDXComponents = async (spdxJson, namespace) => {
         const name = pkg.name
         const version = extractVersion(pkg, name)
         const license = extractLicense(pkg)
-        const ecosystem = detectPackageEcosystem(pkg, name)
+        const packageEcosystem = detectPackageEcosystem(pkg, name)
 
         components.set(pkg.SPDXID, {
-            key: await hex(`${namespace}${name}${version || ''}`),
+            key: await hex(`${namespace}${pkg.SPDXID}`),
             name,
             version,
             license,
-            packageEcosystem: ecosystem,
-            isTransitive: 1,
-            isDirect: 0
+            packageEcosystem,
         })
     }
 
+    const rootRef = spdxJson.relationships.find(r =>
+        r.relationshipType === 'DESCRIBES'
+    ).relatedSpdxElement
+
     // Process relationships
     for (const rel of spdxJson.relationships || []) {
-        if (rel.relationshipType !== 'DEPENDS_ON') continue;
+        if (!['DEPENDS_ON', 'DEV_DEPENDENCY_OF'].includes(rel.relationshipType)) continue;
 
         const sourceComp = components.get(rel.spdxElementId)
         const targetComp = components.get(rel.relatedSpdxElement)
@@ -1024,15 +1026,15 @@ export const parseSPDXComponents = async (spdxJson, namespace) => {
             version: targetComp.version,
             license: targetComp.license,
             packageEcosystem: targetComp.packageEcosystem,
-            isTransitive: sourceComp.isDirect ? 0 : 1,
-            isDirect: sourceComp.isDirect ? 1 : 0,
-            childOfKey: sourceComp.key,
-            spdxId: rel.relatedSpdxElement
+            isDirect: rootRef === rel.relatedSpdxElement ? 1 : 0,
+            isTransitive: rootRef !== rel.relatedSpdxElement ? 0 : 1,
+            isDev: 'DEV_DEPENDENCY_OF' === rel.relationshipType ? 1 : 0,
+            childOfKey: sourceComp.key
         })
     }
 
     return relationships
-};
+}
 
 // Similar improvements for CycloneDX parser
 export const parseCycloneDXComponents = async (cdxJson, namespace) => {

@@ -87,11 +87,11 @@ export async function onRequestGet(context) {
                         childOfKey: dep.childOfKey
                     }
                 })
-                data.logger(`Update SPDX ${spdxId} Dep ${dep.name}`, infoUpd)
+                // data.logger(`Update SPDX ${spdxId} Dep ${dep.name}`, infoUpd)
                 dependencies.push(newData)
             } else {
                 const infoAdd = await data.prisma.Dependency.create({ data: newData })
-                data.logger(`Create SPDX ${spdxId} Dep ${dep.name}`, infoAdd)
+                // data.logger(`Create SPDX ${spdxId} Dep ${dep.name}`, infoAdd)
                 dependencies.push(newData)
             }
         }
