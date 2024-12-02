@@ -857,13 +857,6 @@ export function createPurlFromUrl(location, name, version) {
     }
 }
 
-// Helper function to extract ecosystem from purl
-export function getEcosystemFromPurl(purl) {
-    if (!purl) return null
-    const match = purl.match(/pkg:([^/]+)/)
-    return match ? match[1] : null
-}
-
 // Helper function to extract name and version from SPDXID 
 export function parsePackageRef(spdxId, name) {
     // Format is "SPDXRef-name-version" where version can be alphanumeric
@@ -880,49 +873,160 @@ export function parsePackageRef(spdxId, name) {
     }
 }
 
-// Helper function to determine package ecosystem from various sources
+/**
+ * Maps package types to their corresponding ecosystems.
+ * Includes common aliases and variations for each ecosystem.
+ * @type {Object.<string, string>}
+ */
+export const ECOSYSTEM_TYPE_MAPPING = {
+    'maven-artifact': 'maven',
+    'maven': 'maven',
+    'npm': 'npm',
+    'nodejs': 'npm',
+    'pypi': 'pypi',
+    'python': 'pypi',
+    'nuget': 'nuget',
+    'dotnet': 'nuget',
+    'gem': 'gem',
+    'ruby': 'gem',
+    'cargo': 'cargo',
+    'rust': 'cargo',
+    'composer': 'composer',
+    'php': 'composer',
+    'golang': 'golang',
+    'go': 'golang',
+    'cocoapods': 'cocoapods',
+    'swift': 'cocoapods',
+    'conda': 'conda',
+    'anaconda': 'conda',
+    'cran': 'cran',
+    'r': 'cran',
+    'debian': 'debian',
+    'ubuntu': 'debian',
+    'alpine': 'alpine',
+    'homebrew': 'brew',
+    'brew': 'brew',
+    'github': 'github',
+    'gitlab': 'gitlab',
+    'bitbucket': 'bitbucket',
+    'hex': 'hex',
+    'elixir': 'hex',
+    'cpan': 'cpan',
+    'perl': 'cpan',
+    'pub': 'pub',
+    'dart': 'pub',
+    'gradle': 'gradle',
+    'ivy': 'ivy',
+    'clojars': 'clojars',
+    'clojure': 'clojars',
+    'conan': 'conan',
+    'vcpkg': 'vcpkg',
+    'bower': 'bower',
+    'hackage': 'hackage',
+    'haskell': 'hackage',
+    'packagist': 'packagist'
+};
+
+/**
+ * Extracts ecosystem from a package URL (PURL).
+ * @param {string} purl - Package URL to parse
+ * @returns {string|null} Extracted ecosystem or null if not found
+ */
+export const extractEcosystemFromPurl = (purl) => {
+    const purlMatch = purl.match(/pkg:([^/]+)/);
+    return purlMatch ? purlMatch[1] : null;
+};
+
+/**
+ * Detects ecosystem from package external references.
+ * Prioritizes PACKAGE-MANAGER category PURLs.
+ * @param {Object} pkg - Package object containing external references
+ * @returns {string|null} Detected ecosystem or null if not found
+ */
+export const detectEcosystemFromRefs = (pkg) => {
+    if (!pkg.externalRefs) return null;
+
+    // First try PACKAGE-MANAGER category
+    const packageManagerRef = pkg.externalRefs.find(ref =>
+        ref.referenceCategory === 'PACKAGE-MANAGER' &&
+        ref.referenceType === 'purl' &&
+        ref.referenceLocator
+    );
+
+    if (packageManagerRef?.referenceLocator) {
+        return extractEcosystemFromPurl(packageManagerRef.referenceLocator);
+    }
+
+    // Fallback to any PURL
+    const purlRef = pkg.externalRefs.find(ref =>
+        ref.referenceType === 'purl' && ref.referenceLocator
+    );
+
+    return purlRef?.referenceLocator ?
+        extractEcosystemFromPurl(purlRef.referenceLocator) : null;
+};
+
+/**
+ * Detects ecosystem from package type metadata.
+ * @param {Object} pkg - Package object containing type information
+ * @returns {string|null} Detected ecosystem or null if not found
+ */
+export const detectEcosystemFromType = (pkg) => {
+    if (!pkg.type) return null;
+
+    const normalizedType = pkg.type.toLowerCase();
+    return ECOSYSTEM_TYPE_MAPPING[normalizedType] || null;
+};
+
+/**
+ * Detects ecosystem from package name using common patterns.
+ * @param {string} name - Package name or path
+ * @returns {string|null} Detected ecosystem or null if not found
+ */
+export const detectEcosystemFromName = (name) => {
+    if (!name) return null;
+
+    // Common patterns for different ecosystems
+    const patterns = [
+        { regex: /(-py$|^python-|^pip:)/, ecosystem: 'pypi' },
+        { regex: /(^go-|golang\.org\/|gopkg\.in\/)/, ecosystem: 'golang' },
+        { regex: /(node_modules|\.js$|\.ts$)/, ecosystem: 'npm' },
+        { regex: /(maven|\.jar$)/, ecosystem: 'maven' },
+        { regex: /(nuget|\.nupkg$)/, ecosystem: 'nuget' },
+        { regex: /(\.gem$|rubygems)/, ecosystem: 'gem' },
+        { regex: /(\.crate$|crates\.io)/, ecosystem: 'cargo' },
+        { regex: /(\.deb$|debian)/, ecosystem: 'debian' },
+        { regex: /(composer|\.phar$)/, ecosystem: 'composer' },
+        { regex: /(cocoapods|\.podspec$)/, ecosystem: 'cocoapods' },
+        { regex: /(conda-forge|\.conda$)/, ecosystem: 'conda' },
+        { regex: /\.rpm$/, ecosystem: 'rpm' },
+        { regex: /(\.hex$|hex\.pm)/, ecosystem: 'hex' },
+        { regex: /(cpan|\.pl$)/, ecosystem: 'cpan' },
+        { regex: /(\.dart$|pub\.dev)/, ecosystem: 'pub' },
+        { regex: /(hackage|\.cabal$)/, ecosystem: 'hackage' },
+        { regex: /(clojars|\.jar$)/, ecosystem: 'clojars' }
+    ];
+
+    for (const { regex, ecosystem } of patterns) {
+        if (regex.test(name)) return ecosystem;
+    }
+
+    return null;
+};
+
+/**
+ * Main function to detect package ecosystem from various sources.
+ * Checks sources in order of reliability: PURL > type > name pattern.
+ * @param {Object} pkg - Package object to analyze
+ * @param {string} [name] - Optional package name for additional pattern matching
+ * @returns {string} Detected ecosystem or 'generic' if none found
+ */
 export const detectPackageEcosystem = (pkg, name) => {
-    // Try to detect from PURL if available
-    if (pkg.externalRefs) {
-        const purlRef = pkg.externalRefs.find(ref =>
-            ref.referenceType === 'purl' && ref.referenceLocator
-        );
-        if (purlRef?.referenceLocator) {
-            const purlMatch = purlRef.referenceLocator.match(/pkg:([^/]+)/);
-            if (purlMatch) return purlMatch[1];
-        }
-    }
-
-    // Try to detect from package metadata
-    if (pkg.type === 'maven-artifact') return 'maven';
-    if (pkg.type === 'npm') return 'npm';
-    if (pkg.type === 'pypi') return 'pypi';
-    if (pkg.type === 'nuget') return 'nuget';
-    if (pkg.type === 'gem') return 'gem';
-    if (pkg.type === 'cargo') return 'cargo';
-
-    // Try to detect from name patterns
-    if (name) {
-        if (name.endsWith('-py') || name.startsWith('python-') || name.startsWith('pip:')) {
-            return 'pypi';
-        }
-        if (name.startsWith('go-') || name.includes('golang.org/') || name.includes('gopkg.in/')) {
-            return 'golang';
-        }
-        if (name.includes('node_modules') || name.endsWith('.js') || name.endsWith('.ts')) {
-            return 'npm';
-        }
-        if (name.includes('maven') || name.endsWith('.jar')) {
-            return 'maven';
-        }
-        if (name.includes('nuget') || name.endsWith('.nupkg')) {
-            return 'nuget';
-        }
-    }
-
-    // If no ecosystem could be detected, return null instead of a default
-    return "generic";
-}
+    return detectEcosystemFromRefs(pkg) ||
+        detectEcosystemFromType(pkg) ||
+        detectEcosystemFromName(name) ||
+        'generic';
+};
 
 // Helper function to extract license information from various sources
 export const extractLicense = pkg => {
@@ -1026,10 +1130,10 @@ export const parseSPDXComponents = async (spdxJson, namespace) => {
             version: targetComp.version,
             license: targetComp.license,
             packageEcosystem: targetComp.packageEcosystem,
-            isDirect: rootRef === rel.relatedSpdxElement ? 1 : 0,
-            isTransitive: rootRef !== rel.relatedSpdxElement ? 0 : 1,
+            isDirect: rel.spdxElementId === rootRef ? 1 : 0,
+            isTransitive: rel.spdxElementId === rootRef ? 0 : 1,
             isDev: 'DEV_DEPENDENCY_OF' === rel.relationshipType ? 1 : 0,
-            childOfKey: sourceComp.key
+            childOfKey: rel.spdxElementId !== rootRef ? sourceComp.key : null,
         })
     }
 
@@ -1044,7 +1148,8 @@ export const parseCycloneDXComponents = async (cdxJson, namespace) => {
     const name = cdxJson.metadata.component.name;
     const version = extractVersion(cdxJson.metadata.component, name)
     const license = extractLicense(cdxJson.metadata.component)
-    const ecosystem = detectPackageEcosystem(cdxJson.metadata.component, name)
+    const ecosystem = cdxJson.metadata.component?.purl ? extractEcosystemFromPurl(cdxJson.metadata.component.purl) : 'generic'
+
     components.set(parentRef, {
         ref: parentRef,
         key: await hex(`${namespace}${parentRef}`),
@@ -1060,7 +1165,7 @@ export const parseCycloneDXComponents = async (cdxJson, namespace) => {
         const name = component.name;
         const version = extractVersion(component, name)
         const license = extractLicense(component)
-        const ecosystem = detectPackageEcosystem(component, name)
+        const ecosystem = component?.purl ? extractEcosystemFromPurl(component.purl) : 'generic'
 
         components.set(component['bom-ref'], {
             ref: component['bom-ref'],

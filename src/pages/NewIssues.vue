@@ -327,10 +327,12 @@ onMounted(() => {
             <DependencyGraph
                 v-if="state.finding?.spdx?.dependencies"
                 :dependencies="state.finding.spdx.dependencies"
+                title="SPDX Dependencies"
             />
             <DependencyGraph
                 v-if="state.finding?.cdx?.dependencies"
                 :dependencies="state.finding.cdx.dependencies"
+                title="CycloneDX Dependencies"
             />
         </VTabsWindowItem>
 

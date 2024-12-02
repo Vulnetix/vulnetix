@@ -5,6 +5,10 @@ import { computed } from 'vue';
 import { VTreeview } from 'vuetify/labs/VTreeview';
 
 const props = defineProps({
+    title: {
+        type: String,
+        default: 'Dependency Tree',
+    },
     dependencies: {
         type: Array,
         required: true,
@@ -53,7 +57,7 @@ const getEcosystemColor = ecosystem => (colours[ecosystem.toLowerCase()] || getP
         class="pa-0"
     >
         <v-card>
-            <v-card-title>Dependency Tree</v-card-title>
+            <v-card-title>{{ props.title }}</v-card-title>
             <VEmptyState
                 v-if="!props.dependencies"
                 size="250"
@@ -95,12 +99,14 @@ const getEcosystemColor = ecosystem => (colours[ecosystem.toLowerCase()] || getP
                     >
                         <template v-slot:prepend="{ item, isOpen }">
                             <VIcon
-                                icon="mage:package-box-fill"
                                 v-if="!isOpen"
+                                icon="mage:package-box-fill"
+                                :color="item.isDirect ? `primary` : ``"
                             />
                             <VIcon
-                                icon="lucide:package-open"
                                 v-else
+                                icon="lucide:package-open"
+                                :color="item.isDirect ? `primary` : ``"
                             />
                         </template>
                         <template v-slot:title="{ item }">
@@ -127,18 +133,10 @@ const getEcosystemColor = ecosystem => (colours[ecosystem.toLowerCase()] || getP
                             :key="selected.key"
                             class="pt-6 mx-auto"
                             max-width="400"
+                            min-width="200"
                             flat
                         >
                             <v-card-text>
-                                <!-- <v-avatar
-                                    v-if="avatar"
-                                    size="88"
-                                >
-                                    <v-img
-                                        :src="`https://avataaars.io/${avatar}`"
-                                        class="mb-6"
-                                    ></v-img>
-                                </v-avatar> -->
                                 <h3 class="text-h5 mb-2">
                                     {{ selected.name }}
                                 </h3>
@@ -148,6 +146,13 @@ const getEcosystemColor = ecosystem => (colours[ecosystem.toLowerCase()] || getP
                                 <div class="text-blue subheading font-weight-bold">
                                     {{ selected.purl }}
                                 </div>
+                                <VChip
+                                    :color="getEcosystemColor(selected.packageEcosystem)"
+                                    size="small"
+                                    class="mr-2"
+                                >
+                                    {{ selected.packageEcosystem }}
+                                </VChip>
                             </v-card-text>
                             <v-divider></v-divider>
                             <v-row
@@ -166,10 +171,10 @@ const getEcosystemColor = ecosystem => (colours[ecosystem.toLowerCase()] || getP
                                     class="text-right me-4 mb-2"
                                     cols="5"
                                     tag="strong"
+                                    v-if="selected.isDev"
                                 >
-                                    Ecosystem:
+                                    Dev dependency
                                 </v-col>
-                                <v-col>{{ selected.packageEcosystem }}</v-col>
                             </v-row>
                         </v-card>
                     </v-scroll-y-transition>
