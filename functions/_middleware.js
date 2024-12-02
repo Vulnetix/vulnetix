@@ -9,8 +9,24 @@ import {
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 import anylogger from 'anylogger';
+import 'anylogger-console';
 
-export const errorHandling = async context => {
+
+// Respond to OPTIONS method
+export const onRequestOptions = async () => {
+    return new Response(null, {
+        status: 204,
+        headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Max-Age': '86400',
+        },
+    })
+}
+
+// Before any other middleware, setup log handling
+const errorHandling = async context => {
     const {
         request, // same as existing Worker API
         env, // same as existing Worker API
@@ -29,20 +45,8 @@ export const errorHandling = async context => {
     }
 }
 
-// Respond to OPTIONS method
-export const onRequestOptions = async () => {
-    return new Response(null, {
-        status: 204,
-        headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Max-Age': '86400',
-        },
-    })
-}
-
-export const setup = async context => {
+// Connection to D1 using Prisma ORM and ensure JSON body is available as an object
+const setupDependencies = async context => {
     const { request, env, data, next } = context
     const adapter = new PrismaD1(env.d1db)
     const { searchParams } = new URL(request.url)
@@ -76,7 +80,8 @@ export const setup = async context => {
     return await next()
 }
 
-export const authentication = async context => {
+// Ensure authentication is always performed, with specified exceptions
+const authentication = async context => {
     const { request, next, data } = context
     const url = new URL(request.url)
     if (request.cf.botManagement.verifiedBot || request.cf.botManagement.score <= 60) {
@@ -170,7 +175,7 @@ const dynamicHeaders = async context => {
  * @param {Object} log - Logging adapter
  * @param {Object} level - Environment configuration object containing LOG_LEVEL
  */
-export function setLoggerLevel(log, level = "ALL") {
+export const setLoggerLevel = (log, level = "WARN") => {
     const LOG_LEVEL_MAP = {
         'ERROR': log.ERROR,
         'WARN': log.WARN,
@@ -184,4 +189,4 @@ export function setLoggerLevel(log, level = "ALL") {
     log.level = !level || !(level in LOG_LEVEL_MAP) ? log.LOG : LOG_LEVEL_MAP[level]
 }
 
-export const onRequest = [errorHandling, setup, authentication, dynamicHeaders]
+export const onRequest = [errorHandling, setupDependencies, authentication, dynamicHeaders]
