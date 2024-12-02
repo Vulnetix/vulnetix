@@ -1,5 +1,5 @@
 
-export async function onRequestDelete(context) {
+export async function onRequestPost(context) {
     const {
         request, // same as existing Worker API
         env, // same as existing Worker API

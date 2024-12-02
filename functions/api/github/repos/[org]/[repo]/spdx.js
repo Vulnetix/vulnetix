@@ -22,7 +22,7 @@ export async function onRequestGet(context) {
     })
     for (const app of githubApps) {
         if (!app.accessToken) {
-            data.logger(`github_apps kid=${data.session.kid} installationId=${app.installationId}`)
+            data.logger.info(`github_apps kid=${data.session.kid} installationId=${app.installationId}`)
             throw new Error('github_apps invalid')
         }
         const gh = new GitHub(data.prisma, data.session.orgId, data.session.memberEmail, app.accessToken)
@@ -44,10 +44,10 @@ export async function onRequestGet(context) {
             continue
         }
         if (typeof content?.sbom === 'undefined' || typeof content?.sbom?.SPDXID === 'undefined' || !isSPDX(content?.sbom)) {
-            console.log('typeof content?.sbom', typeof content?.sbom)
-            console.log('typeof content?.sbom?.SPDXID', typeof content?.sbom?.SPDXID)
-            console.log('isSPDX(content?.sbom)', isSPDX(content?.sbom))
-            console.log('content', content)
+            data.logger.debug('typeof content?.sbom', typeof content?.sbom)
+            data.logger.debug('typeof content?.sbom?.SPDXID', typeof content?.sbom?.SPDXID)
+            data.logger.debug('isSPDX(content?.sbom)', isSPDX(content?.sbom))
+            data.logger.debug('content', content)
             continue
         }
         const spdx = content.sbom
@@ -87,11 +87,11 @@ export async function onRequestGet(context) {
                         childOfKey: dep.childOfKey
                     }
                 })
-                // data.logger(`Update SPDX ${spdxId} Dep ${dep.name}`, infoUpd)
+                data.logger.debug(`Update SPDX ${spdxId} Dep ${dep.name}`, infoUpd)
                 dependencies.push(newData)
             } else {
                 const infoAdd = await data.prisma.Dependency.create({ data: newData })
-                // data.logger(`Create SPDX ${spdxId} Dep ${dep.name}`, infoAdd)
+                data.logger.debug(`Create SPDX ${spdxId} Dep ${dep.name}`, infoAdd)
                 dependencies.push(newData)
             }
         }
@@ -112,10 +112,10 @@ export async function onRequestGet(context) {
             continue
         }
         if (typeof content?.sbom === 'undefined' || typeof content?.sbom?.SPDXID === 'undefined' || !isSPDX(content?.sbom)) {
-            console.log('typeof content?.sbom', typeof content?.sbom)
-            console.log('typeof content?.sbom?.SPDXID', typeof content?.sbom?.SPDXID)
-            console.log('isSPDX(content?.sbom)', isSPDX(content?.sbom))
-            console.log('content', content)
+            data.logger.debug('typeof content?.sbom', typeof content?.sbom)
+            data.logger.debug('typeof content?.sbom?.SPDXID', typeof content?.sbom?.SPDXID)
+            data.logger.debug('isSPDX(content?.sbom)', isSPDX(content?.sbom))
+            data.logger.debug('content', content)
             continue
         }
         const spdx = content.sbom
@@ -177,7 +177,6 @@ const process = async (prisma, session, repoName, spdx, spdxId, artifactUuid) =>
         // console.log(`Create SPDX ${spdxId}`, infoAdd)
     }
 
-    // console.log(`/github/repos/spdx ${repoName} kid=${session.kid}`, info)
     const osvQueries = spdx.packages.flatMap(pkg => {
         const { version } = parsePackageRef(pkg.SPDXID, pkg.name)
         const queries = [{

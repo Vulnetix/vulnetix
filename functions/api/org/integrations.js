@@ -40,7 +40,7 @@ export async function onRequestGet(context) {
                 }
             }
         })
-        console.log('Aged IntegrationUsageLog cleanup. oldRecordsDeleted:', deleteOldRecords.count)
+        data.logger.info('Aged IntegrationUsageLog cleanup. oldRecordsDeleted:', deleteOldRecords.count)
         for (const source of ['osv', 'first', 'vulncheck', 'github', 'mitre-cve']) {
             const allRecords = await data.prisma.IntegrationUsageLog.findMany({
                 where: { source, orgId: data.session.orgId },

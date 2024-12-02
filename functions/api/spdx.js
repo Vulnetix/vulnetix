@@ -120,11 +120,11 @@ export async function onRequestPost(context) {
                             childOfKey: dep.childOfKey
                         }
                     })
-                    // data.logger(`Update SPDX ${spdxId} Dep ${dep.name}`, infoUpd)
+                    data.logger.debug(`Update SPDX ${spdxId} Dep ${dep.name}`, infoUpd)
                     dependencies.push(newData)
                 } else {
                     const infoAdd = await data.prisma.Dependency.create({ data: newData })
-                    // data.logger(`Create SPDX ${spdxId} Dep ${dep.name}`, infoAdd)
+                    data.logger.debug(`Create SPDX ${spdxId} Dep ${dep.name}`, infoAdd)
                     dependencies.push(newData)
                 }
             }
@@ -157,7 +157,7 @@ export async function onRequestPost(context) {
                         comment: spdxData.comment,
                     }
                 })
-                data.logger(`Update SPDX ${spdxId}`, infoUpd)
+                data.logger.info(`Update SPDX ${spdxId}`, infoUpd)
             } else {
                 const infoAdd = await data.prisma.SPDXInfo.create({
                     data: {
@@ -166,7 +166,7 @@ export async function onRequestPost(context) {
                         artifact: { connect: { uuid: artifactUuid } },
                     }
                 })
-                data.logger(`Create SPDX ${spdxId}`, infoAdd)
+                data.logger.info(`Create SPDX ${spdxId}`, infoAdd)
             }
             spdxData.orgId = data.session.orgId
             spdxData.dependencies = dependencies
@@ -250,7 +250,7 @@ export async function onRequestPost(context) {
                     } else {
                         finding = await data.prisma.Finding.create({ data: findingData })
                     }
-                    data.logger(`findings SCA`, finding)
+                    data.logger.info(`findings SCA`, finding)
                     const vexData = {
                         findingUuid: finding.uuid,
                         createdAt: (new Date()).getTime(),
@@ -277,7 +277,7 @@ export async function onRequestPost(context) {
                     } else {
                         vex = await data.prisma.Triage.create({ data: vexData })
                     }
-                    data.logger(`findings VEX`, vex)
+                    data.logger.info(`findings VEX`, vex)
                 }
                 i++
             }

@@ -20,7 +20,7 @@ export async function onRequestGet(context) {
         const result = await gh.revokeToken()
         if ([204, 401].includes(result.status)) {
             const response = await data.prisma.GitHubApp.delete({ where })
-            data.logger(`/github/uninstall session kid=${data.session.token}`, response)
+            data.logger.info(`/github/uninstall session kid=${data.session.token}`, response)
 
             return Response.json(response)
         }

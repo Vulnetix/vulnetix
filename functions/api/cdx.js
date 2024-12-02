@@ -95,11 +95,11 @@ export async function onRequestPost(context) {
                             childOfKey: dep.childOfKey
                         }
                     })
-                    // data.logger(`Update CycloneDX ${cdxId} Dep ${dep.name}`, infoUpd)
+                    data.logger.debug(`Update CycloneDX ${cdxId} Dep ${dep.name}`, infoUpd)
                     dependencies.push(newData)
                 } else {
                     const infoAdd = await data.prisma.Dependency.create({ data: newData })
-                    // data.logger(`Create CycloneDX ${cdxId} Dep ${dep.name}`, infoAdd)
+                    data.logger.debug(`Create CycloneDX ${cdxId} Dep ${dep.name}`, infoAdd)
                     dependencies.push(newData)
                 }
             }
@@ -132,7 +132,7 @@ export async function onRequestPost(context) {
                         serialNumber: cdxData.serialNumber,
                     }
                 })
-                data.logger(`Update CycloneDX ${cdxId}`, infoUpd)
+                data.logger.info(`Update CycloneDX ${cdxId}`, infoUpd)
             } else {
                 const infoAdd = await data.prisma.CycloneDXInfo.create({
                     data: {
@@ -141,7 +141,7 @@ export async function onRequestPost(context) {
                         artifact: { connect: { uuid: artifactUuid } },
                     }
                 })
-                data.logger(`Create CycloneDX ${cdxId}`, infoAdd)
+                data.logger.info(`Create CycloneDX ${cdxId}`, infoAdd)
             }
             cdxData.orgId = data.session.orgId
             cdxData.dependencies = dependencies
@@ -222,7 +222,7 @@ export async function onRequestPost(context) {
                     } else {
                         finding = await data.prisma.Finding.create({ data: findingData })
                     }
-                    data.logger(`findings SCA`, finding)
+                    data.logger.info(`findings SCA`, finding)
                     // TODO lookup EPSS
                     const vexData = {
                         findingUuid: finding.uuid,
@@ -250,7 +250,7 @@ export async function onRequestPost(context) {
                     } else {
                         vex = await data.prisma.Triage.create({ data: vexData })
                     }
-                    data.logger(`findings VEX`, vex)
+                    data.logger.info(`findings VEX`, vex)
                 }
                 i++
             }

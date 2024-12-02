@@ -19,7 +19,7 @@ export async function onRequestGet(context) {
     })
     for (const app of installs) {
         if (!app.accessToken) {
-            data.logger(`github_apps kid=${data.session.kid} installationId=${app.installationId}`)
+            data.logger.info(`github_apps kid=${data.session.kid} installationId=${app.installationId}`)
             throw new Error('github_apps invalid')
         }
         const gh = new GitHub(data.prisma, data.session.orgId, data.session.memberEmail, app.accessToken)

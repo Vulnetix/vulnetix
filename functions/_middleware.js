@@ -8,6 +8,7 @@ import {
 } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
+import anylogger from 'anylogger';
 
 export const errorHandling = async context => {
     const {
@@ -18,10 +19,12 @@ export const errorHandling = async context => {
         next, // used for middleware or to fetch assets
         data, // arbitrary space for passing data between middlewares
     } = context
+    data.logger = anylogger('vulnetix-worker')
+    setLoggerLevel(data.logger, env.LOG_LEVEL)
     try {
         return await next()
     } catch (err) {
-        console.error(err.message, err.stack)
+        data.logger.error(err.message, err.stack)
         return new Response(err.message, { status: 500 })
     }
 }
@@ -57,20 +60,18 @@ export const setup = async context => {
             timeout: 2000, // default: 5000
         },
     }
-    data.logger = () => { }
     if (env.LOGGER === "DEBUG") {
-        data.logger = console.log
-        // clientOptions.log = [
-        //     {
-        //         emit: "event",
-        //         level: "query",
-        //     },
-        // ]
+        clientOptions.log = [
+            {
+                emit: "event",
+                level: "query",
+            },
+        ]
     }
     data.prisma = new PrismaClient(clientOptions)
-    // data.prisma.$on("query", async e => {
-    //     data.logger(`${e.query} ${e.params}`)
-    // })
+    data.prisma.$on("query", async e => {
+        data.logger.debug(`${e.query} ${e.params}`)
+    })
 
     return await next()
 }
@@ -103,13 +104,13 @@ export const authentication = async context => {
     // Convert timestamp from string to integer
     const timestamp = parseInt(timestampStr, 10)
     if (isNaN(timestamp)) {
-        data.logger('Invalid timestamp format', timestamp)
+        data.logger.warn('Invalid timestamp format', timestamp)
         return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } }), { status: 403 })
     }
     // Validate timestamp (you may want to add a check to ensure the request isn't too old)
     const currentTimestamp = new Date().getTime()
     if (Math.abs(currentTimestamp - timestamp) > 3e+5) { // e.g., allow a 5-minute skew
-        data.logger('expired, skew', timestamp)
+        data.logger.warn('expired, skew', timestamp)
         return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.EXPIRED } }), { status: 401 })
     }
     // Retrieve the session key from the database using Prisma
@@ -117,7 +118,7 @@ export const authentication = async context => {
         where: { kid }
     })
     if (!session.expiry || session.expiry <= new Date().getTime()) {
-        data.logger('expired', timestamp)
+        data.logger.warn('expired', timestamp)
         return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.EXPIRED } }), { status: 401 })
     }
     const secretKeyBytes = new TextEncoder().encode(session.secret)
@@ -140,7 +141,7 @@ export const authentication = async context => {
     const isValid = await crypto.subtle.verify("HMAC", key, signatureBytes, payloadBytes)
 
     if (!isValid) {
-        data.logger('Invalid signature', signature)
+        data.logger.warn('Invalid signature', signature)
         return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } }), { status: 401 })
     }
     data.session = session
@@ -162,6 +163,25 @@ const dynamicHeaders = async context => {
     response.headers.set('Access-Control-Allow-Origin', '*')
     response.headers.set('Access-Control-Max-Age', '86400')
     return response
+}
+
+/**
+ * Maps log level strings to their numeric values and validates input
+ * @param {Object} log - Logging adapter
+ * @param {Object} level - Environment configuration object containing LOG_LEVEL
+ */
+export function setLoggerLevel(log, level = "ALL") {
+    const LOG_LEVEL_MAP = {
+        'ERROR': log.ERROR,
+        'WARN': log.WARN,
+        'INFO': log.INFO,
+        'LOG': log.LOG,
+        'DEBUG': log.DEBUG,
+        'TRACE': log.TRACE,
+        'ALL': log.ALL,
+        'NONE': log.NONE
+    }
+    log.level = !level || !(level in LOG_LEVEL_MAP) ? log.LOG : LOG_LEVEL_MAP[level]
 }
 
 export const onRequest = [errorHandling, setup, authentication, dynamicHeaders]
