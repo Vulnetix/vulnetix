@@ -63,7 +63,8 @@ export async function onRequestGet(context) {
         }
         responses.push(...content)
     }
-
+    //TODO: import using tags
+    // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-repository-tags
     for (const response of responses) {
         if (response.name in branchSeen) {
             continue

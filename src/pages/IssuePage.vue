@@ -283,6 +283,34 @@ onBeforeRouteUpdate(async (to, from) => {
         </VTabsWindowItem>
 
         <VTabsWindowItem value="dependencies">
+            <VCard>
+                <VProgressLinear
+                    :active="state.loading"
+                    :indeterminate="state.loading"
+                    color="primary"
+                    absolute
+                    bottom
+                />
+                <VEmptyState
+                    v-if="state.loading"
+                    size="250"
+                >
+                    <template v-slot:media>
+                        <div class="mb-8">
+                            <IconVulnetix width="150" />
+                        </div>
+                    </template>
+
+                    <template v-slot:title>
+                        <div class="text-h6 text-high-emphasis">Pix is working</div>
+                    </template>
+
+                    <template v-slot:text>
+                        <div class="text-body-1">Gathering the latest information for your issue.</div>
+                        <div class="text-body-1">This should be no more than 10 seconds.</div>
+                    </template>
+                </VEmptyState>
+            </VCard>
             <DependencyGraph
                 v-if="state.finding?.spdx?.dependencies"
                 :dependencies="state.finding.spdx.dependencies"
@@ -296,11 +324,67 @@ onBeforeRouteUpdate(async (to, from) => {
         </VTabsWindowItem>
 
         <VTabsWindowItem value="artifacts">
-            artifacts
+            <VCard>
+                <VProgressLinear
+                    :active="state.loading"
+                    :indeterminate="state.loading"
+                    color="primary"
+                    absolute
+                    bottom
+                />
+                <VEmptyState
+                    v-if="state.loading"
+                    size="250"
+                >
+                    <template v-slot:media>
+                        <div class="mb-8">
+                            <IconVulnetix width="150" />
+                        </div>
+                    </template>
+
+                    <template v-slot:title>
+                        <div class="text-h6 text-high-emphasis">Pix is working</div>
+                    </template>
+
+                    <template v-slot:text>
+                        <div class="text-body-1">Gathering the latest information for your issue.</div>
+                        <div class="text-body-1">This should be no more than 10 seconds.</div>
+                    </template>
+                </VEmptyState>
+                artifacts
+            </VCard>
         </VTabsWindowItem>
 
         <VTabsWindowItem value="related">
-            related
+            <VCard>
+                <VProgressLinear
+                    :active="state.loading"
+                    :indeterminate="state.loading"
+                    color="primary"
+                    absolute
+                    bottom
+                />
+                <VEmptyState
+                    v-if="state.loading"
+                    size="250"
+                >
+                    <template v-slot:media>
+                        <div class="mb-8">
+                            <IconVulnetix width="150" />
+                        </div>
+                    </template>
+
+                    <template v-slot:title>
+                        <div class="text-h6 text-high-emphasis">Pix is working</div>
+                    </template>
+
+                    <template v-slot:text>
+                        <div class="text-body-1">Gathering the latest information for your issue.</div>
+                        <div class="text-body-1">This should be no more than 10 seconds.</div>
+                    </template>
+                </VEmptyState>
+                related
+            </VCard>
         </VTabsWindowItem>
     </VTabsWindow>
 </template>

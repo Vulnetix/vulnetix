@@ -182,6 +182,7 @@ model GitBranch {
   repo      GitRepo @relation(fields: [repoName, orgId], references: [fullName, orgId])
   commitSha String
   protected Int     @default(0)
+  monitored Int     @default(0)
   orgId     String
   org       Org     @relation(fields: [orgId], references: [uuid])
 

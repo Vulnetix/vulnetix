@@ -30,6 +30,7 @@ const gitRepos = ref([])
 const selectedRepos = ref([])
 const selectedBranches = ref({})
 const branches = ref({})
+const monitored = ref([])
 
 // const icons = {
 //     'osv': osvIcon,
@@ -87,6 +88,11 @@ const loadBranches = async repoName => {
     try {
         const { data } = await client.get(`/github/repos/${repoName}/branches`)
         branches.value[repoName] = data?.branches?.map(branch => branch.name) || [selectedBranches.value[repoName]]
+        for (const branch of data?.branches || []) {
+            if (branch.monitored === 1) {
+                monitored.value.push(`${repoName}|${branch.name}`)
+            }
+        }
 
     } catch (e) {
         console.error(e)
@@ -103,13 +109,74 @@ const deselectAll = () => {
     selectedRepos.value = []
 }
 
-const importGithub = () => {
-    const repos = []
+const importGithub = async () => {
+    const targetRepos = []
     for (const fullName of selectedRepos.value) {
         const branch = selectedBranches.value?.[fullName]
-        repos.push({ fullName, branch })
+        targetRepos.push({ fullName, branch })
+        refreshSecurity(fullName)
     }
-    console.log('Select repos and branches', repos)
+    const { data } = await client.post(`/github/import`, { targetRepos })
+    console.log('importGithub', data)
+}
+
+const totalPromises = ref(0)
+const sync = ref(0)
+const refreshSpdx = async (full_name) => {
+    clearAlerts()
+    try {
+        const { data } = await client.get(`/github/repos/${full_name}/spdx`)
+        if (data?.error?.message) {
+            errorMessage.value = data.error.message
+            return
+        }
+        if (data?.findings) {
+            for (const findingId of data.findings) {
+                try {
+                    trackPromise(client.get(`/issue/${findingId}`))
+                } catch (e) {
+                    console.error(e)
+                }
+            }
+        }
+
+        return
+    } catch (e) {
+        console.error(e)
+        errorMessage.value = `${e.code} ${e.message}`
+    }
+}
+const refreshSarif = async (full_name) => {
+    clearAlerts()
+    try {
+        const { data } = await client.get(`/github/repos/${full_name}/sarif`)
+
+        if (data?.error?.message) {
+            errorMessage.value = data.error.message
+            return
+        }
+        successMessage.value = "Refreshed GitHub SARIF"
+    } catch (e) {
+        console.error(e)
+        errorMessage.value = `${e.code} ${e.message}`
+    }
+}
+const refreshSecurity = async (full_name) => {
+    await Promise.allSettled([
+        refreshSpdx(full_name),
+        refreshSarif(full_name)
+    ])
+}
+
+const isVisible = computed(() => sync.value > 0)
+const completedPromises = computed(() => totalPromises.value - sync.value)
+const trackPromise = async promise => {
+    sync.value++
+    totalPromises.value++
+
+    return promise.finally(() => {
+        sync.value--
+    })
 }
 
 function clearAlerts() {
@@ -118,10 +185,43 @@ function clearAlerts() {
     successMessage.value = ''
     infoMessage.value = ''
 }
-
 </script>
 
 <template>
+    <VOverlay
+        v-model="isVisible"
+        class="align-center justify-center"
+        scrim="#181a1b"
+        persistent
+    >
+        <VSheet
+            class="d-flex flex-column px-4 py-8"
+            color="#181a1b"
+            rounded="lg"
+        >
+            <div class="d-flex align-center w-100 mb-2">
+                <VProgressLinear
+                    :location="null"
+                    color="primary"
+                    height="12"
+                    :max="totalPromises"
+                    min="0"
+                    :model-value="completedPromises"
+                    rounded
+                >
+                    <template v-slot:default="{ value }">
+                        <strong>{{ Math.ceil(value) }}%</strong>
+                    </template>
+                </VProgressLinear>
+            </div>
+            <div class="d-flex justify-center text-h6">
+                Synchronizing {{ completedPromises.toString().padStart(4, '0') }}/{{
+                    totalPromises.toString().padStart(4, '0')
+                }}
+            </div>
+        </VSheet>
+    </VOverlay>
+
     <VerticalNavLayout>
         <template
             v-if="isLoggedIn"
@@ -212,42 +312,6 @@ function clearAlerts() {
                                 bottom
                             >
                             </VProgressLinear>
-                            <VAlert
-                                v-if="errorMessage"
-                                color="error"
-                                icon="$error"
-                                title="Error"
-                                :text="errorMessage"
-                                border="start"
-                                variant="tonal"
-                            />
-                            <VAlert
-                                v-if="warningMessage"
-                                color="warning"
-                                icon="$warning"
-                                title="Warning"
-                                :text="warningMessage"
-                                border="start"
-                                variant="tonal"
-                            />
-                            <VAlert
-                                v-if="successMessage"
-                                color="success"
-                                icon="$success"
-                                title="Success"
-                                :text="successMessage"
-                                border="start"
-                                variant="tonal"
-                            />
-                            <VAlert
-                                v-if="infoMessage"
-                                color="info"
-                                icon="$info"
-                                title="Information"
-                                :text="infoMessage"
-                                border="start"
-                                variant="tonal"
-                            />
                             <VBtn
                                 icon="mdi-close"
                                 @click="dialog = false"
@@ -270,105 +334,153 @@ function clearAlerts() {
                         <VCardText>
                             <VList>
                                 <VSpacer class="mt-12" />
-                                <VListItem
+                                <VAlert
+                                    v-if="errorMessage"
+                                    color="error"
+                                    icon="$error"
+                                    title="Error"
+                                    :text="errorMessage"
+                                    border="start"
+                                    variant="tonal"
+                                />
+                                <VAlert
+                                    v-if="warningMessage"
+                                    color="warning"
+                                    icon="$warning"
+                                    title="Warning"
+                                    :text="warningMessage"
+                                    border="start"
+                                    variant="tonal"
+                                />
+                                <VAlert
+                                    v-if="successMessage"
+                                    color="success"
+                                    icon="$success"
+                                    title="Success"
+                                    :text="successMessage"
+                                    border="start"
+                                    variant="tonal"
+                                />
+                                <VAlert
+                                    v-if="infoMessage"
+                                    color="info"
+                                    icon="$info"
+                                    title="Information"
+                                    :text="infoMessage"
+                                    border="start"
+                                    variant="tonal"
+                                />
+                                <VAlert
+                                    v-if="!loadingBar && !gitRepos.length"
+                                    color="primary"
+                                    icon="pixelarticons-mood-sad"
+                                    text="No repositories available (Have you installed the Vulnetix GitHub App? Are all repositories already monitored?)"
+                                    variant="tonal"
+                                />
+                                <template
+                                    v-if="!loadingBar"
                                     v-for="(repo, k) in gitRepos"
                                     :key="k"
                                     class="mb-3"
                                 >
-                                    <VListItemTitle class="font-weight-bold">
-                                        <VCheckbox
-                                            v-model="selectedRepos"
-                                            :value="repo.fullName"
-                                            multiple
-                                            color="primary"
-                                            class="mt-1 me-2"
-                                        ></VCheckbox>
-                                        <VChip
-                                            x-small
-                                            :color="repo.visibility === 'private' ? 'info' : 'primary'"
-                                            class="me-2"
-                                        >
-                                            {{ repo.visibility }}
-                                        </VChip>
-                                        <VChip
-                                            v-if="repo.archived"
-                                            x-small
-                                            color="error"
-                                            class="me-2"
-                                        >
-                                            archived
-                                        </VChip>
-                                        <a
-                                            v-if="repo.source === 'GitHub'"
-                                            :href="`https://github.com/${repo.fullName}`"
-                                            target="_blank"
-                                            rel="noopener"
-                                            class="repo-link"
-                                        >
-                                            {{ repo.fullName }}
-                                        </a>
-                                        <span v-else>{{ repo.fullName }}</span>
-                                    </VListItemTitle>
+                                    <VListItem
+                                        v-if="!monitored.includes(`${repo.fullName}|${selectedBranches[repo.fullName]}`)"
+                                    >
+                                        <VListItemTitle class="font-weight-bold">
+                                            <VCheckbox
+                                                v-model="selectedRepos"
+                                                :value="repo.fullName"
+                                                multiple
+                                                color="primary"
+                                                class="mt-1 me-2"
+                                            ></VCheckbox>
+                                            <VChip
+                                                x-small
+                                                :color="repo.visibility === 'private' ? 'info' : 'primary'"
+                                                class="me-2"
+                                            >
+                                                {{ repo.visibility }}
+                                            </VChip>
+                                            <VChip
+                                                v-if="repo.archived"
+                                                x-small
+                                                color="error"
+                                                class="me-2"
+                                            >
+                                                archived
+                                            </VChip>
+                                            <a
+                                                v-if="repo.source === 'GitHub'"
+                                                :href="`https://github.com/${repo.fullName}`"
+                                                target="_blank"
+                                                rel="noopener"
+                                                class="repo-link"
+                                            >
+                                                {{ repo.fullName }}
+                                            </a>
+                                            <span v-else>{{ repo.fullName }}</span>
+                                        </VListItemTitle>
 
-                                    <VListItemSubtitle class="mt-2">
-                                        <VRow>
-                                            <VCol
-                                                cols="12"
-                                                sm="6"
-                                            >
-                                                <div
-                                                    class="d-flex align-center mb-1"
-                                                    style="height: 32px;"
+                                        <VListItemSubtitle class="mt-2">
+                                            <VRow>
+                                                <VCol
+                                                    cols="12"
+                                                    sm="6"
                                                 >
-                                                    <VIcon
-                                                        small
-                                                        class="branch-icon me-2"
-                                                    >mdi-source-branch</VIcon>
-                                                    <VSelect
-                                                        v-model="selectedBranches[repo.fullName]"
-                                                        :items="branches[repo.fullName]"
-                                                        density="compact"
-                                                        variant="plain"
-                                                        class="branch-select"
-                                                        hide-details
-                                                    ></VSelect>
-                                                </div>
-                                                <div class="d-flex align-center">
-                                                    <VIcon
-                                                        small
-                                                        class="mr-1"
-                                                    >mdi-clock-outline</VIcon>
-                                                    Created: {{ new Date(repo.createdAt).toLocaleDateString() }}
-                                                </div>
-                                            </VCol>
-                                            <VCol
-                                                cols="12"
-                                                sm="6"
-                                            >
-                                                <div
-                                                    class="d-flex align-center license-info"
-                                                    :class="{ 'no-license': !repo.licenseSpdxId }"
-                                                >
-                                                    <VIcon
-                                                        small
-                                                        class="mr-1"
+                                                    <div
+                                                        class="d-flex align-center mb-1"
+                                                        style="height: 32px;"
                                                     >
-                                                        {{ repo.licenseSpdxId ? 'mdi-license' : 'mdi-alert' }}
-                                                    </VIcon>
-                                                    {{ repo.licenseName || 'No license specified' }}
-                                                </div>
-                                                <div class="d-flex align-center mt-1">
-                                                    <VIcon
-                                                        small
-                                                        class="mr-1"
-                                                    >{{ repo.source === 'GitHub' ? 'mdi-github' :
-                                                        'mdi-source-repository' }}</VIcon>
-                                                    {{ repo.source }}
-                                                </div>
-                                            </VCol>
-                                        </VRow>
-                                    </VListItemSubtitle>
-                                </VListItem>
+                                                        <VIcon
+                                                            small
+                                                            class="branch-icon me-2"
+                                                        >mdi-source-branch</VIcon>
+                                                        <VSelect
+                                                            v-model="selectedBranches[repo.fullName]"
+                                                            :items="branches[repo.fullName]"
+                                                            density="compact"
+                                                            variant="plain"
+                                                            class="branch-select"
+                                                            hide-details
+                                                        ></VSelect>
+                                                    </div>
+                                                    <div class="d-flex align-center">
+                                                        <VIcon
+                                                            small
+                                                            class="mr-1"
+                                                        >mdi-clock-outline</VIcon>
+                                                        Created: {{ new Date(repo.createdAt).toLocaleDateString() }}
+                                                    </div>
+                                                </VCol>
+                                                <VCol
+                                                    cols="12"
+                                                    sm="6"
+                                                >
+                                                    <div
+                                                        class="d-flex align-center license-info"
+                                                        :class="{ 'no-license': !repo.licenseSpdxId }"
+                                                    >
+                                                        <VIcon
+                                                            small
+                                                            class="mr-1"
+                                                        >
+                                                            {{ repo.licenseSpdxId ? 'mdi-license' : 'mdi-alert' }}
+                                                        </VIcon>
+                                                        {{ repo.licenseName || 'No license specified' }}
+                                                    </div>
+                                                    <div class="d-flex align-center mt-1">
+                                                        <VIcon
+                                                            small
+                                                            class="mr-1"
+                                                        >{{ repo.source === 'GitHub' ? 'mdi-github' :
+                                                            'mdi-source-repository' }}</VIcon>
+                                                        {{ repo.source }}
+                                                    </div>
+                                                </VCol>
+                                            </VRow>
+                                        </VListItemSubtitle>
+                                    </VListItem>
+                                </template>
                                 <VSpacer class="mb-10" />
                             </VList>
                         </VCardText>
