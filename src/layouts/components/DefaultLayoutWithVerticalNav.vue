@@ -110,14 +110,16 @@ const deselectAll = () => {
 }
 
 const importGithub = async () => {
+    loadingBar.value = true
     const targetRepos = []
     for (const fullName of selectedRepos.value) {
         const branch = selectedBranches.value?.[fullName]
         targetRepos.push({ fullName, branch })
-        refreshSecurity(fullName)
+        trackPromise(refreshSecurity(fullName))
     }
     const { data } = await client.post(`/github/import`, { targetRepos })
-    console.log('importGithub', data)
+    successMessage.value = "GitHub Import Completed"
+    loadingBar.value = false
 }
 
 const totalPromises = ref(0)
@@ -155,7 +157,6 @@ const refreshSarif = async (full_name) => {
             errorMessage.value = data.error.message
             return
         }
-        successMessage.value = "Refreshed GitHub SARIF"
     } catch (e) {
         console.error(e)
         errorMessage.value = `${e.code} ${e.message}`
