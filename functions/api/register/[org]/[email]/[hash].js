@@ -30,7 +30,7 @@ export async function onRequestGet(context) {
                         name: params.org,
                     }
                 })
-                data.logger(`/register orgId=${orgId}`, orgInfo)
+                data.logger.info(`/register orgId=${orgId}`, orgInfo)
             }
         } else {
             const orgInfo = await data.prisma.Org.create({
@@ -39,7 +39,7 @@ export async function onRequestGet(context) {
                     name: params.email.toLowerCase(),
                 }
             })
-            data.logger(`/register orgId=${orgId}`, orgInfo)
+            data.logger.info(`/register orgId=${orgId}`, orgInfo)
         }
         const member = {
             uuid: crypto.randomUUID(),
@@ -50,7 +50,7 @@ export async function onRequestGet(context) {
         const info = await data.prisma.Member.create({
             data: member
         })
-        data.logger(`/register email=${member.email}`, info)
+        data.logger.info(`/register email=${member.email}`, info)
 
         return Response.json({ ok: true, member })
     }

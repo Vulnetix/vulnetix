@@ -401,7 +401,6 @@ const repositories = computed(() => {
     }))
 })
 
-
 const isVisible = computed(() => state.sync > 0)
 const completedPromises = computed(() => state.totalPromises - state.sync)
 const trackPromise = async promise => {

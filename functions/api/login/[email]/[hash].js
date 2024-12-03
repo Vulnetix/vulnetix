@@ -44,7 +44,7 @@ export async function onRequestGet(context) {
         const sessionInfo = await data.prisma.Session.create({
             data: response.session
         })
-        data.logger(`/login session kid=${token}`, sessionInfo)
+        data.logger.info(`/login session kid=${token}`, sessionInfo)
         response.result = AuthResult.AUTHENTICATED
         response.ok = true
     }

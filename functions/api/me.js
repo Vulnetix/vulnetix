@@ -92,7 +92,7 @@ export async function onRequestPost(context) {
                 }
             })
             updatedOrg = true
-            data.logger(`/me update org ${originalMember.orgId} ${data.json.orgName}`, orgInfo)
+            data.logger.info(`/me update org ${originalMember.orgId} ${data.json.orgName}`, orgInfo)
         }
 
         if (Object.keys(member).length > 0) {
@@ -102,7 +102,7 @@ export async function onRequestPost(context) {
                 },
                 data: member
             })
-            data.logger(`/me update member ${data.session.memberEmail}`, memberInfo)
+            data.logger.info(`/me update member ${data.session.memberEmail}`, memberInfo)
 
             return Response.json({ ok: true, result: 'Updated' })
         }

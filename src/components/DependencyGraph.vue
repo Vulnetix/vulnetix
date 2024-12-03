@@ -1,151 +1,187 @@
 <script setup>
-import { computed } from 'vue';
 import { getPastelColor } from '@/utils';
+import IconVulnetix from '@images/IconVulnetix.vue';
+import { computed } from 'vue';
+import { VTreeview } from 'vuetify/labs/VTreeview';
 
 const props = defineProps({
+    title: {
+        type: String,
+        default: 'Dependency Tree',
+    },
     dependencies: {
         type: Array,
         required: true,
     },
 })
 
-const roots = computed(() => {
-    const childKeys = new Set(props.dependencies.map(d => d.childOfKey).filter(Boolean));
-    return props.dependencies.filter(d => !childKeys.has(d.key));
-});
+const active = ref([])
+const open = ref([])
+const selected = ref(null)
 
-const getChildren = (parentKey) => {
-    return props.dependencies.filter(dep => dep.childOfKey === parentKey);
-};
+const roots = computed(() => {
+    return props.dependencies.filter(dep => dep.isDirect).map(item => {
+        item.children = props.dependencies.filter(d => {
+            return d.childOfKey === item.key
+        })
+        if (!item.children) {
+            delete item.children
+        }
+        return item
+    })
+})
+
+const openItem = ({ id }) => {
+    selected.value = props.dependencies.find(item => item.key === id)
+}
+
+const activatedItem = activated => {
+    const key = activated.pop()
+    selected.value = props.dependencies.find(item => item.key === key)
+}
 
 const colours = {
-    pypi: getPastelColor(),
-    golang: getPastelColor(),
-    githubactions: getPastelColor(),
+    npm: 'rgb(249, 185, 193)',
+    pypi: 'rgb(232, 225, 186)',
+    golang: 'rgb(184, 245, 239)',
+    githubactions: 'rgb(189, 193, 189)',
+    cargo: 'rgb(254, 182, 180)',
+    generic: 'rgb(213, 228, 230)',
 }
-const getEcosystemColor = (ecosystem) => (colours[ecosystem.toLowerCase()] || getPastelColor());
+const getEcosystemColor = ecosystem => (colours[ecosystem.toLowerCase()] || getPastelColor());
 </script>
 
 <template>
     <v-container
         fluid
         class="pa-0"
-        v-if="props.dependencies"
     >
         <v-card>
-            <v-card-title>Dependency Tree</v-card-title>
-            <v-card-text>
-                <div class="tree">
-                    <ul>
-                        <li
-                            v-for="root in roots"
-                            :key="root.key"
+            <v-card-title>{{ props.title }}</v-card-title>
+            <VEmptyState
+                v-if="!props.dependencies"
+                size="250"
+            >
+                <template v-slot:media>
+                    <div class="mb-8">
+                        <IconVulnetix width="150" />
+                    </div>
+                </template>
+
+                <template v-slot:title>
+                    <div class="text-h6 text-high-emphasis">Pix is working</div>
+                </template>
+
+                <template v-slot:text>
+                    <div class="text-body-1">Gathering the latest information for your issue.</div>
+                    <div class="text-body-1">This should be no more than 10 seconds.</div>
+                </template>
+            </VEmptyState>
+            <v-row
+                class="pa-4"
+                justify="space-between"
+            >
+                <v-col cols="5">
+                    <VTreeview
+                        v-model:activated="active"
+                        v-model:opened="open"
+                        :items="roots"
+                        color="rgb(184, 242, 197)"
+                        density="compact"
+                        item-title="key"
+                        item-value="key"
+                        active-strategy="independent"
+                        activatable
+                        open-on-click
+                        transition
+                        @click:open="openItem"
+                        @update:activated="activatedItem"
+                    >
+                        <template v-slot:prepend="{ item, isOpen }">
+                            <VIcon
+                                v-if="!isOpen"
+                                icon="mage:package-box-fill"
+                                :color="item.isDirect ? `primary` : ``"
+                            />
+                            <VIcon
+                                v-else
+                                icon="lucide:package-open"
+                                :color="item.isDirect ? `primary` : ``"
+                            />
+                        </template>
+                        <template v-slot:title="{ item }">
+                            {{ [item.name, item.version].filter(i => !!i).join('@') }}
+                        </template>
+                        <template v-slot:append="{ item }">
+                            <VChip
+                                :color="getEcosystemColor(item.packageEcosystem)"
+                                size="small"
+                                class="mr-2"
+                            >{{ item.packageEcosystem }}</VChip>
+                        </template>
+                    </VTreeview>
+                </v-col>
+
+                <v-divider vertical></v-divider>
+
+                <v-col
+                    class="d-flex text-center"
+                    v-if="selected"
+                >
+                    <v-scroll-y-transition mode="out-in">
+                        <v-card
+                            :key="selected.key"
+                            class="pt-6 mx-auto"
+                            max-width="400"
+                            min-width="200"
+                            flat
                         >
-                            <div class="d-flex align-center pa-2">
-                                <v-chip
-                                    :color="getEcosystemColor(root.packageEcosystem)"
+                            <v-card-text>
+                                <h3 class="text-h5 mb-2">
+                                    {{ selected.name }}
+                                </h3>
+                                <div class="text-blue mb-2">
+                                    {{ selected.version }}
+                                </div>
+                                <div class="text-blue subheading font-weight-bold">
+                                    {{ selected.purl }}
+                                </div>
+                                <VChip
+                                    :color="getEcosystemColor(selected.packageEcosystem)"
                                     size="small"
                                     class="mr-2"
                                 >
-                                    {{ root.packageEcosystem }}
-                                </v-chip>
-                                <span class="font-weight-medium">{{ root.name }}</span>
-                                <v-chip
-                                    outlined
-                                    size="small"
-                                    class="ml-2"
+                                    {{ selected.packageEcosystem }}
+                                </VChip>
+                            </v-card-text>
+                            <v-divider></v-divider>
+                            <v-row
+                                class="text-left"
+                                tag="v-card-text"
+                            >
+                                <v-col
+                                    class="text-right me-4 mb-2"
+                                    cols="5"
+                                    tag="strong"
                                 >
-                                    {{ root.version }}
-                                </v-chip>
-                                <v-chip
-                                    v-if="root.license"
-                                    color="green"
-                                    size="small"
-                                    class="ml-2"
+                                    License:
+                                </v-col>
+                                <v-col>{{ selected.license }}</v-col>
+                                <v-col
+                                    class="text-right me-4 mb-2"
+                                    cols="5"
+                                    tag="strong"
+                                    v-if="selected.isDev"
                                 >
-                                    {{ root.license }}
-                                </v-chip>
-                            </div>
-
-                            <ul>
-                                <li
-                                    v-for="child in getChildren(root.key)"
-                                    :key="child.key"
-                                >
-                                    <div class="d-flex align-center pa-2">
-                                        <v-chip
-                                            :color="getEcosystemColor(child.packageEcosystem)"
-                                            size="small"
-                                            class="mr-2"
-                                        >
-                                            {{ child.packageEcosystem }}
-                                        </v-chip>
-                                        <span class="font-weight-medium">{{ child.name }}</span>
-                                        <v-chip
-                                            outlined
-                                            size="small"
-                                            class="ml-2"
-                                        >
-                                            {{ child.version }}
-                                        </v-chip>
-                                        <v-chip
-                                            v-if="child.license"
-                                            color="green"
-                                            size="small"
-                                            class="ml-2"
-                                        >
-                                            {{ child.license }}
-                                        </v-chip>
-                                    </div>
-                                </li>
-                            </ul>
-                        </li>
-                    </ul>
-                </div>
-            </v-card-text>
+                                    Dev dependency
+                                </v-col>
+                            </v-row>
+                        </v-card>
+                    </v-scroll-y-transition>
+                </v-col>
+            </v-row>
         </v-card>
     </v-container>
 </template>
 
-<style scoped>
-.tree {
-    max-height: 800px;
-    overflow-y: auto;
-    padding: 16px;
-}
-
-.tree ul {
-    list-style: none;
-    padding-left: 20px;
-    position: relative;
-}
-
-.tree li {
-    position: relative;
-    padding: 4px 0;
-}
-
-.tree li::before {
-    content: "";
-    position: absolute;
-    left: -15px;
-    top: 50%;
-    width: 15px;
-    height: 1px;
-    background: #ccc;
-}
-
-.tree ul::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 1px;
-    background: #ccc;
-}
-
-.tree>ul::before {
-    display: none;
-}
-</style>
+<style scoped></style>

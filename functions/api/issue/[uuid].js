@@ -42,7 +42,7 @@ export async function onRequestPost(context) {
                     modifiedAt: new Date().getTime(),
                 }
             })
-            data.logger(`Update Finding ${uuid}`, info)
+            data.logger.info(`Update Finding ${uuid}`, info)
             return Response.json({ ok: true, result: `Update Finding ${uuid} CVSS custom vector` })
         }
         // Triage
@@ -107,7 +107,7 @@ export async function onRequestPost(context) {
             } else {
                 info = await data.prisma.Triage.create({ data: triageData })
             }
-            data.logger(`Upsert Triage ${triageData.uuid}`, info)
+            data.logger.info(`Upsert Triage ${triageData.uuid}`, info)
             return Response.json({ ok: true, triage: triageData })
         }
 

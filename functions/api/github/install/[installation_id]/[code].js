@@ -85,7 +85,7 @@ export async function onRequestGet(context) {
                             name: content.company,
                         }
                     })
-                    data.logger(`/github/install register orgId=${orgId}`, orgInfo)
+                    data.logger.info(`/github/install register orgId=${orgId}`, orgInfo)
                 }
             } else {
                 const orgInfo = await data.prisma.Org.create({
@@ -94,7 +94,7 @@ export async function onRequestGet(context) {
                         name: memberEmail.toLowerCase(),
                     }
                 })
-                data.logger(`/github/install register orgId=${orgId}`, orgInfo)
+                data.logger.info(`/github/install register orgId=${orgId}`, orgInfo)
             }
 
             response.member = {
@@ -108,7 +108,7 @@ export async function onRequestGet(context) {
             const memberInfo = await data.prisma.Member.create({
                 data: response.member
             })
-            data.logger(`/github/install register email=${memberEmail}`, memberInfo)
+            data.logger.info(`/github/install register email=${memberEmail}`, memberInfo)
             delete response.member.passwordHash
         }
         const token = crypto.randomUUID()
@@ -129,7 +129,7 @@ export async function onRequestGet(context) {
         const sessionInfo = await data.prisma.Session.create({
             data: response.session
         })
-        data.logger(`/github/install session kid=${token}`, sessionInfo)
+        data.logger.info(`/github/install session kid=${token}`, sessionInfo)
         const appData = {
             installationId: parseInt(params.installation_id, 10),
             org: { connect: { uuid: response.member.orgId } },
@@ -148,7 +148,7 @@ export async function onRequestGet(context) {
                     expires: appData.expires,
                 }
             })
-            data.logger(`/github/install installationId=${params.installation_id}`, GHAppInfo)
+            data.logger.info(`/github/install installationId=${params.installation_id}`, GHAppInfo)
 
             return data
         } catch (_) {
@@ -157,7 +157,7 @@ export async function onRequestGet(context) {
         const GHAppInfo = await data.prisma.GitHubApp.create({
             data: appData
         })
-        data.logger(`/github/install installationId=${params.installation_id}`, GHAppInfo)
+        data.logger.info(`/github/install installationId=${params.installation_id}`, GHAppInfo)
         response.result = AuthResult.AUTHENTICATED
         response.ok = true
         return Response.json(response)

@@ -857,13 +857,6 @@ export function createPurlFromUrl(location, name, version) {
     }
 }
 
-// Helper function to extract ecosystem from purl
-export function getEcosystemFromPurl(purl) {
-    if (!purl) return null
-    const match = purl.match(/pkg:([^/]+)/)
-    return match ? match[1] : null
-}
-
 // Helper function to extract name and version from SPDXID 
 export function parsePackageRef(spdxId, name) {
     // Format is "SPDXRef-name-version" where version can be alphanumeric
@@ -880,49 +873,160 @@ export function parsePackageRef(spdxId, name) {
     }
 }
 
-// Helper function to determine package ecosystem from various sources
+/**
+ * Maps package types to their corresponding ecosystems.
+ * Includes common aliases and variations for each ecosystem.
+ * @type {Object.<string, string>}
+ */
+export const ECOSYSTEM_TYPE_MAPPING = {
+    'maven-artifact': 'maven',
+    'maven': 'maven',
+    'npm': 'npm',
+    'nodejs': 'npm',
+    'pypi': 'pypi',
+    'python': 'pypi',
+    'nuget': 'nuget',
+    'dotnet': 'nuget',
+    'gem': 'gem',
+    'ruby': 'gem',
+    'cargo': 'cargo',
+    'rust': 'cargo',
+    'composer': 'composer',
+    'php': 'composer',
+    'golang': 'golang',
+    'go': 'golang',
+    'cocoapods': 'cocoapods',
+    'swift': 'cocoapods',
+    'conda': 'conda',
+    'anaconda': 'conda',
+    'cran': 'cran',
+    'r': 'cran',
+    'debian': 'debian',
+    'ubuntu': 'debian',
+    'alpine': 'alpine',
+    'homebrew': 'brew',
+    'brew': 'brew',
+    'github': 'github',
+    'gitlab': 'gitlab',
+    'bitbucket': 'bitbucket',
+    'hex': 'hex',
+    'elixir': 'hex',
+    'cpan': 'cpan',
+    'perl': 'cpan',
+    'pub': 'pub',
+    'dart': 'pub',
+    'gradle': 'gradle',
+    'ivy': 'ivy',
+    'clojars': 'clojars',
+    'clojure': 'clojars',
+    'conan': 'conan',
+    'vcpkg': 'vcpkg',
+    'bower': 'bower',
+    'hackage': 'hackage',
+    'haskell': 'hackage',
+    'packagist': 'packagist'
+};
+
+/**
+ * Extracts ecosystem from a package URL (PURL).
+ * @param {string} purl - Package URL to parse
+ * @returns {string|null} Extracted ecosystem or null if not found
+ */
+export const extractEcosystemFromPurl = (purl) => {
+    const purlMatch = purl.match(/pkg:([^/]+)/);
+    return purlMatch ? purlMatch[1] : null;
+};
+
+/**
+ * Detects ecosystem from package external references.
+ * Prioritizes PACKAGE-MANAGER category PURLs.
+ * @param {Object} pkg - Package object containing external references
+ * @returns {string|null} Detected ecosystem or null if not found
+ */
+export const detectEcosystemFromRefs = (pkg) => {
+    if (!pkg.externalRefs) return null;
+
+    // First try PACKAGE-MANAGER category
+    const packageManagerRef = pkg.externalRefs.find(ref =>
+        ref.referenceCategory === 'PACKAGE-MANAGER' &&
+        ref.referenceType === 'purl' &&
+        ref.referenceLocator
+    );
+
+    if (packageManagerRef?.referenceLocator) {
+        return extractEcosystemFromPurl(packageManagerRef.referenceLocator);
+    }
+
+    // Fallback to any PURL
+    const purlRef = pkg.externalRefs.find(ref =>
+        ref.referenceType === 'purl' && ref.referenceLocator
+    );
+
+    return purlRef?.referenceLocator ?
+        extractEcosystemFromPurl(purlRef.referenceLocator) : null;
+};
+
+/**
+ * Detects ecosystem from package type metadata.
+ * @param {Object} pkg - Package object containing type information
+ * @returns {string|null} Detected ecosystem or null if not found
+ */
+export const detectEcosystemFromType = (pkg) => {
+    if (!pkg.type) return null;
+
+    const normalizedType = pkg.type.toLowerCase();
+    return ECOSYSTEM_TYPE_MAPPING[normalizedType] || null;
+};
+
+/**
+ * Detects ecosystem from package name using common patterns.
+ * @param {string} name - Package name or path
+ * @returns {string|null} Detected ecosystem or null if not found
+ */
+export const detectEcosystemFromName = (name) => {
+    if (!name) return null;
+
+    // Common patterns for different ecosystems
+    const patterns = [
+        { regex: /(-py$|^python-|^pip:)/, ecosystem: 'pypi' },
+        { regex: /(^go-|golang\.org\/|gopkg\.in\/)/, ecosystem: 'golang' },
+        { regex: /(node_modules|\.js$|\.ts$)/, ecosystem: 'npm' },
+        { regex: /(maven|\.jar$)/, ecosystem: 'maven' },
+        { regex: /(nuget|\.nupkg$)/, ecosystem: 'nuget' },
+        { regex: /(\.gem$|rubygems)/, ecosystem: 'gem' },
+        { regex: /(\.crate$|crates\.io)/, ecosystem: 'cargo' },
+        { regex: /(\.deb$|debian)/, ecosystem: 'debian' },
+        { regex: /(composer|\.phar$)/, ecosystem: 'composer' },
+        { regex: /(cocoapods|\.podspec$)/, ecosystem: 'cocoapods' },
+        { regex: /(conda-forge|\.conda$)/, ecosystem: 'conda' },
+        { regex: /\.rpm$/, ecosystem: 'rpm' },
+        { regex: /(\.hex$|hex\.pm)/, ecosystem: 'hex' },
+        { regex: /(cpan|\.pl$)/, ecosystem: 'cpan' },
+        { regex: /(\.dart$|pub\.dev)/, ecosystem: 'pub' },
+        { regex: /(hackage|\.cabal$)/, ecosystem: 'hackage' },
+        { regex: /(clojars|\.jar$)/, ecosystem: 'clojars' }
+    ];
+
+    for (const { regex, ecosystem } of patterns) {
+        if (regex.test(name)) return ecosystem;
+    }
+
+    return null;
+};
+
+/**
+ * Main function to detect package ecosystem from various sources.
+ * Checks sources in order of reliability: PURL > type > name pattern.
+ * @param {Object} pkg - Package object to analyze
+ * @param {string} [name] - Optional package name for additional pattern matching
+ * @returns {string} Detected ecosystem or 'generic' if none found
+ */
 export const detectPackageEcosystem = (pkg, name) => {
-    // Try to detect from PURL if available
-    if (pkg.externalRefs) {
-        const purlRef = pkg.externalRefs.find(ref =>
-            ref.referenceType === 'purl' && ref.referenceLocator
-        );
-        if (purlRef?.referenceLocator) {
-            const purlMatch = purlRef.referenceLocator.match(/pkg:([^/]+)/);
-            if (purlMatch) return purlMatch[1];
-        }
-    }
-
-    // Try to detect from package metadata
-    if (pkg.type === 'maven-artifact') return 'maven';
-    if (pkg.type === 'npm') return 'npm';
-    if (pkg.type === 'pypi') return 'pypi';
-    if (pkg.type === 'nuget') return 'nuget';
-    if (pkg.type === 'gem') return 'gem';
-    if (pkg.type === 'cargo') return 'cargo';
-
-    // Try to detect from name patterns
-    if (name) {
-        if (name.endsWith('-py') || name.startsWith('python-') || name.startsWith('pip:')) {
-            return 'pypi';
-        }
-        if (name.startsWith('go-') || name.includes('golang.org/') || name.includes('gopkg.in/')) {
-            return 'golang';
-        }
-        if (name.includes('node_modules') || name.endsWith('.js') || name.endsWith('.ts')) {
-            return 'npm';
-        }
-        if (name.includes('maven') || name.endsWith('.jar')) {
-            return 'maven';
-        }
-        if (name.includes('nuget') || name.endsWith('.nupkg')) {
-            return 'nuget';
-        }
-    }
-
-    // If no ecosystem could be detected, return null instead of a default
-    return "generic";
-}
+    return detectEcosystemFromRefs(pkg) ||
+        detectEcosystemFromType(pkg) ||
+        detectEcosystemFromName(name) ||
+        'generic';
+};
 
 // Helper function to extract license information from various sources
 export const extractLicense = pkg => {
@@ -976,45 +1080,47 @@ export const extractVersion = (pkg, name) => {
     // Try to extract from PURL if available
     const purlRef = pkg.externalRefs?.find(ref =>
         ref.referenceType === 'purl' && ref.referenceLocator
-    );
+    )
     if (purlRef?.referenceLocator) {
-        const purlMatch = purlRef.referenceLocator.match(/@([^/]+)$/);
-        if (purlMatch) return purlMatch[1];
+        const purlMatch = purlRef.referenceLocator.match(/@([^/]+)$/)
+        if (purlMatch) return purlMatch[1]
     }
 
-    return "0.0.0";
+    return "0.0.0"
 }
 
 // Parse components while preserving all available metadata
 export const parseSPDXComponents = async (spdxJson, namespace) => {
-    const components = new Map();
-    const relationships = [];
+    const components = new Map()
+    const relationships = []
 
     // Process all packages
     for (const pkg of spdxJson.packages || []) {
         // const { name, version } = parsePackageRef(pkg.SPDXID, pkg.name)
-        const name = pkg.name;
-        const version = extractVersion(pkg, name);
-        const license = extractLicense(pkg);
-        const ecosystem = detectPackageEcosystem(pkg, name);
+        const name = pkg.name
+        const version = extractVersion(pkg, name)
+        const license = extractLicense(pkg)
+        const packageEcosystem = detectPackageEcosystem(pkg, name)
 
         components.set(pkg.SPDXID, {
-            key: await hex(`${namespace}${name}${version || ''}`),
+            key: await hex(`${namespace}${pkg.SPDXID}`),
             name,
             version,
             license,
-            packageEcosystem: ecosystem,
-            isTransitive: 1,
-            isDirect: 0
-        });
+            packageEcosystem,
+        })
     }
+
+    const rootRef = spdxJson.relationships.find(r =>
+        r.relationshipType === 'DESCRIBES'
+    ).relatedSpdxElement
 
     // Process relationships
     for (const rel of spdxJson.relationships || []) {
-        if (rel.relationshipType !== 'DEPENDS_ON') continue;
+        if (!['DEPENDS_ON', 'DEV_DEPENDENCY_OF'].includes(rel.relationshipType)) continue;
 
-        const sourceComp = components.get(rel.spdxElementId);
-        const targetComp = components.get(rel.relatedSpdxElement);
+        const sourceComp = components.get(rel.spdxElementId)
+        const targetComp = components.get(rel.relatedSpdxElement)
 
         if (!sourceComp || !targetComp) continue;
 
@@ -1024,49 +1130,72 @@ export const parseSPDXComponents = async (spdxJson, namespace) => {
             version: targetComp.version,
             license: targetComp.license,
             packageEcosystem: targetComp.packageEcosystem,
-            isTransitive: sourceComp.isDirect ? 0 : 1,
-            isDirect: sourceComp.isDirect ? 1 : 0,
-            childOfKey: sourceComp.key,
-            spdxId: rel.relatedSpdxElement
-        });
+            isDirect: rel.spdxElementId === rootRef ? 1 : 0,
+            isTransitive: rel.spdxElementId === rootRef ? 0 : 1,
+            isDev: 'DEV_DEPENDENCY_OF' === rel.relationshipType ? 1 : 0,
+            childOfKey: rel.spdxElementId !== rootRef ? sourceComp.key : null,
+        })
     }
 
-    return relationships;
-};
+    return relationships
+}
 
 // Similar improvements for CycloneDX parser
 export const parseCycloneDXComponents = async (cdxJson, namespace) => {
-    const components = new Map();
-    const dependencies = [];
+    const components = new Map()
+    const dependencies = []
+    const parentRef = cdxJson.metadata.component["bom-ref"]
+    const name = cdxJson.metadata.component.name;
+    const version = extractVersion(cdxJson.metadata.component, name)
+    const license = extractLicense(cdxJson.metadata.component)
+    const ecosystem = cdxJson.metadata.component?.purl ? extractEcosystemFromPurl(cdxJson.metadata.component.purl) : 'generic'
+
+    components.set(parentRef, {
+        ref: parentRef,
+        key: await hex(`${namespace}${parentRef}`),
+        name,
+        version,
+        license,
+        packageEcosystem: ecosystem
+    })
 
     for (const component of cdxJson.components || []) {
         if (!component?.['bom-ref']) continue;
 
         const name = component.name;
-        const version = extractVersion(component, name);
-        const license = extractLicense(component);
-        const ecosystem = detectPackageEcosystem(component, name);
+        const version = extractVersion(component, name)
+        const license = extractLicense(component)
+        const ecosystem = component?.purl ? extractEcosystemFromPurl(component.purl) : 'generic'
 
         components.set(component['bom-ref'], {
-            key: await hex(`${namespace}${name}${version || ''} `),
+            ref: component['bom-ref'],
+            key: await hex(`${namespace}${component['bom-ref']}`),
             name,
             version,
             license,
-            packageEcosystem: ecosystem,
-            isTransitive: 1,
-            isDirect: 0
-        });
+            packageEcosystem: ecosystem
+        })
     }
-
-    // Process dependencies
     for (const dep of cdxJson.dependencies || []) {
-        if (!dep?.ref || !dep?.dependsOn) continue;
+        if (!dep?.ref) continue;
 
         const parentComponent = components.get(dep.ref);
         if (!parentComponent) continue;
 
+        if (!dep?.dependsOn || parentRef === dep.ref) {
+            dependencies.push({
+                key: parentComponent.key,
+                name: parentComponent.name,
+                version: parentComponent.version,
+                license: parentComponent.license,
+                packageEcosystem: parentComponent.packageEcosystem,
+                isDirect: 1,
+            })
+            if (!dep?.dependsOn) continue;
+        }
+
         for (const childRef of dep.dependsOn) {
-            const childComponent = components.get(childRef);
+            const childComponent = components.get(childRef)
             if (!childComponent) continue;
 
             dependencies.push({
@@ -1075,13 +1204,199 @@ export const parseCycloneDXComponents = async (cdxJson, namespace) => {
                 version: childComponent.version,
                 license: childComponent.license,
                 packageEcosystem: childComponent.packageEcosystem,
-                isTransitive: parentComponent.isDirect ? 0 : 1,
-                isDirect: parentComponent.isDirect ? 1 : 0,
+                isDirect: parentRef === dep.ref ? 1 : 0,
+                isTransitive: parentRef !== dep.ref ? 1 : 0,
                 childOfKey: parentComponent.key,
-                cdxId: childRef
-            });
+            })
         }
     }
 
-    return dependencies;
-};
+    return dependencies
+}
+
+/**
+ * Base time conversion utilities
+ */
+const TimeUtil = {
+    msToHours: (ms) => ms / (1000 * 60 * 60),
+    msToDays: (ms) => ms / (1000 * 60 * 60 * 24),
+    formatDuration: (ms) => {
+        const days = Math.floor(TimeUtil.msToDays(ms))
+        const hours = Math.floor(TimeUtil.msToHours(ms) % 24)
+        return `${days}d ${hours}h`
+    }
+}
+
+export function calculateAdvisoryMetrics(finding) {
+    const initialReport = finding.createdAt
+    const firstPublished = finding?.publishedAt || finding.createdAt
+    const lastModified = finding.modifiedAt
+    const triageStart = finding.triage.sort((a, b) => a.createdAt = b.createdAt)?.[0].createdAt
+    const triagedAt = finding.triage.filter(t => t?.triagedAt)?.sort((a, b) => a.triagedAt = b.triagedAt)?.[0]?.triagedAt
+
+    return {
+        publicationDays: TimeUtil.msToDays(firstPublished - initialReport),
+        publicationText: TimeUtil.formatDuration(firstPublished - initialReport),
+        lastModifiedText: TimeUtil.formatDuration(Date.now() - lastModified),
+        timeToDiscoverDays: triageStart ? TimeUtil.msToDays(triageStart - firstPublished) : null,
+        timeToDiscoverText: triageStart ? TimeUtil.formatDuration(triageStart - firstPublished) : '',
+        timeToTriageDays: triagedAt ? triagedAt - firstPublished : null,
+        timeToTriageText: triagedAt ? `Triaged in ${TimeUtil.formatDuration(triagedAt - firstPublished)}` : 'Not triaged',
+    }
+}
+
+export function determineExploitMaturity(finding) {
+    if (finding.knownExploits?.length) return 'Active'
+    if (finding.cisaDateAdded) return 'Imminent'
+    if (finding.knownRansomwareCampaignUse) return 'Weaponized'
+    return 'Theoretical'
+}
+
+export function calculateExposureWindow(finding) {
+    const published = finding.publishedAt
+    const triageStart = finding.triage.sort((a, b) => b.createdAt - a.createdAt)?.[0].createdAt
+    return {
+        totalExposureDays: TimeUtil.msToDays(Date.now() - published),
+        totalExposureText: TimeUtil.formatDuration(Date.now() - published),
+        delayExposureDays: TimeUtil.msToDays(triageStart ? triageStart - published : Date.now() - published),
+        delayExposureText: triageStart ? `${TimeUtil.formatDuration(triageStart - published)} MTTR` : 'Ongoing'
+    }
+}
+
+/**
+ * Calculates time from publication to CISA KEV addition
+ * @param {Object} finding - The vulnerability finding object
+ * @returns {Object} Time to KEV metrics
+ */
+export function calculateTimeToCISAReview(finding) {
+    const publishedAt = finding.publishedAt
+    const cisaDateAdded = finding.cisaDateAdded
+
+    if (!publishedAt || !cisaDateAdded) {
+        return {
+            days: null,
+            text: 'Not reviewed'
+        }
+    }
+
+    const cisaReview = cisaDateAdded - publishedAt
+    const days = Math.floor(cisaReview / (1000 * 60 * 60 * 24))
+
+    return {
+        days,
+        text: `${days} days`
+    }
+}
+
+/**
+ * Timeline Analysis Functions for Security Advisory Reviews
+ */
+
+export function findTimelineEvent(timeline, eventName) {
+    return timeline
+        .filter(event => event.value.includes(eventName))
+        .sort((a, b) => b.time - a.time)
+        .shift();
+}
+
+/**
+ * Calculates time to NVD review completion
+ * @param {Object} finding - The vulnerability finding object
+ * @returns {Object} Time to NVD metrics
+ */
+export function calculateTimeToNVDReview(finding) {
+    const publishedAt = finding.publishedAt;
+    const nvdReview = findTimelineEvent(finding.timeline, "NIST Advisory NVD review")?.time;
+
+    if (!publishedAt || !nvdReview) {
+        return {
+            days: null,
+            text: 'Not reviewed'
+        };
+    }
+
+    const timeToNVDMs = nvdReview - publishedAt;
+    const days = Math.floor(timeToNVDMs / (1000 * 60 * 60 * 24));
+
+    return {
+        days,
+        text: `${days} days`
+    };
+}
+
+/**
+ * Calculates time to GitHub Advisory review completion
+ * @param {Object} finding - The vulnerability finding object
+ * @returns {Object} Time to GitHub review metrics
+ */
+export function calculateTimeToGitHubReview(finding) {
+    const publishedAt = finding.publishedAt;
+    const githubReview = findTimelineEvent(finding.timeline, "GitHub Advisory review")?.time;
+
+    if (!publishedAt || !githubReview) {
+        return {
+            days: null,
+            text: 'Not reviewed'
+        };
+    }
+
+    const timeToGitHubMs = githubReview - publishedAt;
+    const days = Math.floor(timeToGitHubMs / (1000 * 60 * 60 * 24));
+
+    return {
+        days,
+        text: `${days} days`
+    };
+}
+
+/**
+ * Calculates observation window metrics
+ * @param {Object} finding - The vulnerability finding object
+ * @returns {Object} Observation window metrics
+ */
+export function calculateObservationWindow(finding) {
+    const lastObserved = findTimelineEvent(finding.timeline, "Last Observed")?.time;
+    const firstPublished = finding.publishedAt;
+    const triageStart = finding.triage.sort((a, b) => a.createdAt - b.createdAt)?.[0].createdAt;
+
+    if (!lastObserved || !firstPublished) {
+        return {
+            days: null,
+            text: 'Unable to calculate Observation Window'
+        };
+    }
+
+    const observationWindowMs = lastObserved - firstPublished;
+    const days = Math.floor(observationWindowMs / (1000 * 60 * 60 * 24));
+    const triageDelayMs = triageStart ? triageStart - firstPublished : null;
+
+    return {
+        days,
+        text: `${days} days`,
+        triageDelay: triageDelayMs ? TimeUtil.formatDuration(triageDelayMs) : 'No triage initiated'
+    };
+}
+
+/**
+ * @param {Object} finding - The vulnerability finding object
+ * @returns {Object} Metrics
+ */
+export function findingMetrics(finding) {
+    const advisoryMetrics = calculateAdvisoryMetrics(finding)
+    const exploitMaturity = determineExploitMaturity(finding)
+    const exposureWindow = calculateExposureWindow(finding)
+    const cisaReview = calculateTimeToCISAReview(finding)
+    const nvdReview = calculateTimeToNVDReview(finding)
+    const githubReview = calculateTimeToGitHubReview(finding)
+    const observationWindow = calculateObservationWindow(finding)
+
+    return {
+        advisoryMetrics,
+        exploitMaturity,
+        exposureWindow,
+        cisaReview,
+        nvdReview,
+        githubReview,
+        observationWindow,
+    }
+}

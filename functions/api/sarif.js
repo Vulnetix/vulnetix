@@ -87,7 +87,7 @@ export async function onRequestPost(context) {
                         artifact: { connect: { uuid: artifact.uuid } },
                     },
                 })
-                data.logger(`/sarif/upload ${artifact.uuid} kid=${data.session.kid}`, info)
+                data.logger.info(`/sarif/upload ${artifact.uuid} kid=${data.session.kid}`, info)
                 sarifData.results = []
                 for (const result of run.results) {
                     const locationsJSON = JSON.stringify(result.locations)
@@ -139,7 +139,7 @@ export async function onRequestPost(context) {
                         },
                         create: resultData,
                     })
-                    data.logger(`/github/repos/sarif_results ${artifact.uuid} kid=${data.session.kid}`, reportInfo)
+                    data.logger.info(`/github/repos/sarif_results ${artifact.uuid} kid=${data.session.kid}`, reportInfo)
                 }
                 files.push(sarifData)
             }

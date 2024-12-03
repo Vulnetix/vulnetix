@@ -19,7 +19,7 @@ export async function onRequestGet(context) {
     })
     for (const app of installs) {
         if (!app.accessToken) {
-            data.logger(`github_apps kid=${data.session.kid} installationId=${app.installationId}`)
+            data.logger.info(`github_apps kid=${data.session.kid} installationId=${app.installationId}`)
             throw new Error('github_apps invalid')
         }
         const gh = new GitHub(data.prisma, data.session.orgId, data.session.memberEmail, app.accessToken)
@@ -40,7 +40,7 @@ export async function onRequestGet(context) {
 
             return Response.json({ error, app })
         }
-        const repos = await Promise.all(content.map(repo => store(data.prisma, data.session, repo)))
+        const repos = await Promise.all(content.map(repo => saveRepo(data.prisma, data.session, repo)))
         gitRepos.push(...repos)
         githubApps.push({
             installationId: parseInt(app.installationId, 10),
@@ -63,7 +63,7 @@ export async function onRequestGet(context) {
         if (error?.message) {
             return Response.json({ error, app: { login: memberKey.keyLabel } })
         }
-        const repos = await Promise.all(content.map(repo => store(data.prisma, data.session, repo)))
+        const repos = await Promise.all(content.map(repo => saveRepo(data.prisma, data.session, repo)))
         gitRepos.push(...repos)
     }
 
@@ -71,32 +71,32 @@ export async function onRequestGet(context) {
         githubApps, gitRepos
     })
 }
-const store = async (prisma, session, repo) => {
-    const create = {
-        fullName: repo.full_name,
-        ghid: repo.id,
-        source: "GitHub",
-        createdAt: (new Date(repo.created_at)).getTime(),
-        updatedAt: (new Date(repo.updated_at)).getTime(),
-        pushedAt: (new Date(repo.pushed_at)).getTime(),
-        defaultBranch: repo.default_branch,
-        ownerId: repo.owner.id,
-        licenseSpdxId: repo.license?.spdx_id || '',
-        licenseName: repo.license?.name || '',
-        fork: repo.fork ? 1 : 0,
-        template: repo.is_template ? 1 : 0,
-        archived: repo.archived ? 1 : 0,
-        visibility: repo.visibility,
-        avatarUrl: repo.owner.avatar_url,
-        org: { connect: { uuid: session.orgId } }
-    }
-    const where = {
-        fullName_orgId: {
-            fullName: create.fullName,
-            orgId: session.orgId,
-        }
-    }
+export const saveRepo = async (prisma, session, repo) => {
     try {
+        const create = {
+            fullName: repo.full_name,
+            ghid: repo.id,
+            source: "GitHub",
+            createdAt: (new Date(repo.created_at)).getTime(),
+            updatedAt: (new Date(repo.updated_at)).getTime(),
+            pushedAt: (new Date(repo.pushed_at)).getTime(),
+            defaultBranch: repo.default_branch,
+            ownerId: repo.owner.id,
+            licenseSpdxId: repo.license?.spdx_id || '',
+            licenseName: repo.license?.name || '',
+            fork: repo.fork ? 1 : 0,
+            template: repo.is_template ? 1 : 0,
+            archived: repo.archived ? 1 : 0,
+            visibility: repo.visibility,
+            avatarUrl: repo.owner.avatar_url,
+            org: { connect: { uuid: session.orgId } }
+        }
+        const where = {
+            fullName_orgId: {
+                fullName: create.fullName,
+                orgId: session.orgId,
+            }
+        }
         const info = await prisma.GitRepo.upsert({
             where,
             create,
@@ -111,9 +111,11 @@ const store = async (prisma, session, repo) => {
             },
         })
         // console.log(`/github/repos git_repos ${create.fullName} kid=${session.kid}`, info)
+        create.orgId = session.orgId
+        delete create.org
+
+        return create
     } catch (err) {
         console.error(err)
     }
-
-    return create
 }

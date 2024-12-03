@@ -4,9 +4,6 @@ import { useMemberStore } from '@/stores/member'
 import { Client, isJSON, octodex } from '@/utils'
 import { reactive } from 'vue'
 import { useTheme } from 'vuetify'
-//TODO https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#check-if-vulnerability-alerts-are-enabled-for-a-repository
-//TODO https://docs.github.com/en/rest/dependabot/alerts?apiVersion=2022-11-28#list-dependabot-alerts-for-a-repository
-//TODO https://docs.github.com/en/rest/secret-scanning/secret-scanning?apiVersion=2022-11-28#list-secret-scanning-alerts-for-a-repository
 
 const client = new Client()
 const Member = useMemberStore()

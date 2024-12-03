@@ -31,7 +31,7 @@ export async function onRequestPost(context) {
     })
     tokenInfo.secretMasked = mask(tokenInfo.secret)
     delete tokenInfo.secret
-    data.logger(`/github/pat github_pat label=${data.json.label}`, tokenInfo)
+    data.logger.info(`/github/pat github_pat label=${data.json.label}`, tokenInfo)
     const gh = new GitHub(data.prisma, data.session.orgId, data.session.memberEmail, data.json.token)
     const { content, error, tokenExpiry } = await gh.getUser()
     if (error?.message) {
@@ -57,7 +57,7 @@ export async function onRequestPost(context) {
             memberEmail: data.session.memberEmail,
         },
     })
-    data.logger(`/github/pat github_pat label=${data.json.label}`, patInfo)
+    data.logger.info(`/github/pat github_pat label=${data.json.label}`, patInfo)
 
     return Response.json(tokenInfo)
 }

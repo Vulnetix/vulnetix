@@ -13,6 +13,12 @@ export async function onRequestGet(context) {
     const gitRepos = await data.prisma.GitRepo.findMany({
         where: {
             orgId: data.session.orgId,
+            branches: {
+                some: { monitored: 1 },
+            },
+        },
+        include: {
+            branches: true,
         },
         take,
         skip,

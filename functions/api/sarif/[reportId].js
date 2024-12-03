@@ -27,6 +27,6 @@ export async function onRequestDelete(context) {
         await data.prisma.SarifResults.delete({ where: { guid: result.guid } })
     }
     const sarifInfo = await data.prisma.SARIFInfo.delete({ where: { reportId: params.reportId } })
-    data.logger(`DELETE /sarif/[${params.reportId}]`, sarifInfo)
+    data.logger.info(`DELETE /sarif/[${params.reportId}]`, sarifInfo)
     return Response.json({ ok: true, reportId: params.reportId, artifactUuid: sarif.artifact.uuid })
 }

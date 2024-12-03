@@ -965,12 +965,16 @@ export class GitHub {
 
         return { ok: true, content: repos }
     }
-    async getBranch(repo, branch) {
+    async getBranch(repoName, branch) {
         // https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#get-a-branch
-        const url = `${this.baseUrl}/repos/${repo.full_name}/branches/${branch}`
-        // console.log(`github.getBranch() ${url}`)
-        const data = await this.fetchJSON(url)
-        return data
+        const url = `${this.baseUrl}/repos/${repoName}/branches/${branch}`
+        const response = await this.fetchJSON(url)
+        if (!response.ok) {
+            console.error(`req headers=${JSON.stringify(this.headers, null, 2)}`)
+            console.error(`GitHub error! status: ${response.status} ${response.statusText}`)
+        }
+
+        return response
     }
     async getBranches(full_name) {
         // https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#list-branches

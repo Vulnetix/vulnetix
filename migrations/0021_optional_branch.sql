@@ -1,0 +1,2 @@
+ALTER TABLE GitBranch
+ADD monitored INTEGER NOT NULL DEFAULT 0;

@@ -8,23 +8,9 @@ import {
 } from "@/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
+import anylogger from 'anylogger';
+import 'anylogger-console';
 
-export const errorHandling = async context => {
-    const {
-        request, // same as existing Worker API
-        env, // same as existing Worker API
-        params, // if filename includes [id] or [[path]]
-        waitUntil, // same as ctx.waitUntil in existing Worker API
-        next, // used for middleware or to fetch assets
-        data, // arbitrary space for passing data between middlewares
-    } = context
-    try {
-        return await next()
-    } catch (err) {
-        console.error(err.message, err.stack)
-        return new Response(err.message, { status: 500 })
-    }
-}
 
 // Respond to OPTIONS method
 export const onRequestOptions = async () => {
@@ -39,7 +25,28 @@ export const onRequestOptions = async () => {
     })
 }
 
-export const setup = async context => {
+// Before any other middleware, setup log handling
+const errorHandling = async context => {
+    const {
+        request, // same as existing Worker API
+        env, // same as existing Worker API
+        params, // if filename includes [id] or [[path]]
+        waitUntil, // same as ctx.waitUntil in existing Worker API
+        next, // used for middleware or to fetch assets
+        data, // arbitrary space for passing data between middlewares
+    } = context
+    data.logger = anylogger('vulnetix-worker')
+    setLoggerLevel(data.logger, env.LOG_LEVEL)
+    try {
+        return await next()
+    } catch (err) {
+        data.logger.error(err.message, err.stack)
+        return new Response(err.message, { status: 500 })
+    }
+}
+
+// Connection to D1 using Prisma ORM and ensure JSON body is available as an object
+const setupDependencies = async context => {
     const { request, env, data, next } = context
     const adapter = new PrismaD1(env.d1db)
     const { searchParams } = new URL(request.url)
@@ -57,9 +64,7 @@ export const setup = async context => {
             timeout: 2000, // default: 5000
         },
     }
-    data.logger = () => { }
     if (env.LOGGER === "DEBUG") {
-        data.logger = console.log
         clientOptions.log = [
             {
                 emit: "event",
@@ -69,13 +74,14 @@ export const setup = async context => {
     }
     data.prisma = new PrismaClient(clientOptions)
     data.prisma.$on("query", async e => {
-        data.logger(`${e.query} ${e.params}`)
+        data.logger.debug(`${e.query} ${e.params}`)
     })
 
     return await next()
 }
 
-export const authentication = async context => {
+// Ensure authentication is always performed, with specified exceptions
+const authentication = async context => {
     const { request, next, data } = context
     const url = new URL(request.url)
     if (request.cf.botManagement.verifiedBot || request.cf.botManagement.score <= 60) {
@@ -103,13 +109,13 @@ export const authentication = async context => {
     // Convert timestamp from string to integer
     const timestamp = parseInt(timestampStr, 10)
     if (isNaN(timestamp)) {
-        data.logger('Invalid timestamp format', timestamp)
+        data.logger.warn('Invalid timestamp format', timestamp)
         return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } }), { status: 403 })
     }
     // Validate timestamp (you may want to add a check to ensure the request isn't too old)
     const currentTimestamp = new Date().getTime()
     if (Math.abs(currentTimestamp - timestamp) > 3e+5) { // e.g., allow a 5-minute skew
-        data.logger('expired, skew', timestamp)
+        data.logger.warn('expired, skew', timestamp)
         return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.EXPIRED } }), { status: 401 })
     }
     // Retrieve the session key from the database using Prisma
@@ -117,7 +123,7 @@ export const authentication = async context => {
         where: { kid }
     })
     if (!session.expiry || session.expiry <= new Date().getTime()) {
-        data.logger('expired', timestamp)
+        data.logger.warn('expired', timestamp)
         return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.EXPIRED } }), { status: 401 })
     }
     const secretKeyBytes = new TextEncoder().encode(session.secret)
@@ -140,7 +146,7 @@ export const authentication = async context => {
     const isValid = await crypto.subtle.verify("HMAC", key, signatureBytes, payloadBytes)
 
     if (!isValid) {
-        data.logger('Invalid signature', signature)
+        data.logger.warn('Invalid signature', signature)
         return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } }), { status: 401 })
     }
     data.session = session
@@ -164,4 +170,23 @@ const dynamicHeaders = async context => {
     return response
 }
 
-export const onRequest = [errorHandling, setup, authentication, dynamicHeaders]
+/**
+ * Maps log level strings to their numeric values and validates input
+ * @param {Object} log - Logging adapter
+ * @param {Object} level - Environment configuration object containing LOG_LEVEL
+ */
+export const setLoggerLevel = (log, level = "WARN") => {
+    const LOG_LEVEL_MAP = {
+        'ERROR': log.ERROR,
+        'WARN': log.WARN,
+        'INFO': log.INFO,
+        'LOG': log.LOG,
+        'DEBUG': log.DEBUG,
+        'TRACE': log.TRACE,
+        'ALL': log.ALL,
+        'NONE': log.NONE
+    }
+    log.level = !level || !(level in LOG_LEVEL_MAP) ? log.LOG : LOG_LEVEL_MAP[level]
+}
+
+export const onRequest = [errorHandling, setupDependencies, authentication, dynamicHeaders]
