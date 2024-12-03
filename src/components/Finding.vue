@@ -1,5 +1,6 @@
 <script setup>
 import TruncatableText from '@/components/TruncatableText.vue';
+import { findingMetrics } from '@/finding';
 import {
     getPastelColor,
     getSemVerWithoutOperator,
@@ -30,6 +31,7 @@ const response = ref('')
 const justification = ref('')
 const justificationText = ref('')
 const versions = ref([])
+const metrics = ref({})
 // CVSS
 const cvssDialog = ref(false)
 const activeTab = ref('v40')
@@ -76,6 +78,7 @@ const Justification = ref([
 ])
 
 const init = () => {
+    metrics.value = findingMetrics(props.finding)
     const versionSet = new Set()
     if (props.finding?.packageVersion) {
         versionSet.add(getSemVerWithoutOperator(props.finding.packageVersion));
@@ -1214,30 +1217,6 @@ watch([
                             </VCardText>
                         </VCard>
 
-                        <VCard
-                            variant="outlined"
-                            title="Vulnerable Paths"
-                        >
-                            <VCardText>
-                                <VCodeBlock
-                                    autodetect
-                                    highlightjs
-                                    code-block-radius="1em"
-                                    :theme="global.name.value === 'dark' ? 'atom-one-dark' : 'atom-one-light'"
-                                    v-if="props.finding?.affectedFunctions"
-                                    :code="props.finding.affectedFunctions"
-                                />
-                                <VAlert
-                                    v-else
-                                    style="white-space: preserve-breaks;"
-                                    icon="mdi:warning"
-                                    color="warning"
-                                    variant="tonal"
-                                >
-                                    Advisory provided no reviewed details.
-                                </VAlert>
-                            </VCardText>
-                        </VCard>
                     </VCol>
 
                     <!-- Prioritisation -->
@@ -2572,7 +2551,120 @@ watch([
 
                             </VCardText>
                         </VCard>
-
+                    </VCol>
+                </VRow>
+                <VRow
+                    dense
+                    v-if="metrics?.advisoryMetrics"
+                >
+                    <VCol
+                        cols="12"
+                        md="2"
+                    >
+                        <VCard class="stat-card pastel-blue h-100">
+                            <VCardText class="d-flex flex-column justify-center h-100">
+                                <div class="text-overline mb-1">Publication Age</div>
+                                <div class="stat-value mb-2">{{ metrics.advisoryMetrics.publicationText }}</div>
+                                <div class="stat-subtitle">Modified {{ metrics.advisoryMetrics.lastModifiedText }} ago
+                                </div>
+                            </VCardText>
+                        </VCard>
+                    </VCol>
+                    <VCol
+                        cols="12"
+                        md="2"
+                    >
+                        <VCard class="stat-card pastel-purple h-100">
+                            <VCardText class="d-flex flex-column justify-center h-100">
+                                <div class="text-overline mb-1">Time to Discover</div>
+                                <div class="stat-value mb-2">{{ metrics.advisoryMetrics.timeToDiscoverText }}</div>
+                                <div class="stat-subtitle">{{ metrics.advisoryMetrics.timeToTriageText }}</div>
+                            </VCardText>
+                        </VCard>
+                    </VCol>
+                    <VCol
+                        cols="12"
+                        md="2"
+                    >
+                        <VCard class="stat-card pastel-mint h-100">
+                            <VCardText class="d-flex flex-column justify-center h-100">
+                                <div class="text-overline mb-1">Exposure Window</div>
+                                <div class="stat-value mb-2">{{ metrics.exposureWindow.totalExposureText }}</div>
+                                <div class="stat-subtitle">Exposure {{ metrics.exposureWindow.delayExposureText }}</div>
+                            </VCardText>
+                        </VCard>
+                    </VCol>
+                    <VCol
+                        cols="12"
+                        md="2"
+                    >
+                        <VCard class="stat-card pastel-yellow h-100">
+                            <VCardText class="d-flex flex-column justify-center h-100">
+                                <div class="text-overline mb-1">GitHub</div>
+                                <div class="stat-value mb-2">{{ metrics.githubReview.text }}</div>
+                                <div class="stat-subtitle">Time to Review</div>
+                            </VCardText>
+                        </VCard>
+                    </VCol>
+                    <VCol
+                        cols="12"
+                        md="2"
+                    >
+                        <VCard class="stat-card pastel-pink h-100">
+                            <VCardText class="d-flex flex-column justify-center h-100">
+                                <div class="text-overline mb-1">NIST NVD</div>
+                                <div class="stat-value mb-2">{{ metrics.nvdReview.text }}</div>
+                                <div class="stat-subtitle">Time for NVD enrichment</div>
+                            </VCardText>
+                        </VCard>
+                    </VCol>
+                    <VCol
+                        cols="12"
+                        md="2"
+                    >
+                        <VCard class="stat-card pastel-peach h-100">
+                            <VCardText class="d-flex flex-column justify-center h-100">
+                                <div class="text-overline mb-1">CISA</div>
+                                <div class="stat-value mb-2">{{ metrics.cisaReview.text }}</div>
+                                <div class="stat-subtitle">Time for CISA enrichment</div>
+                            </VCardText>
+                        </VCard>
+                    </VCol>
+                </VRow>
+                <VRow>
+                    <VCol
+                        cols="12"
+                        md="6"
+                    >
+                        <VCard
+                            variant="outlined"
+                            title="Vulnerable Paths"
+                        >
+                            <VCardText>
+                                <VCodeBlock
+                                    autodetect
+                                    highlightjs
+                                    code-block-radius="1em"
+                                    :theme="global.name.value === 'dark' ? 'atom-one-dark' : 'atom-one-light'"
+                                    v-if="props.finding?.affectedFunctions"
+                                    :code="props.finding.affectedFunctions"
+                                />
+                                <VAlert
+                                    v-else
+                                    style="white-space: preserve-breaks;"
+                                    icon="mdi:warning"
+                                    color="warning"
+                                    variant="tonal"
+                                >
+                                    Advisory provided no reviewed details.
+                                </VAlert>
+                            </VCardText>
+                        </VCard>
+                    </VCol>
+                    <VCol
+                        cols="12"
+                        md="6"
+                    >
                         <VCard
                             variant="outlined"
                             title="Package Versions"
@@ -2738,5 +2830,82 @@ watch([
 
 .finding-list .VList-item:hover {
     background-color: rgba(0, 0, 0, 0.04);
+}
+
+.stat-card {
+    border-radius: 16px;
+    transition: all 0.3s ease;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.text-overline {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.0625em;
+    color: rgb(var(--v-theme-on-surface-bright))
+}
+
+.stat-subtitle {
+    font-size: 0.875rem;
+    opacity: 0.8;
+}
+
+/* Pastel Color Schemes */
+.pastel-blue {
+    background: #E3F2FD;
+    color: #1565C0;
+}
+
+.pastel-purple {
+    background: #F3E5F5;
+    color: #6A1B9A;
+}
+
+.pastel-peach {
+    background: #FFF3E0;
+    color: #E65100;
+}
+
+.pastel-mint {
+    background: #E8F5E9;
+    color: #2E7D32;
+}
+
+.pastel-yellow {
+    background: #FFFDE7;
+    color: #F9A825;
+}
+
+.pastel-pink {
+    background: #FCE4EC;
+    color: #C2185B;
+}
+
+.h-100 {
+    height: 100%;
+}
+
+/* Ensuring text remains readable */
+.stat-card .text-overline,
+.stat-card .stat-subtitle {
+    opacity: 0.8;
+}
+
+/* Consistent card padding */
+.v-card__text {
+    padding: 20px;
 }
 </style>

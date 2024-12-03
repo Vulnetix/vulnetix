@@ -1228,17 +1228,20 @@ const TimeUtil = {
 }
 
 export function calculateAdvisoryMetrics(finding) {
-    const initialReport = finding.createdAt;
-    const firstPublished = finding.publishedAt;
-    const lastModified = finding.modifiedAt;
-    const triageStart = finding.triage.sort((a, b) => a.createdAt - b.createdAt).pop()?.createdAt
-    const triagedAt = finding.triage.sort((a, b) => a.triagedAt - b.triagedAt).pop()?.triagedAt
+    const initialReport = finding.createdAt
+    const firstPublished = finding?.publishedAt || finding.createdAt
+    const lastModified = finding.modifiedAt
+    const triageStart = finding.triage.sort((a, b) => a.createdAt = b.createdAt)?.[0].createdAt
+    const triagedAt = finding.triage.filter(t => t?.triagedAt)?.sort((a, b) => a.triagedAt = b.triagedAt)?.[0]?.triagedAt
 
     return {
-        timeToInitialPublication: TimeUtil.formatDuration(firstPublished - initialReport),
-        lastModified: TimeUtil.formatDuration(Date.now() - lastModified),
-        timeToDiscover: TimeUtil.formatDuration(triageStart - firstPublished),
-        timeToTriage: triagedAt ? TimeUtil.formatDuration(triagedAt - firstPublished) : 'Not triaged',
+        publicationDays: TimeUtil.msToDays(firstPublished - initialReport),
+        publicationText: TimeUtil.formatDuration(firstPublished - initialReport),
+        lastModifiedText: TimeUtil.formatDuration(Date.now() - lastModified),
+        timeToDiscoverDays: triageStart ? TimeUtil.msToDays(triageStart - firstPublished) : null,
+        timeToDiscoverText: triageStart ? TimeUtil.formatDuration(triageStart - firstPublished) : '',
+        timeToTriageDays: triagedAt ? triagedAt - firstPublished : null,
+        timeToTriageText: triagedAt ? `Triaged in ${TimeUtil.formatDuration(triagedAt - firstPublished)}` : 'Not triaged',
     }
 }
 
@@ -1251,10 +1254,12 @@ export function determineExploitMaturity(finding) {
 
 export function calculateExposureWindow(finding) {
     const published = finding.publishedAt
-    const triageStart = finding.triage.sort((a, b) => a.createdAt - b.createdAt).pop()?.createdAt
+    const triageStart = finding.triage.sort((a, b) => b.createdAt - a.createdAt)?.[0].createdAt
     return {
-        totalExposure: TimeUtil.formatDuration(Date.now() - published),
-        delayExposure: triageStart ? TimeUtil.formatDuration(triageStart - published) : 'Ongoing'
+        totalExposureDays: TimeUtil.msToDays(Date.now() - published),
+        totalExposureText: TimeUtil.formatDuration(Date.now() - published),
+        delayExposureDays: TimeUtil.msToDays(triageStart ? triageStart - published : Date.now() - published),
+        delayExposureText: triageStart ? `${TimeUtil.formatDuration(triageStart - published)} MTTR` : 'Ongoing'
     }
 }
 
@@ -1263,23 +1268,23 @@ export function calculateExposureWindow(finding) {
  * @param {Object} finding - The vulnerability finding object
  * @returns {Object} Time to KEV metrics
  */
-export function calculateTimeToKEV(finding) {
+export function calculateTimeToCISAReview(finding) {
     const publishedAt = finding.publishedAt
     const cisaDateAdded = finding.cisaDateAdded
 
     if (!publishedAt || !cisaDateAdded) {
         return {
-            timeToKEVDays: null,
-            humanReadable: 'Unable to calculate - missing required timestamps'
+            days: null,
+            text: 'Not reviewed'
         }
     }
 
-    const timeToKEVMs = cisaDateAdded - publishedAt
-    const timeToKEVDays = Math.floor(timeToKEVMs / (1000 * 60 * 60 * 24))
+    const cisaReview = cisaDateAdded - publishedAt
+    const days = Math.floor(cisaReview / (1000 * 60 * 60 * 24))
 
     return {
-        timeToKEVDays,
-        humanReadable: `${timeToKEVDays} days`
+        days,
+        text: `${days} days`
     }
 }
 
@@ -1305,17 +1310,17 @@ export function calculateTimeToNVDReview(finding) {
 
     if (!publishedAt || !nvdReview) {
         return {
-            timeToNVDDays: null,
-            humanReadable: 'NVD has not reviewed'
+            days: null,
+            text: 'Not reviewed'
         };
     }
 
     const timeToNVDMs = nvdReview - publishedAt;
-    const timeToNVDDays = Math.floor(timeToNVDMs / (1000 * 60 * 60 * 24));
+    const days = Math.floor(timeToNVDMs / (1000 * 60 * 60 * 24));
 
     return {
-        timeToNVDDays,
-        humanReadable: `${timeToNVDDays} days`
+        days,
+        text: `${days} days`
     };
 }
 
@@ -1330,17 +1335,17 @@ export function calculateTimeToGitHubReview(finding) {
 
     if (!publishedAt || !githubReview) {
         return {
-            timeToGitHubDays: null,
-            humanReadable: 'GitHub has not reviewed'
+            days: null,
+            text: 'Not reviewed'
         };
     }
 
     const timeToGitHubMs = githubReview - publishedAt;
-    const timeToGitHubDays = Math.floor(timeToGitHubMs / (1000 * 60 * 60 * 24));
+    const days = Math.floor(timeToGitHubMs / (1000 * 60 * 60 * 24));
 
     return {
-        timeToGitHubDays,
-        humanReadable: `${timeToGitHubDays} days`
+        days,
+        text: `${days} days`
     };
 }
 
@@ -1352,48 +1357,46 @@ export function calculateTimeToGitHubReview(finding) {
 export function calculateObservationWindow(finding) {
     const lastObserved = findTimelineEvent(finding.timeline, "Last Observed")?.time;
     const firstPublished = finding.publishedAt;
-    const triageStart = finding.triage.sort((a, b) => a.createdAt - b.createdAt).shift()?.createdAt;
+    const triageStart = finding.triage.sort((a, b) => a.createdAt - b.createdAt)?.[0].createdAt;
 
     if (!lastObserved || !firstPublished) {
         return {
-            observationWindowDays: null,
-            humanReadable: 'Unable to calculate Observation Window'
+            days: null,
+            text: 'Unable to calculate Observation Window'
         };
     }
 
     const observationWindowMs = lastObserved - firstPublished;
-    const observationWindowDays = Math.floor(observationWindowMs / (1000 * 60 * 60 * 24));
+    const days = Math.floor(observationWindowMs / (1000 * 60 * 60 * 24));
     const triageDelayMs = triageStart ? triageStart - firstPublished : null;
 
     return {
-        observationWindowDays,
-        humanReadable: `${observationWindowDays} days`,
+        days,
+        text: `${days} days`,
         triageDelay: triageDelayMs ? TimeUtil.formatDuration(triageDelayMs) : 'No triage initiated'
     };
 }
 
 /**
- * Comprehensive advisory review timeline analysis
  * @param {Object} finding - The vulnerability finding object
- * @returns {Object} Complete advisory review metrics
+ * @returns {Object} Metrics
  */
-export function analyzeAdvisoryReviewTimeline(finding) {
-    const nvdMetrics = calculateTimeToNVDReview(finding);
-    const githubMetrics = calculateTimeToGitHubReview(finding);
-    const kevMetrics = calculateTimeToKEV(finding);
-    const observationMetrics = calculateObservationWindow(finding);
-
-    const reviewEvents = finding.timeline
-        .filter(event => event.value.toLowerCase().includes('review'))
-        .sort((a, b) => a.time - b.time);
+export function findingMetrics(finding) {
+    const advisoryMetrics = calculateAdvisoryMetrics(finding)
+    const exploitMaturity = determineExploitMaturity(finding)
+    const exposureWindow = calculateExposureWindow(finding)
+    const cisaReview = calculateTimeToCISAReview(finding)
+    const nvdReview = calculateTimeToNVDReview(finding)
+    const githubReview = calculateTimeToGitHubReview(finding)
+    const observationWindow = calculateObservationWindow(finding)
 
     return {
-        nvdReview: nvdMetrics,
-        githubReview: githubMetrics,
-        kevAddition: kevMetrics,
-        observation: observationMetrics,
-        hasNvdReview: !!nvdMetrics.timeToNVDDays,
-        hasGithubReview: !!githubMetrics.timeToGitHubDays,
-        hasKevAddition: !!kevMetrics.timeToKEVDays,
+        advisoryMetrics,
+        exploitMaturity,
+        exposureWindow,
+        cisaReview,
+        nvdReview,
+        githubReview,
+        observationWindow,
     }
 }

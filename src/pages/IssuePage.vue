@@ -50,8 +50,8 @@ class Controller {
                 state.finding = data.finding
                 state.branches = [...new Set([data.finding?.spdx?.repo?.defaultBranch, data.finding?.spdx?.repo?.defaultBranch].filter(i => !!i))]
                 state.currentTriage = data.finding.triage.sort((a, b) =>
-                    a.lastObserved - b.lastObserved
-                ).pop()
+                    b.lastObserved - a.lastObserved
+                )?.[0]
             }
             state.loading = false
         } catch (e) {
@@ -206,80 +206,76 @@ onBeforeRouteUpdate(async (to, from) => {
 
     <VTabsWindow v-model="tab">
         <VTabsWindowItem value="issue">
-            <VCard>
-                <VProgressLinear
-                    :active="state.loading"
-                    :indeterminate="state.loading"
-                    color="primary"
-                    absolute
-                    bottom
-                />
-                <VAlert
-                    v-if="state.error"
-                    color="error"
-                    icon="$error"
-                    title="Error"
-                    :text="state.error"
-                    border="start"
-                    variant="tonal"
-                />
-                <VAlert
-                    v-if="state.warning"
-                    color="warning"
-                    icon="$warning"
-                    title="Warning"
-                    :text="state.warning"
-                    border="start"
-                    variant="tonal"
-                />
-                <VAlert
-                    v-if="state.success"
-                    color="success"
-                    icon="$success"
-                    title="Success"
-                    :text="state.success"
-                    border="start"
-                    variant="tonal"
-                />
-                <VAlert
-                    v-if="state.info"
-                    color="info"
-                    icon="$info"
-                    title="Information"
-                    :text="state.info"
-                    border="start"
-                    variant="tonal"
-                />
-                <VCardText>
-                    <Finding
-                        v-if="state.finding"
-                        :finding="state.finding"
-                        :branches="state.branches"
-                        :current-triage="state.currentTriage"
-                        @click:saveTriage="controller.handleTriage"
-                        @vectorUpdated="controller.vectorUpdated"
-                    />
-                    <VEmptyState
-                        v-if="state.loading"
-                        size="250"
-                    >
-                        <template v-slot:media>
-                            <div class="mb-8">
-                                <IconVulnetix width="150" />
-                            </div>
-                        </template>
+            <VProgressLinear
+                :active="state.loading"
+                :indeterminate="state.loading"
+                color="primary"
+                absolute
+                bottom
+            />
+            <VAlert
+                v-if="state.error"
+                color="error"
+                icon="$error"
+                title="Error"
+                :text="state.error"
+                border="start"
+                variant="tonal"
+            />
+            <VAlert
+                v-if="state.warning"
+                color="warning"
+                icon="$warning"
+                title="Warning"
+                :text="state.warning"
+                border="start"
+                variant="tonal"
+            />
+            <VAlert
+                v-if="state.success"
+                color="success"
+                icon="$success"
+                title="Success"
+                :text="state.success"
+                border="start"
+                variant="tonal"
+            />
+            <VAlert
+                v-if="state.info"
+                color="info"
+                icon="$info"
+                title="Information"
+                :text="state.info"
+                border="start"
+                variant="tonal"
+            />
+            <Finding
+                v-if="state.finding"
+                :finding="state.finding"
+                :branches="state.branches"
+                :current-triage="state.currentTriage"
+                @click:saveTriage="controller.handleTriage"
+                @vectorUpdated="controller.vectorUpdated"
+            />
+            <VEmptyState
+                v-if="state.loading"
+                size="250"
+            >
+                <template v-slot:media>
+                    <div class="mb-8">
+                        <IconVulnetix width="150" />
+                    </div>
+                </template>
 
-                        <template v-slot:title>
-                            <div class="text-h6 text-high-emphasis">Pix is working</div>
-                        </template>
+                <template v-slot:title>
+                    <div class="text-h6 text-high-emphasis">Pix is working</div>
+                </template>
 
-                        <template v-slot:text>
-                            <div class="text-body-1">Gathering the latest information for your issue.</div>
-                            <div class="text-body-1">This should be no more than 10 seconds.</div>
-                        </template>
-                    </VEmptyState>
-                </VCardText>
-            </VCard>
+                <template v-slot:text>
+                    <div class="text-body-1">Gathering the latest information for your issue.</div>
+                    <div class="text-body-1">This should be no more than 10 seconds.</div>
+                </template>
+            </VEmptyState>
         </VTabsWindowItem>
 
         <VTabsWindowItem value="dependencies">

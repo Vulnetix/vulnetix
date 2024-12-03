@@ -50,7 +50,7 @@ const refreshAnalytics = computed(() => {
                     <div v-if="state.total.unresolved_percentage > 0">
                         The remaining triage queue is <span class="text-primary">{{ state.total.queued }} ({{
                             round(state.total.unresolved_percentage)
-                        }}%)</span>
+                            }}%)</span>
                         of
                         <span class="text-primary">{{ state.total.total_findings }}</span> unresolved issues.
                     </div>
