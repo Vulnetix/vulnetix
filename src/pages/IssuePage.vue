@@ -20,6 +20,8 @@ const initialState = {
     loading: false,
     finding: null,
     branches: [],
+    spdxDependencies: [],
+    cdxDependencies: [],
     currentTriage: null,
 }
 
@@ -48,6 +50,14 @@ class Controller {
                     })
                 }
                 state.finding = data.finding
+                if (state.finding?.spdx?.dependencies) {
+                    const packageSpdxKey = state.finding.spdx.dependencies.filter(item => item.name === state.finding.packageName)?.[0]?.key
+                    state.spdxDependencies.push(...state.finding.spdx.dependencies.filter(item => packageSpdxKey === item.key || packageSpdxKey === item.childOfKey))
+                }
+                if (state.finding?.cdx?.dependencies) {
+                    const packageCdxKey = state.finding.cdx.dependencies.filter(item => item.name === state.finding.packageName)?.[0]?.key
+                    state.cdxDependencies.push(...state.finding.cdx.dependencies.filter(item => packageCdxKey === item.key || packageCdxKey === item.childOfKey))
+                }
                 state.branches = [...new Set([data.finding?.spdx?.repo?.defaultBranch, data.finding?.spdx?.repo?.defaultBranch].filter(i => !!i))]
                 state.currentTriage = data.finding.triage.sort((a, b) =>
                     b.lastObserved - a.lastObserved
@@ -308,13 +318,13 @@ onBeforeRouteUpdate(async (to, from) => {
                 </VEmptyState>
             </VCard>
             <DependencyGraph
-                v-if="state.finding?.spdx?.dependencies"
-                :dependencies="state.finding.spdx.dependencies"
+                v-if="state.spdxDependencies.length"
+                :dependencies="state.spdxDependencies"
                 title="SPDX Dependencies"
             />
             <DependencyGraph
-                v-if="state.finding?.cdx?.dependencies"
-                :dependencies="state.finding.cdx.dependencies"
+                v-if="state.cdxDependencies.length"
+                :dependencies="state.cdxDependencies"
                 title="CycloneDX Dependencies"
             />
         </VTabsWindowItem>
