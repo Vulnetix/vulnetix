@@ -1,0 +1,3 @@
+[submodule "api"]
+	path = functions/api
+	url = git@github.com:Vulnetix/workers-api.git
