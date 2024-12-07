@@ -28,8 +28,13 @@ plan: ## plan a migrate for schema changes in prisma orm
 		--to-schema-datamodel ./prisma/schema.prisma \
 		--script --from-local-d1 >migrations/0000_plan_TMP.sql
 
-update: ## get app updates, migrate should be run first
+update: submodule-update ## get app updates, migrate should be run first
 	yarn up
+
+submodule-update: ## git submodule foreach git submodule update
+	git submodule sync
+	git submodule foreach git submodule update
+	git submodule status --recursive
 
 install: ## install deps and build icons
 	yarn install
