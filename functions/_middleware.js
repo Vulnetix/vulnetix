@@ -5,7 +5,7 @@ import {
     hexStringToUint8Array,
     isJSON,
     unauthenticatedRoutes,
-} from "@/utils";
+} from "@/shared/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
 import anylogger from 'anylogger';
