@@ -7,3 +7,6 @@
 [submodule "static"]
 	path = public
 	url = git@github.com:Vulnetix/saas-static.git
+[submodule "frontend"]
+	path = src
+	url = git@github.com:Vulnetix/saas-frontend.git
