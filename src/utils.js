@@ -2038,7 +2038,7 @@ export const getPastelColor = () => {
         blue.toString(16).padStart(2, '0')
 }
 
-const owasp_top_ten_cwe = {
+export const owasp_top_ten_cwe = {
     "A01 Broken Access Control": [
         { "ref": "CWE-22", "text": "Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')" },
         { "ref": "CWE-23", "text": "Relative Path Traversal" },
