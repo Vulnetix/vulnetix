@@ -59,12 +59,14 @@ run: ## FOR DOCO ONLY - Run these one at a time, do not call this target directl
 
 git-demo:
 	[[ -z "$(shell git status -s)" ]] || git stash save "changes for demo"
-	git checkout main
+	git checkout -f main
 	git branch -D demo
 	git fetch -a
 	git pull
 	git checkout -b demo main
 	git push --set-upstream origin demo
+	git submodule sync
+	git submodule foreach git submodule update
 	git stash pop || true
 
 _purge_data: ## FOR DOCO ONLY
