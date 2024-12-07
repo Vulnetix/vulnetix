@@ -10,3 +10,6 @@
 [submodule "frontend"]
 	path = src
 	url = git@github.com:Vulnetix/saas-frontend.git
+[submodule "shared"]
+	path = shared
+	url = git@github.com:Vulnetix/shared-javascript.git

@@ -1,3 +1,5 @@
+import { PrismaD1 } from '@prisma/adapter-d1';
+import { PrismaClient } from '@prisma/client';
 import {
     AuthResult,
     Client,
@@ -5,9 +7,7 @@ import {
     hexStringToUint8Array,
     isJSON,
     unauthenticatedRoutes,
-} from "@/shared/utils";
-import { PrismaD1 } from '@prisma/adapter-d1';
-import { PrismaClient } from '@prisma/client';
+} from "@shared/utils";
 import anylogger from 'anylogger';
 import 'anylogger-console';
 
