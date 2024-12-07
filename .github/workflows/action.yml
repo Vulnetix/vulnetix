@@ -20,16 +20,17 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version-file: ".node-version"
+          node-version-file: ".nvmrc"
 
       - name: Install dependencies
         run: |
-          yarn
+          yarn set version stable
+          yarn plugin import https://github.com/CycloneDX/cyclonedx-node-yarn/releases/latest/download/yarn-plugin-cyclonedx.cjs
 
       - name: Build project
         run: |
-          npm run build
-          npm sbom --omit dev --package-lock-only --sbom-format cyclonedx | jq >npm.cdx.json
+          yarn install
+          yarn cyclonedx --spec-version 1.6 --output-format JSON --output-file vulnetix.cdx.json
 
       # - name: Upload semgrep.sarif.json
       #   uses: actions/upload-artifact@v4
@@ -37,11 +38,11 @@ jobs:
       #     name: semgrep_sarif
       #     path: semgrep.sarif.json
 
-      - name: Upload npm.cdx.json
+      - name: Upload vulnetix.cdx.json
         uses: actions/upload-artifact@v4
         with:
-          name: sbom
-          path: npm.cdx.json
+          name: cyclonedx
+          path: vulnetix.cdx.json
 
       - name: Generate SBOM attestation
         uses: actions/attest-sbom@v1
@@ -50,4 +51,4 @@ jobs:
         with:
           subject-digest: "sha256:7d070f6b64d9bcc530fe99cc21eaaa4b3c364e0b2d367d7735671fa202a03b32"
           subject-name: "subject"
-          sbom-path: npm.cdx.json
+          sbom-path: vulnetix.cdx.json
