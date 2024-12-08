@@ -19,11 +19,13 @@ model Session {
   secret      String?
   authn_ip    String?
   authn_ua    String?
+
+  @@index([orgId, memberEmail])
 }
 
 model Org {
   uuid                  String                @id @default(uuid())
-  name                  String
+  name                  String                @unique
   members               Member[]
   sessions              Session[]
   git_repos             GitRepo[]
@@ -68,6 +70,8 @@ model Member {
   integration_usage_log IntegrationUsageLog[]
   triage_activity       Triage[]
   ownedProducts         Product[]             @relation("productOwner")
+
+  @@index([orgId, email])
 }
 
 model MemberKey {
