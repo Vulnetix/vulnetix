@@ -12,15 +12,28 @@ import anylogger from 'anylogger';
 import 'anylogger-console';
 
 
+const allowedOrigins = ['www.vulnetix.com', 'app.vulnetix.com', 'vulnetix.app']
+
 // Respond to OPTIONS method
-export const onRequestOptions = async () => {
+export const onRequestOptions = async context => {
+    const {
+        request, // same as existing Worker API
+        env, // same as existing Worker API
+        params, // if filename includes [id] or [[path]]
+        waitUntil, // same as ctx.waitUntil in existing Worker API
+        next, // used for middleware or to fetch assets
+        data, // arbitrary space for passing data between middlewares
+    } = context
+    const CF_ray = request.headers.get('CF-ray') || null
+    if (!CF_ray) {
+        allowedOrigins.push('localhost:8788')
+    }
+    const origin = request.headers.get('host')
+    const proto = origin === 'localhost:8788' ? 'http://' : 'https://'
     return new Response(null, {
         status: 204,
         headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Max-Age': '86400',
+            'Access-Control-Allow-Origin': allowedOrigins.includes(origin) ? `${proto}${origin}` : 'https://app.vulnetix.com',
         },
     })
 }
@@ -165,8 +178,13 @@ const dynamicHeaders = async context => {
         data, // arbitrary space for passing data between middlewares
     } = context
     const response = await next()
-    response.headers.set('Access-Control-Allow-Origin', '*')
-    response.headers.set('Access-Control-Max-Age', '86400')
+    const CF_ray = request.headers.get('CF-ray') || null
+    if (!CF_ray) {
+        allowedOrigins.push('localhost:8788')
+    }
+    const origin = request.headers.get('host')
+    const proto = origin === 'localhost:8788' ? 'http://' : 'https://'
+    response.headers.set('Access-Control-Allow-Origin', allowedOrigins.includes(origin) ? `${proto}${origin}` : 'https://app.vulnetix.com')
     return response
 }
 

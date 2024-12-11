@@ -69,28 +69,9 @@ git-demo:
 	git submodule foreach git submodule update
 	git stash pop || true
 
-_purge_data: ## FOR DOCO ONLY
-	npx wrangler d1 execute vulnetix --local --command "DELETE FROM Session;"
-	npx wrangler d1 execute vulnetix --local --command "DELETE FROM GitBranch;"
-	npx wrangler d1 execute vulnetix --local --command "DELETE FROM Dependency;"
-	npx wrangler d1 execute vulnetix --local --command "DELETE FROM SarifResults;"
-	npx wrangler d1 execute vulnetix --local --command "DELETE FROM CycloneDXInfo;"
-	npx wrangler d1 execute vulnetix --local --command "DELETE FROM SPDXInfo;"
-	npx wrangler d1 execute vulnetix --local --command "DELETE FROM SARIFInfo;"
-	npx wrangler d1 execute vulnetix --local --command "DELETE FROM IntegrationUsageLog;"
-	npx wrangler d1 execute vulnetix --local --command "DELETE FROM Triage;"
-	npx wrangler d1 execute vulnetix --local --command "DELETE FROM Finding;"
-	npx wrangler d1 execute vulnetix --local --command "DELETE FROM GitRepo;"
-	npx wrangler d1 execute vulnetix --local --command "DELETE FROM Artifact;"
-	npx wrangler d1 execute vulnetix --local --command "DELETE FROM CVEADP;"
-	npx wrangler d1 execute vulnetix --local --command "DELETE FROM CVEMetadata;"
-	npx wrangler d1 execute vulnetix --local --command "DELETE FROM CVENumberingAuthrity;"
-	npx wrangler d1 execute vulnetix --local --command "DELETE FROM AuthorizedDataPublisher;"
-	npx wrangler d1 execute vulnetix --local --command "DELETE FROM Link;"
-
 _helpers: ## FOR DOCO ONLY
 	npx wrangler d1 execute vulnetix --local --file ./migrations/0001_init.sql
-	npx wrangler d1 execute vulnetix --local --command "SELECT * FROM Member;"
+	npx wrangler d1 execute vulnetix --remote --command "SELECT * FROM Member;"
 	npx prisma migrate diff \
 	--from-empty \
 	--to-schema-datamodel ./prisma/schema.prisma \
