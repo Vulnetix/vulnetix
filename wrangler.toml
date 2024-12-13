@@ -9,6 +9,13 @@ workers_dev = true
 [limits]
 cpu_ms = 3000
 
+[observability]
+enabled = true
+head_sampling_rate = 1 # optional. default = 1
+
+[observability.logs]
+invocation_logs = false
+
 [[d1_databases]]
 binding = "d1db"
 database_name = "vulnetix"

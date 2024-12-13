@@ -11,7 +11,6 @@ import { PrismaClient } from '@prisma/client';
 import anylogger from 'anylogger';
 import 'anylogger-console';
 
-
 const allowedOrigins = ['www.vulnetix.com', 'app.vulnetix.com', 'vulnetix.app']
 
 // Respond to OPTIONS method
@@ -48,6 +47,72 @@ const errorHandling = async context => {
         next, // used for middleware or to fetch assets
         data, // arbitrary space for passing data between middlewares
     } = context
+    const tlsVersion = request.cf.tlsVersion;
+    // Allow only TLS versions 1.2 and 1.3
+    if (tlsVersion !== "TLSv1.2" && tlsVersion !== "TLSv1.3") {
+        return new Response("Please use TLS version 1.2 or higher.", { status: 403 })
+    }
+    const userAgent = request.headers.get('User-Agent') || ''
+    const lowerUserAgent = userAgent.toLowerCase()
+    // List of substrings to check in the User-Agent
+    const blockedSubstrings = [
+        "semrushbot", "ahrefsbot", "dotbot", "whatcms", "rogerbot", "blexbot",
+        "linkfluence", "mj12bot", "aspiegelbot", "domainstatsbot", "cincraw",
+        "nimbostratus", "httrack", "serpstatbot", "megaindex", "semanticbot",
+        "cocolyzebot", "domcopbot", "traackr", "bomborabot", "linguee",
+        "webtechbot", "clickagy", "sqlmap", "internet-structure-research-project-bot",
+        "seekport", "awariosmartbot", "onalyticabot", "buck", "riddler", "sbl-bot",
+        "df", "pubmatic", "bvbot", "sogou", "barkrowler", "embed.ly",
+        "semantic-visions", "voluumdsp", "wc-test-dev-bot", "gulperbot", "moreover",
+        "ltx71", "accompanybot", "mauibot", "moatbot", "seznambot", "zagbot",
+        "ccbot", "tweetmemebot", "paperlibot", "livelapbot", "slurp", "sottopop",
+        "mail.ru_bot", "rasabot", "anderspinkbot", "zoominfobot", "castlebot",
+        "linkdexbot", "coccocbot", "yacybot", "isec_bot", "flockbrain", "csscheck",
+        "surdotlybot", "contxbot", "relemindbot", "pulno", "zombiebot",
+        "dmasslinksafetybot", "linkpadbot", "aaabot", "mtrobot", "snappreviewbot",
+        "scrapy", "bytespider", "bytedance", "mozlila", "nessus", "binlar",
+        "blackwidow", "blekkobot", "blowfish", "bullseye", "bunnys", "butterfly",
+        "careerbot", "casper", "checkpriv", "cheesebot", "cherrypick", "chinaclaw",
+        "choppy", "clshttp", "cmsworld", "copernic", "copyrightcheck", "cosmos",
+        "crescent", "cy_cho", "datacha", "diavol", "discobot", "dittospyder",
+        "dotnetdotcom", "dumbot", "emailcollector", "emailsiphon", "emailwolf",
+        "extract", "eyenetie", "seokicks", "futuribot", "netpeakcheckerbot",
+        "yellowbrandprotectionbot", "datagnionbot", "uptime-kuma", "peer39", "crawler",
+        "claudebot", "fidget", "my-tiny", "flaming", "flashget", "flicky", "foobot",
+        "g00g1e", "getright", "gigabot", "go-ahead-got", "gozilla", "grabnet",
+        "grafula", "harvest", "heritrix", "icarus6j", "jetbot", "jetcar",
+        "jikespider", "kmccrew", "leechftp", "libweb", "linkextractor", "linkscan",
+        "linkwalker", "loader", "masscan", "miner", "majestic", "mechanize",
+        "morfeus", "moveoverbot", "netmechanic", "netspider", "nicerspro", "nikto",
+        "ninja", "nutch", "octopus", "pagegrabber", "planetwork", "postrank",
+        "purebot", "pycurl", "python", "queryn", "queryseeker", "radian6",
+        "radiation", "realdownload", "scooter", "seekerspider", "semalt", "siclab",
+        "sindice", "sistrix", "sitebot", "siteexplorer", "sitesnagger", "skygrid",
+        "smartdownload", "snoopy", "sosospider", "spankbot", "spbot", "stackrambler",
+        "stripper", "sucker", "surftbot", "finditanswersbot", "vebidoobot",
+        "coibotparser", "anybot", "dingtalkbot", "echobot", "popscreen", "vuhuvbot",
+        "marketwirebot", "hypestat", "whatyoutypebot", "mixrankbot", "xforce",
+        "smtbot", "thesis-research-bot", "sux0r", "suzukacz", "suzuran", "takeout",
+        "teleport", "telesoft", "true_robots", "turingos", "vampire", "vikspider",
+        "voideye", "webleacher", "webreaper", "webstripper", "webvac", "webviewer",
+        "webwhacker", "winhttp", "wwwoffle", "woxbot", "xaldon", "xxxyy", "yamanalab",
+        "yioopbot", "youda", "zeus", "zmeu", "zune", "zyborg", "lanaibot",
+        "metadataparser", "go-http-client", "daum", "yandexbot", "libwww",
+        "guzzlehttp", "expert-html", "geedobot", "newspaper", "peacockmedia",
+        "gobuster", "expanseinc", "crawling", "tineye", "damieng", "scpitspi",
+        "screaming", "babbar", "scalaj", "turnitin", "blackbox", "okhttp",
+        "acebookexternalhit", "externalhit", "dataforseo", "semrush", "contentking",
+        "siteauditbot", "botify", "cxense", "revvim", "colly", "github",
+        "img2dataset", "petalbot", "whizebot", "projectdiscovery", "datenbutler",
+        "seebot.org", "fuseonbot", "vipnytt", "pandalytics", "ninjbot", "gowikibot",
+        "360spider", "acapbot", "acoonbot", "ahrefs", "alexibot", "asterias",
+        "attackbot", "backdorbot", "becomebot", "gptbot", "kauaibot", "zagbot"
+    ]
+    // Check if the User-Agent contains any blocked substrings
+    if (blockedSubstrings.some(substring => lowerUserAgent.includes(substring))) {
+        // Respond with 403 Forbidden
+        return new Response('Forbidden', { status: 403 })
+    }
     data.logger = anylogger('vulnetix-worker')
     setLoggerLevel(data.logger, env.LOG_LEVEL)
     try {
@@ -77,7 +142,7 @@ const setupDependencies = async context => {
             timeout: 2000, // default: 5000
         },
     }
-    if (env.LOGGER === "DEBUG") {
+    if (env.LOG_LEVEL === "DEBUG") {
         clientOptions.log = [
             {
                 emit: "event",
