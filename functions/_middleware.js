@@ -13,8 +13,6 @@ import 'anylogger-console';
 
 const allowedOrigins = ['www.vulnetix.com', 'app.vulnetix.com', 'vulnetix.app']
 
-const allowedOrigins = ['www.vulnetix.com', 'app.vulnetix.com', 'vulnetix.app']
-
 // Respond to OPTIONS method
 export const onRequestOptions = async context => {
     const {
