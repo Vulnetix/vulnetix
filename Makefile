@@ -34,6 +34,7 @@ update: submodule-update ## get app updates, migrate should be run first
 submodule-update: ## git submodule foreach git submodule update
 	git submodule sync
 	git submodule foreach git submodule update
+	git submodule foreach git pull
 	git submodule status --recursive
 
 install: ## install deps and build icons
@@ -62,12 +63,15 @@ git-demo:
 	git checkout -f main
 	git branch -D demo
 	git fetch -a
+	git submodule foreach git fetch -a
+	git submodule foreach git pull
 	git pull
 	git checkout -b demo main
 	git push --set-upstream origin demo
 	git submodule sync
 	git submodule foreach git submodule update
 	git stash pop || true
+	git status
 
 _helpers: ## FOR DOCO ONLY
 	npx wrangler d1 execute vulnetix --local --file ./migrations/0001_init.sql
