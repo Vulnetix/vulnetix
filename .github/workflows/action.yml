@@ -24,6 +24,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          corepack enable
           yarn set version stable
           yarn plugin import https://github.com/CycloneDX/cyclonedx-node-yarn/releases/latest/download/yarn-plugin-cyclonedx.cjs
 
