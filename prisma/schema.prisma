@@ -9,18 +9,18 @@ datasource db {
 }
 
 model Session {
-  kid         String  @id
-  orgId       String
-  org         Org     @relation(fields: [orgId], references: [uuid])
-  memberEmail String
-  member      Member  @relation(fields: [memberEmail], references: [email])
-  expiry      Int
-  issued      Int
-  secret      String?
-  authn_ip    String?
-  authn_ua    String?
+  kid        String  @id
+  orgId      String
+  org        Org     @relation(fields: [orgId], references: [uuid])
+  memberUuid String
+  member     Member  @relation(fields: [memberUuid], references: [uuid])
+  expiry     Int
+  issued     Int
+  secret     String?
+  authn_ip   String?
+  authn_ua   String?
 
-  @@index([orgId, memberEmail])
+  @@index([orgId, memberUuid])
 }
 
 model Org {
@@ -75,16 +75,16 @@ model Member {
 }
 
 model MemberKey {
-  id          Int        @id @default(autoincrement())
-  memberEmail String
-  keyLabel    String?
-  keyType     String
-  member      Member     @relation(fields: [memberEmail], references: [email])
-  secret      String
-  suspend     Int        @default(0)
-  githubPat   GitHubPAT?
+  id         Int        @id @default(autoincrement())
+  keyLabel   String?
+  keyType    String
+  memberUuid String
+  member     Member     @relation(fields: [memberUuid], references: [uuid])
+  secret     String
+  suspend    Int        @default(0)
+  githubPat  GitHubPAT?
 
-  @@unique([memberEmail, secret])
+  @@unique([memberUuid, secret])
 }
 
 model GitHubPAT {
@@ -298,16 +298,16 @@ model Dependency {
 }
 
 model IntegrationUsageLog {
-  id          Int     @id @default(autoincrement())
-  orgId       String
-  org         Org     @relation(fields: [orgId], references: [uuid])
-  memberEmail String
-  source      String
-  member      Member  @relation(fields: [memberEmail], references: [email])
-  request     String
-  response    String?
-  statusCode  Int
-  createdAt   Int
+  id         Int     @id @default(autoincrement())
+  orgId      String
+  org        Org     @relation(fields: [orgId], references: [uuid])
+  source     String
+  memberUuid String
+  member     Member  @relation(fields: [memberUuid], references: [uuid])
+  request    String
+  response   String?
+  statusCode Int
+  createdAt  Int
 }
 
 model Finding {
@@ -383,8 +383,10 @@ model Triage {
   analysisResponse      String?
   analysisDetail        String?
   triageAutomated       Int       @default(0)
-  memberEmail           String?
-  member                Member?   @relation(fields: [memberEmail], references: [email])
+  memberUuid            String?
+  member                Member?   @relation(fields: [memberUuid], references: [uuid])
+
+  @@unique([memberUuid, analysisState])
 }
 
 model CVEMetadata {
