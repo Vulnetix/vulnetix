@@ -94,17 +94,19 @@ model GitHubPAT {
   expires   Int
   created   Int
   avatarUrl String?
+  repos     GitRepo[]
 }
 
 model GitHubApp {
-  installationId Int     @id
+  installationId Int       @id
   orgId          String
-  org            Org     @relation(fields: [orgId], references: [uuid])
+  org            Org       @relation(fields: [orgId], references: [uuid])
   accessToken    String
   login          String?
   created        Int
   expires        Int?
   avatarUrl      String?
+  repos          GitRepo[]
 }
 
 model Tags {
@@ -156,6 +158,10 @@ model GitRepo {
   fullName      String
   orgId         String
   org           Org             @relation(fields: [orgId], references: [uuid])
+  ghAppId       Int?
+  ghApp         GitHubApp?      @relation(fields: [ghAppId], references: [installationId])
+  ghPATId       Int?
+  ghPAT         GitHubPAT?      @relation(fields: [ghPATId], references: [keyId])
   ghid          Int?
   source        String
   createdAt     Int
