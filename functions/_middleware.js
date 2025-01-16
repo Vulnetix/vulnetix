@@ -129,7 +129,7 @@ const setupDependencies = async context => {
     const adapter = new PrismaD1(env.d1db)
     const { searchParams } = new URL(request.url)
     data.searchParams = searchParams
-    if (["POST", "PUT", "DELETE", "PATCH"].includes(request.method.toUpperCase())) {
+    if (["POST", "PUT", "PATCH"].includes(request.method.toUpperCase())) {
         data.body = await ensureStrReqBody(request)
         if (isJSON(data.body)) {
             data.json = JSON.parse(data.body)

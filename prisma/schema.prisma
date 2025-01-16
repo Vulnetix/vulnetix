@@ -39,6 +39,7 @@ model Org {
   products              Product[]
   repos                 ProductRepos[]
   branches              GitBranch[]
+  GitHubPAT             GitHubPAT[]
 }
 
 model IntegrationConfig {
@@ -75,22 +76,23 @@ model Member {
 }
 
 model MemberKey {
-  id         Int        @id @default(autoincrement())
+  id         Int     @id @default(autoincrement())
   keyLabel   String?
   keyType    String
   memberUuid String
-  member     Member     @relation(fields: [memberUuid], references: [uuid])
+  member     Member  @relation(fields: [memberUuid], references: [uuid])
   secret     String
-  suspend    Int        @default(0)
-  githubPat  GitHubPAT?
+  suspend    Int     @default(0)
 
   @@unique([memberUuid, secret])
 }
 
 model GitHubPAT {
-  keyId     Int       @id
-  memberKey MemberKey @relation(fields: [keyId], references: [id])
+  uuid      String    @id @default(uuid())
+  orgId     String
+  org       Org       @relation(fields: [orgId], references: [uuid])
   login     String
+  token     String
   expires   Int
   created   Int
   avatarUrl String?
@@ -160,8 +162,8 @@ model GitRepo {
   org           Org             @relation(fields: [orgId], references: [uuid])
   ghAppId       Int?
   ghApp         GitHubApp?      @relation(fields: [ghAppId], references: [installationId])
-  ghPATId       Int?
-  ghPAT         GitHubPAT?      @relation(fields: [ghPATId], references: [keyId])
+  ghPATId       String?
+  ghPAT         GitHubPAT?      @relation(fields: [ghPATId], references: [uuid])
   ghid          Int?
   source        String
   createdAt     Int
