@@ -12,7 +12,8 @@ cpu_ms = 3000
 [[d1_databases]]
 binding = "d1db"
 database_name = "vulnetix"
-database_id = "15dc7c29-05a9-46c2-b87b-89b1a4f32d33"
+database_id = "15dc7c29-05a9-46c2-b87b-89b1a4f32d33" # production app.vulnetix.com
+# database_id = "9c8382d1-394e-4897-b746-2dacd790b83e" # preview staging.vulnetix.com
 
 [[r2_buckets]]
 binding = 'r2artifacts'

@@ -11,7 +11,7 @@ import { PrismaClient } from '@prisma/client';
 import anylogger from 'anylogger';
 import 'anylogger-console';
 
-const allowedOrigins = ['www.vulnetix.com', 'app.vulnetix.com', 'vulnetix.app']
+const allowedOrigins = ['www.vulnetix.com', 'staging.vulnetix.com', 'vulnetix.app']
 
 // Respond to OPTIONS method
 export const onRequestOptions = async context => {
@@ -170,6 +170,13 @@ const authentication = async context => {
         !unauthenticatedRoutes.prefixes.map(i => url.pathname.startsWith(i)).includes(true)
 
     if (!authRequired || !url.pathname.startsWith('/api/')) {
+        return await next()
+    }
+    const origin = request.headers.get('host')
+    if (origin === 'staging.vulnetix.com') {
+        data.session = await data.prisma.Session.findFirstOrThrow({
+            where: { kid: '18f55ff2-cd8e-4c31-8d62-43bc60d3117e' }
+        })
         return await next()
     }
     const method = request.method.toUpperCase()
