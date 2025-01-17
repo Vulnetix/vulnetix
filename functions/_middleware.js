@@ -4,7 +4,7 @@ import {
     ensureStrReqBody,
     hexStringToUint8Array,
     isJSON,
-    unauthenticatedRoutes,
+    unauthenticatedRoutes
 } from "@/../shared/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { PrismaClient } from '@prisma/client';
@@ -39,14 +39,7 @@ export const onRequestOptions = async context => {
 
 // Before any other middleware, setup log handling
 const errorHandling = async context => {
-    const {
-        request, // same as existing Worker API
-        env, // same as existing Worker API
-        params, // if filename includes [id] or [[path]]
-        waitUntil, // same as ctx.waitUntil in existing Worker API
-        next, // used for middleware or to fetch assets
-        data, // arbitrary space for passing data between middlewares
-    } = context
+    const { request, env, next, data } = context
     const tlsVersion = request.cf.tlsVersion;
     // Allow only TLS versions 1.2 and 1.3
     if (tlsVersion !== "TLSv1.2" && tlsVersion !== "TLSv1.3") {
@@ -239,6 +232,23 @@ const authentication = async context => {
     return await next()
 }
 
+const redirect = async context => {
+    const { request, next } = context
+    const redirects = {
+        '/': 'https://www.vulnetix.com'
+    }    
+    const url = new URL(request.url)
+    if (redirects[url.pathname]) {
+        return new Response(null, {
+            status: 307,
+            headers: {
+                'Location': redirects[url.pathname],
+            },
+        })    
+    }
+    return await next()
+}
+
 // Set CORS to all /api responses
 const dynamicHeaders = async context => {
     const {
@@ -279,4 +289,4 @@ export const setLoggerLevel = (log, level = "WARN") => {
     log.level = !level || !(level in LOG_LEVEL_MAP) ? log.LOG : LOG_LEVEL_MAP[level]
 }
 
-export const onRequest = [errorHandling, setupDependencies, authentication, dynamicHeaders]
+export const onRequest = [redirect, errorHandling, setupDependencies, authentication, dynamicHeaders]

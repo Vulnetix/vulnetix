@@ -26,6 +26,7 @@ model Session {
 model Org {
   uuid                  String                @id @default(uuid())
   name                  String                @unique
+  enforceGitHubOAuth    Int                   @default(0)
   members               Member[]
   sessions              Session[]
   git_repos             GitRepo[]
@@ -35,11 +36,12 @@ model Org {
   sarif                 SARIFInfo[]
   cdx                   CycloneDXInfo[]
   spdx                  SPDXInfo[]
-  gitHubApps            GitHubApp[]
   products              Product[]
   repos                 ProductRepos[]
   branches              GitBranch[]
-  GitHubPAT             GitHubPAT[]
+  gitHubPAT             GitHubPAT[]
+  gitHubApps            GitHubApp[]
+  gitHubOAuth           GitHubOAuth[]
 }
 
 model IntegrationConfig {
@@ -71,8 +73,23 @@ model Member {
   integration_usage_log IntegrationUsageLog[]
   triage_activity       Triage[]
   ownedProducts         Product[]             @relation("productOwner")
+  ghTokens              GitHubOAuth[]
 
   @@index([orgId, email])
+}
+
+model GitHubOAuth {
+  id             Int       @id @default(autoincrement())
+  orgId          String
+  org            Org       @relation(fields: [orgId], references: [uuid])
+  memberUuid     String?
+  member         Member?   @relation(fields: [memberUuid], references: [uuid])
+  login          String?
+  accessToken    String
+  created        Int
+  expires        Int?
+  installationId Int?
+  app            GitHubApp? @relation(fields: [installationId], references: [installationId])
 }
 
 model MemberKey {
@@ -100,13 +117,13 @@ model GitHubPAT {
 }
 
 model GitHubApp {
-  installationId Int       @id
+  installationId Int           @id
   orgId          String
-  org            Org       @relation(fields: [orgId], references: [uuid])
-  accessToken    String
-  login          String?
+  org            Org           @relation(fields: [orgId], references: [uuid])
+  tokens         GitHubOAuth[]
+  identifier     String
+  identifierType String // org, user
   created        Int
-  expires        Int?
   avatarUrl      String?
   repos          GitRepo[]
 }

@@ -3,9 +3,16 @@
   "files.insertFinalNewline": true,
   "javascript.updateImportsOnFileMove.enabled": "always",
   "[javascript]": {
-    "editor.defaultFormatter": "vscode.typescript-language-features"
+    "editor.defaultFormatter": "vscode.typescript-language-features",
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
   },
   "[typescript]": {
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit",
+      "source.organizeImports": "explicit"
+    },
     "editor.defaultFormatter": "vscode.typescript-language-features",
     "editor.autoClosingBrackets": "always"
   },
@@ -13,7 +20,10 @@
     "editor.defaultFormatter": "DavidAnson.vscode-markdownlint"
   },
   "[scss]": {
-    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.stylelint": "explicit",
+    }
   },
   "[json]": {
     "editor.defaultFormatter": "vscode.json-language-features"
@@ -24,12 +34,6 @@
   "[vue]": {
     "editor.defaultFormatter": "Vue.volar"
   },
-  "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit",
-    "source.fixAll.stylelint": "explicit",
-    "source.organizeImports": "explicit"
-  },
-  "eslint.format.enable": true,
   "sqltools.connections": [
     {
       "previewLimit": 1000,
