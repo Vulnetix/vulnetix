@@ -1,6 +1,6 @@
 # Vulnetix
 
-<img align="right" height="300" src="./.repo/Pix512.png">
+<img align="right" height="300" src="./.repo/Pix-512.png">
 
 <br>
 
