@@ -11,7 +11,7 @@ import { PrismaClient } from '@prisma/client';
 import anylogger from 'anylogger';
 import 'anylogger-console';
 
-const allowedOrigins = ['www.vulnetix.com', 'staging.vulnetix.com', 'vulnetix.app']
+const allowedOrigins = ['www.vulnetix.com', 'staging.vulnetix.com', 'app.vulnetix.com']
 
 // Respond to OPTIONS method
 export const onRequestOptions = async context => {
@@ -236,7 +236,7 @@ const redirect = async context => {
     const { request, next } = context
     const redirects = {
         '/': 'https://www.vulnetix.com'
-    }    
+    }
     const url = new URL(request.url)
     if (redirects[url.pathname]) {
         return new Response(null, {
@@ -244,21 +244,14 @@ const redirect = async context => {
             headers: {
                 'Location': redirects[url.pathname],
             },
-        })    
+        })
     }
     return await next()
 }
 
 // Set CORS to all /api responses
 const dynamicHeaders = async context => {
-    const {
-        request, // same as existing Worker API
-        env, // same as existing Worker API
-        params, // if filename includes [id] or [[path]]
-        waitUntil, // same as ctx.waitUntil in existing Worker API
-        next, // used for middleware or to fetch assets
-        data, // arbitrary space for passing data between middlewares
-    } = context
+    const { request, next } = context
     const response = await next()
     const CF_ray = request.headers.get('CF-ray') || null
     if (!CF_ray) {

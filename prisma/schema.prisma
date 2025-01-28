@@ -55,11 +55,28 @@ model IntegrationConfig {
   configJSON String?
 }
 
+model Group {
+  uuid    String         @id @default(uuid())
+  name    String         @unique
+  members MemberGroups[]
+}
+
+model MemberGroups {
+  groupUuid  String
+  group      Group  @relation(fields: [groupUuid], references: [uuid])
+  memberUuid String
+  member     Member @relation(fields: [memberUuid], references: [uuid])
+
+  @@unique([groupUuid, memberUuid])
+}
+
 model Member {
   uuid                  String                @id @default(uuid())
   email                 String                @unique
   orgId                 String
   org                   Org                   @relation(fields: [orgId], references: [uuid])
+  groupUuid             String
+  groups                MemberGroups[]
   passwordHash          String
   avatarUrl             String?
   firstName             String?
@@ -79,11 +96,11 @@ model Member {
 }
 
 model GitHubOAuth {
-  id             Int       @id @default(autoincrement())
+  id             Int        @id @default(autoincrement())
   orgId          String
-  org            Org       @relation(fields: [orgId], references: [uuid])
+  org            Org        @relation(fields: [orgId], references: [uuid])
   memberUuid     String?
-  member         Member?   @relation(fields: [memberUuid], references: [uuid])
+  member         Member?    @relation(fields: [memberUuid], references: [uuid])
   login          String?
   accessToken    String
   created        Int
