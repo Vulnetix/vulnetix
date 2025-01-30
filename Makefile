@@ -15,6 +15,9 @@ clean: ## Cleanup tmp files
 setup: ## FOR DOCO ONLY - Run these one at a time, do not call this target directly
 	nvm install --lts
 	nvm use --lts
+	npm install -g corepack
+	rm ~/.pnp.cjs
+	corepack enable
 	yarn set version stable
 	yarn plugin import https://raw.githubusercontent.com/spdx/yarn-plugin-spdx/main/bundles/@yarnpkg/plugin-spdx.js
 	yarn plugin import https://github.com/CycloneDX/cyclonedx-node-yarn/releases/latest/download/yarn-plugin-cyclonedx.cjs
