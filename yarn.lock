@@ -4501,6 +4501,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"disposable-email@npm:^0.2.3":
+  version: 0.2.3
+  resolution: "disposable-email@npm:0.2.3"
+  checksum: 10c0/d2da52e225bb784e640f9aff6c3e319c596e82c778b5483e36ff67eba5c5b9df6f59ed8c26be401b0813c921783e0b271fb97d49b33a73cb46dd010dc7081931
+  languageName: node
+  linkType: hard
+
 "doctrine@npm:^2.1.0":
   version: 2.1.0
   resolution: "doctrine@npm:2.1.0"
@@ -4622,6 +4629,13 @@ __metadata:
   version: 1.5.78
   resolution: "electron-to-chromium@npm:1.5.78"
   checksum: 10c0/6100dc52027ae53c26cebd13a9ea28790755496eb7fb3809dd6485999f65692090b961c15503e387abb04233a033d9064b8e6fd326c3c0609806acca016ec3a6
+  languageName: node
+  linkType: hard
+
+"email-providers@npm:^2.7.0":
+  version: 2.7.0
+  resolution: "email-providers@npm:2.7.0"
+  checksum: 10c0/4b50099e97c592f57a402414a5f9be9983e9230f26d2adc58c63819cf0e6220caf20b93f6283372ea791fa6120f086314b40984532e19a1e84a1ae5734d405c2
   languageName: node
   linkType: hard
 
@@ -10428,7 +10442,9 @@ __metadata:
     boxicons: "npm:^2.1.4"
     chart.js: "npm:^4.1.2"
     crypto-es: "npm:^2.1.0"
+    disposable-email: "npm:^0.2.3"
     dompurify: "npm:^3.2.1"
+    email-providers: "npm:^2.7.0"
     eslint: "npm:^8.41.0"
     eslint-config-airbnb-base: "npm:^15.0.0"
     eslint-import-resolver-alias: "npm:^1.1.2"

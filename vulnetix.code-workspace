@@ -10,7 +10,10 @@
 		"files.insertFinalNewline": true,
 		"javascript.updateImportsOnFileMove.enabled": "always",
 		"[javascript]": {
-			"editor.defaultFormatter": "vscode.typescript-language-features"
+			"editor.defaultFormatter": "vscode.typescript-language-features",
+			"editor.codeActionsOnSave": {
+				"source.fixAll.eslint": "explicit"
+			}
 		},
 		"[typescript]": {
 			"editor.defaultFormatter": "vscode.typescript-language-features",
@@ -21,10 +24,16 @@
 		},
 		"[markdown]": {
 			"editor.defaultFormatter": "DavidAnson.vscode-markdownlint",
-			"editor.cursorSurroundingLines": 0
+			"editor.cursorSurroundingLines": 0,
+			"editor.codeActionsOnSave": {
+				"source.fixAll.eslint": "explicit"
+			}
 		},
 		"[scss]": {
-			"editor.defaultFormatter": "dbaeumer.vscode-eslint"
+			"editor.defaultFormatter": "dbaeumer.vscode-eslint",
+			"editor.codeActionsOnSave": {
+				"source.fixAll.eslint": "explicit"
+			}
 		},
 		"[json]": {
 			"editor.defaultFormatter": "vscode.json-language-features"
@@ -33,13 +42,15 @@
 			"editor.defaultFormatter": "vscode.json-language-features"
 		},
 		"[vue]": {
-			"editor.defaultFormatter": "Vue.volar"
+			"editor.defaultFormatter": "Vue.volar",
+			"editor.codeActionsOnSave": {
+				"source.fixAll.eslint": "explicit"
+			}
 		},
 		"editor.codeActionsOnSave": {
 			"source.fixAll.stylelint": "explicit",
 			"source.organizeImports": "explicit"
 		},
-		"eslint.format.enable": true,
 		"cSpell.words": [
 			"axios",
 			"cisa",
