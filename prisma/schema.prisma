@@ -1,6 +1,6 @@
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters", "omitApi"]
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -67,7 +67,7 @@ model MemberGroups {
   memberUuid String
   member     Member @relation(fields: [memberUuid], references: [uuid])
 
-  @@unique([groupUuid, memberUuid])
+  @@id([groupUuid, memberUuid])
 }
 
 model Member {
@@ -75,7 +75,6 @@ model Member {
   email                 String                @unique
   orgId                 String
   org                   Org                   @relation(fields: [orgId], references: [uuid])
-  groupUuid             String
   groups                MemberGroups[]
   passwordHash          String
   avatarUrl             String?
