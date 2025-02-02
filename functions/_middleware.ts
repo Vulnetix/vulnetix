@@ -1,34 +1,28 @@
-import {
-    AuthResult,
-    Client,
-    ensureStrReqBody,
-    hexStringToUint8Array,
-    isJSON,
-    unauthenticatedRoutes
-} from "@/../shared/utils";
 import { PrismaD1 } from '@prisma/adapter-d1';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
+import { Context, ErrorResponse, Session } from "@shared/interfaces";
+import {
+  AuthResult,
+  Client,
+  ensureStrReqBody,
+  hexStringToUint8Array,
+  isJSON,
+  unauthenticatedRoutes
+} from "@shared/utils";
 import anylogger from 'anylogger';
 import 'anylogger-console';
 
-const allowedOrigins = ['www.vulnetix.com', 'staging.vulnetix.com', 'app.vulnetix.com']
+const allowedOrigins: string[] = ['www.vulnetix.com', 'staging.vulnetix.com', 'app.vulnetix.com']
 
 // Respond to OPTIONS method
-export const onRequestOptions = async context => {
-    const {
-        request, // same as existing Worker API
-        env, // same as existing Worker API
-        params, // if filename includes [id] or [[path]]
-        waitUntil, // same as ctx.waitUntil in existing Worker API
-        next, // used for middleware or to fetch assets
-        data, // arbitrary space for passing data between middlewares
-    } = context
-    const CF_ray = request.headers.get('CF-ray') || null
+export const onRequestOptions = async (context: Context) => {
+    const { request } = context
+    const CF_ray: string | null = request.headers.get('CF-ray') || null
     if (!CF_ray) {
         allowedOrigins.push('localhost:8788')
     }
-    const origin = request.headers.get('host')
-    const proto = origin === 'localhost:8788' ? 'http://' : 'https://'
+    const origin: string = request.headers.get('host') || ''
+    const proto: string = origin === 'localhost:8788' ? 'http://' : 'https://'
     return new Response(null, {
         status: 204,
         headers: {
@@ -38,17 +32,17 @@ export const onRequestOptions = async context => {
 }
 
 // Before any other middleware, setup log handling
-const errorHandling = async context => {
+const errorHandling = async (context: Context) => {
     const { request, env, next, data } = context
-    const tlsVersion = request.cf.tlsVersion;
+    const tlsVersion: string = request.cf.tlsVersion || ''
     // Allow only TLS versions 1.2 and 1.3
     if (tlsVersion !== "TLSv1.2" && tlsVersion !== "TLSv1.3") {
         return new Response("Please use TLS version 1.2 or higher.", { status: 403 })
     }
-    const userAgent = request.headers.get('User-Agent') || ''
-    const lowerUserAgent = userAgent.toLowerCase()
+    const userAgent: string = request.headers.get('User-Agent') || ''
+    const lowerUserAgent: string = userAgent.toLowerCase()
     // List of substrings to check in the User-Agent
-    const blockedSubstrings = [
+    const blockedSubstrings: string[] = [
         "semrushbot", "ahrefsbot", "dotbot", "whatcms", "rogerbot", "blexbot",
         "linkfluence", "mj12bot", "aspiegelbot", "domainstatsbot", "cincraw",
         "nimbostratus", "httrack", "serpstatbot", "megaindex", "semanticbot",
@@ -117,9 +111,9 @@ const errorHandling = async context => {
 }
 
 // Connection to D1 using Prisma ORM and ensure JSON body is available as an object
-const setupDependencies = async context => {
+const setupDependencies = async (context: Context) => {
     const { request, env, data, next } = context
-    const adapter = new PrismaD1(env.d1db)
+    const adapter: PrismaD1 = new PrismaD1(env.d1db)
     const { searchParams } = new URL(request.url)
     data.searchParams = searchParams
     if (["POST", "PUT", "PATCH"].includes(request.method.toUpperCase())) {
@@ -128,91 +122,87 @@ const setupDependencies = async context => {
             data.json = JSON.parse(data.body)
         }
     }
-    const clientOptions = {
+    const clientOptions: Prisma.PrismaClientOptions = {
         adapter,
         transactionOptions: {
             maxWait: 1500, // default: 2000
             timeout: 2000, // default: 5000
         },
-    }
-    if (env.LOG_LEVEL === "DEBUG") {
-        clientOptions.log = [
-            {
-                emit: "event",
-                level: "query",
-            },
-        ]
+        log: [{ emit: 'event', level: 'query' }]
     }
     data.prisma = new PrismaClient(clientOptions)
-    data.prisma.$on("query", async e => {
-        data.logger.debug(`${e.query} ${e.params}`)
-    })
+    if (env.LOG_LEVEL === "DEBUG") {
+        // @ts-ignore
+        data.prisma.$on("query", async (e: Prisma.QueryEvent) => {
+            data.logger.debug(`${e.query} ${e.params}`)
+        })
+    }
 
     return await next()
 }
 
 // Ensure authentication is always performed, with specified exceptions
-const authentication = async context => {
+const authentication = async (context: Context) => {
     const { request, next, data } = context
-    const url = new URL(request.url)
+    const url: URL = new URL(request.url)
     if (request.cf.botManagement.verifiedBot || request.cf.botManagement.score <= 60) {
-        return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } }), { status: 403 })
+        return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } } as ErrorResponse), { status: 403 })
     }
-    const authRequired =
+    const authRequired: boolean =
         !unauthenticatedRoutes.static.includes(url.pathname) &&
         !unauthenticatedRoutes.prefixes.map(i => url.pathname.startsWith(i)).includes(true)
 
     if (!authRequired || !url.pathname.startsWith('/api/')) {
         return await next()
     }
-    const origin = request.headers.get('host')
+    const origin: string = request.headers.get('host') || ''
     if (origin === 'staging.vulnetix.com') {
-        data.session = await data.prisma.Session.findFirstOrThrow({
+        data.session = await data.prisma.session.findFirstOrThrow({
             where: { kid: '18f55ff2-cd8e-4c31-8d62-43bc60d3117e' }
         })
         return await next()
     }
-    const method = request.method.toUpperCase()
-    const path = url.pathname + url.search
-    const body = ['GET', 'DELETE'].includes(method.toUpperCase()) ? '' : await ensureStrReqBody(request)
+    const method: string = request.method.toUpperCase()
+    const path: string = url.pathname + url.search
+    const body: string = ['GET', 'DELETE'].includes(method.toUpperCase()) ? '' : await ensureStrReqBody(request)
     // Retrieve signature and timestamp from headers
-    const signature = request.headers.get('authorization')?.replace('HMAC ', '')
-    const timestampStr = request.headers.get('x-timestamp')
-    const kid = request.headers.get('x-vulnetix-kid')
+    const signature: string | null = request.headers.get('authorization')?.replace('HMAC ', '')
+    const timestampStr: string | null = request.headers.get('x-timestamp')
+    const kid: string | null = request.headers.get('x-vulnetix-kid')
 
     if (!signature || !timestampStr || !kid) {
         return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } }), { status: 403 })
     }
 
     // Convert timestamp from string to integer
-    const timestamp = parseInt(timestampStr, 10)
+    const timestamp: number = parseInt(timestampStr, 10)
     if (isNaN(timestamp)) {
         data.logger.warn('Invalid timestamp format', timestamp)
         return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } }), { status: 403 })
     }
     // Validate timestamp (you may want to add a check to ensure the request isn't too old)
-    const currentTimestamp = new Date().getTime()
+    const currentTimestamp: number = new Date().getTime()
     if (Math.abs(currentTimestamp - timestamp) > 3e+5) { // e.g., allow a 5-minute skew
         data.logger.warn('expired, skew', timestamp)
         return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.EXPIRED } }), { status: 401 })
     }
     // Retrieve the session key from the database using Prisma
-    const session = await data.prisma.Session.findFirstOrThrow({
+    const session: Session = await data.prisma.session.findFirstOrThrow({
         where: { kid }
     })
     if (!session.expiry || session.expiry <= new Date().getTime()) {
         data.logger.warn('expired', timestamp)
         return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.EXPIRED } }), { status: 401 })
     }
-    const secretKeyBytes = new TextEncoder().encode(session.secret)
-    const payloadBytes = Client.makePayload({
+    const secretKeyBytes: Uint8Array = new TextEncoder().encode(session.secret)
+    const payloadBytes: Uint8Array = Client.makePayload({
         method,
         path,
         kid,
         timestamp,
         body: encodeURIComponent(body)
     })
-    const key = await crypto.subtle.importKey(
+    const key: CryptoKey = await crypto.subtle.importKey(
         "raw",
         secretKeyBytes,
         { name: "HMAC", hash: "SHA-512" },
@@ -220,8 +210,8 @@ const authentication = async context => {
         ["verify"]
     )
 
-    const signatureBytes = hexStringToUint8Array(signature)
-    const isValid = await crypto.subtle.verify("HMAC", key, signatureBytes, payloadBytes)
+    const signatureBytes: Uint8Array = hexStringToUint8Array(signature)
+    const isValid: boolean = await crypto.subtle.verify("HMAC", key, signatureBytes, payloadBytes)
 
     if (!isValid) {
         data.logger.warn('Invalid signature', signature)
@@ -232,9 +222,9 @@ const authentication = async context => {
     return await next()
 }
 
-const redirect = async context => {
+const redirect = async (context: Context) => {
     const { request, next } = context
-    const redirects = {
+    const redirects: Record<string, string> = {
         '/': 'https://www.vulnetix.com'
     }
     const url = new URL(request.url)
@@ -250,15 +240,15 @@ const redirect = async context => {
 }
 
 // Set CORS to all /api responses
-const dynamicHeaders = async context => {
+const dynamicHeaders = async (context: Context) => {
     const { request, next } = context
     const response = await next()
-    const CF_ray = request.headers.get('CF-ray') || null
+    const CF_ray: string | null = request.headers.get('CF-ray') || null
     if (!CF_ray) {
         allowedOrigins.push('localhost:8788')
     }
-    const origin = request.headers.get('host')
-    const proto = origin === 'localhost:8788' ? 'http://' : 'https://'
+    const origin: string = request.headers.get('host') || ''
+    const proto: string = origin === 'localhost:8788' ? 'http://' : 'https://'
     response.headers.set('Access-Control-Allow-Origin', allowedOrigins.includes(origin) ? `${proto}${origin}` : 'https://app.vulnetix.com')
     return response
 }
@@ -268,7 +258,7 @@ const dynamicHeaders = async context => {
  * @param {Object} log - Logging adapter
  * @param {Object} level - Environment configuration object containing LOG_LEVEL
  */
-export const setLoggerLevel = (log, level = "WARN") => {
+export const setLoggerLevel = (log: any, level: string = "WARN") => {
     const LOG_LEVEL_MAP = {
         'ERROR': log.ERROR,
         'WARN': log.WARN,
