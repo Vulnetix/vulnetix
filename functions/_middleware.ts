@@ -2,12 +2,12 @@ import { PrismaD1 } from '@prisma/adapter-d1';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { Context, ErrorResponse, Session } from "@shared/interfaces";
 import {
-  AuthResult,
-  Client,
-  ensureStrReqBody,
-  hexStringToUint8Array,
-  isJSON,
-  unauthenticatedRoutes
+    AuthResult,
+    Client,
+    ensureStrReqBody,
+    hexStringToUint8Array,
+    isJSON,
+    unauthenticatedRoutes
 } from "@shared/utils";
 import anylogger from 'anylogger';
 import 'anylogger-console';
@@ -34,9 +34,10 @@ export const onRequestOptions = async (context: Context) => {
 // Before any other middleware, setup log handling
 const errorHandling = async (context: Context) => {
     const { request, env, next, data } = context
-    const tlsVersion: string = request.cf.tlsVersion || ''
+    const tlsVersion: string | undefined = request.cf?.tlsVersion
     // Allow only TLS versions 1.2 and 1.3
-    if (tlsVersion !== "TLSv1.2" && tlsVersion !== "TLSv1.3") {
+    const origin: string = request.headers.get('host') || '127.0.0.1'
+    if (origin !== '127.0.0.1' && (tlsVersion !== "TLSv1.2" && tlsVersion !== "TLSv1.3")) {
         return new Response("Please use TLS version 1.2 or higher.", { status: 403 })
     }
     const userAgent: string = request.headers.get('User-Agent') || ''
@@ -145,7 +146,8 @@ const setupDependencies = async (context: Context) => {
 const authentication = async (context: Context) => {
     const { request, next, data } = context
     const url: URL = new URL(request.url)
-    if (request.cf.botManagement.verifiedBot || request.cf.botManagement.score <= 60) {
+    const origin: string = request.headers.get('host') || '127.0.0.1'
+    if (origin !== '127.0.0.1' && (request.cf.botManagement.verifiedBot || request.cf.botManagement.score <= 60)) {
         return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } } as ErrorResponse), { status: 403 })
     }
     const authRequired: boolean =
@@ -155,7 +157,6 @@ const authentication = async (context: Context) => {
     if (!authRequired || !url.pathname.startsWith('/api/')) {
         return await next()
     }
-    const origin: string = request.headers.get('host') || ''
     if (origin === 'staging.vulnetix.com') {
         data.session = await data.prisma.session.findFirstOrThrow({
             where: { kid: '18f55ff2-cd8e-4c31-8d62-43bc60d3117e' }

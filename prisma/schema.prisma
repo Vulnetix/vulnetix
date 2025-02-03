@@ -1,502 +1,502 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
+    provider        = "prisma-client-js"
+    previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+    provider = "sqlite"
+    url      = env("DATABASE_URL")
 }
 
 model Session {
-  kid        String  @id
-  orgId      String
-  org        Org     @relation(fields: [orgId], references: [uuid])
-  memberUuid String
-  member     Member  @relation(fields: [memberUuid], references: [uuid])
-  expiry     Int
-  issued     Int
-  secret     String?
-  authn_ip   String?
-  authn_ua   String?
+    kid        String  @id
+    orgId      String
+    org        Org     @relation(fields: [orgId], references: [uuid])
+    memberUuid String
+    member     Member  @relation(fields: [memberUuid], references: [uuid])
+    expiry     Int
+    issued     Int
+    secret     String?
+    authn_ip   String?
+    authn_ua   String?
 
-  @@index([orgId, memberUuid])
+    @@index([orgId, memberUuid])
 }
 
 model Org {
-  uuid                  String                @id @default(uuid())
-  name                  String                @unique
-  enforceGitHubOAuth    Int                   @default(0)
-  members               Member[]
-  sessions              Session[]
-  git_repos             GitRepo[]
-  integrations          IntegrationConfig[]
-  integration_usage_log IntegrationUsageLog[]
-  findings              Finding[]
-  sarif                 SARIFInfo[]
-  cdx                   CycloneDXInfo[]
-  spdx                  SPDXInfo[]
-  products              Product[]
-  repos                 ProductRepos[]
-  branches              GitBranch[]
-  gitHubPAT             GitHubPAT[]
-  gitHubApps            GitHubApp[]
-  gitHubOAuth           GitHubOAuth[]
+    uuid                  String                @id @default(uuid())
+    name                  String                @unique
+    enforceGitHubOAuth    Int                   @default(0)
+    members               Member[]
+    sessions              Session[]
+    git_repos             GitRepo[]
+    integrations          IntegrationConfig[]
+    integration_usage_log IntegrationUsageLog[]
+    findings              Finding[]
+    sarif                 SARIFInfo[]
+    cdx                   CycloneDXInfo[]
+    spdx                  SPDXInfo[]
+    products              Product[]
+    repos                 ProductRepos[]
+    branches              GitBranch[]
+    gitHubPAT             GitHubPAT[]
+    gitHubApps            GitHubApp[]
+    gitHubOAuth           GitHubOAuth[]
 }
 
 model IntegrationConfig {
-  uuid       String  @id @default(uuid())
-  orgId      String
-  org        Org     @relation(fields: [orgId], references: [uuid])
-  name       String
-  label      String?
-  created    Int
-  suspend    Int?    @default(0)
-  configJSON String?
+    uuid       String  @id @default(uuid())
+    orgId      String
+    org        Org     @relation(fields: [orgId], references: [uuid])
+    name       String
+    label      String?
+    created    Int
+    suspend    Int?    @default(0)
+    configJSON String?
 }
 
 model Group {
-  uuid    String         @id @default(uuid())
-  name    String         @unique
-  members MemberGroups[]
+    uuid    String         @id @default(uuid())
+    name    String         @unique
+    members MemberGroups[]
 }
 
 model MemberGroups {
-  groupUuid  String
-  group      Group  @relation(fields: [groupUuid], references: [uuid])
-  memberUuid String
-  member     Member @relation(fields: [memberUuid], references: [uuid])
+    groupUuid  String
+    group      Group  @relation(fields: [groupUuid], references: [uuid])
+    memberUuid String
+    member     Member @relation(fields: [memberUuid], references: [uuid])
 
-  @@id([groupUuid, memberUuid])
+    @@id([groupUuid, memberUuid])
 }
 
 model Member {
-  uuid                  String                @id @default(uuid())
-  email                 String                @unique
-  orgId                 String
-  org                   Org                   @relation(fields: [orgId], references: [uuid])
-  groups                MemberGroups[]
-  passwordHash          String
-  avatarUrl             String?
-  firstName             String?
-  lastName              String?
-  alertNews             Int                   @default(0)
-  alertOverdue          Int                   @default(0)
-  alertFindings         Int                   @default(0)
-  alertType             Int                   @default(0)
-  member_keys           MemberKey[]
-  sessions              Session[]
-  integration_usage_log IntegrationUsageLog[]
-  triage_activity       Triage[]
-  ownedProducts         Product[]             @relation("productOwner")
-  ghTokens              GitHubOAuth[]
+    uuid                  String                @id @default(uuid())
+    email                 String                @unique
+    orgId                 String
+    org                   Org                   @relation(fields: [orgId], references: [uuid])
+    groups                MemberGroups[]
+    passwordHash          String
+    avatarUrl             String?
+    firstName             String?
+    lastName              String?
+    alertNews             Int                   @default(0)
+    alertOverdue          Int                   @default(0)
+    alertFindings         Int                   @default(0)
+    alertType             Int                   @default(0)
+    member_keys           MemberKey[]
+    sessions              Session[]
+    integration_usage_log IntegrationUsageLog[]
+    triage_activity       Triage[]
+    ownedProducts         Product[]             @relation("productOwner")
+    ghTokens              GitHubOAuth[]
 
-  @@index([orgId, email])
+    @@index([orgId, email])
 }
 
 model GitHubOAuth {
-  id             Int        @id @default(autoincrement())
-  orgId          String
-  org            Org        @relation(fields: [orgId], references: [uuid])
-  memberUuid     String?
-  member         Member?    @relation(fields: [memberUuid], references: [uuid])
-  login          String?
-  accessToken    String
-  created        Int
-  expires        Int?
-  installationId Int?
-  app            GitHubApp? @relation(fields: [installationId], references: [installationId])
+    id             Int        @id @default(autoincrement())
+    orgId          String
+    org            Org        @relation(fields: [orgId], references: [uuid])
+    memberUuid     String?
+    member         Member?    @relation(fields: [memberUuid], references: [uuid])
+    login          String?
+    accessToken    String
+    created        Int
+    expires        Int?
+    installationId Int?
+    app            GitHubApp? @relation(fields: [installationId], references: [installationId])
 }
 
 model MemberKey {
-  id         Int     @id @default(autoincrement())
-  keyLabel   String?
-  keyType    String
-  memberUuid String
-  member     Member  @relation(fields: [memberUuid], references: [uuid])
-  secret     String
-  suspend    Int     @default(0)
+    id         Int     @id @default(autoincrement())
+    keyLabel   String?
+    keyType    String
+    memberUuid String
+    member     Member  @relation(fields: [memberUuid], references: [uuid])
+    secret     String
+    suspend    Int     @default(0)
 
-  @@unique([memberUuid, secret])
+    @@unique([memberUuid, secret])
 }
 
 model GitHubPAT {
-  uuid      String    @id @default(uuid())
-  orgId     String
-  org       Org       @relation(fields: [orgId], references: [uuid])
-  login     String
-  token     String
-  expires   Int
-  created   Int
-  avatarUrl String?
-  repos     GitRepo[]
+    uuid      String    @id @default(uuid())
+    orgId     String
+    org       Org       @relation(fields: [orgId], references: [uuid])
+    login     String
+    token     String
+    expires   Int
+    created   Int
+    avatarUrl String?
+    repos     GitRepo[]
 }
 
 model GitHubApp {
-  installationId Int           @id
-  orgId          String
-  org            Org           @relation(fields: [orgId], references: [uuid])
-  tokens         GitHubOAuth[]
-  identifier     String
-  identifierType String // org, user
-  created        Int
-  avatarUrl      String?
-  repos          GitRepo[]
+    installationId Int           @id
+    orgId          String
+    org            Org           @relation(fields: [orgId], references: [uuid])
+    tokens         GitHubOAuth[]
+    identifier     String
+    identifierType String // org, user
+    created        Int
+    avatarUrl      String?
+    repos          GitRepo[]
 }
 
 model Tags {
-  uuid     String        @id @default(uuid())
-  name     String
-  url      String?
-  products ProductTags[]
+    uuid     String        @id @default(uuid())
+    name     String
+    url      String?
+    products ProductTags[]
 }
 
 model ProductTags {
-  product     Product @relation(fields: [productUuid], references: [uuid])
-  productUuid String
-  Tags        Tags    @relation(fields: [tagsUuid], references: [uuid])
-  tagsUuid    String
+    product     Product @relation(fields: [productUuid], references: [uuid])
+    productUuid String
+    Tags        Tags    @relation(fields: [tagsUuid], references: [uuid])
+    tagsUuid    String
 
-  @@id([productUuid, tagsUuid])
+    @@id([productUuid, tagsUuid])
 }
 
 model Product {
-  uuid              String         @id @default(uuid())
-  name              String
-  source            String
-  orgId             String
-  org               Org            @relation(fields: [orgId], references: [uuid])
-  repos             ProductRepos[]
-  createdAt         Int
-  monitored         Int            @default(0)
-  monitoredSchedule String         @default("0 7 * * mon-fri") // 7AM weekdays
-  lastMonitored     Int
-  businessCritical  Int            @default(0)
-  tags              ProductTags[]
-  productTagsUuid   String?
-  ownerEmail        String?
-  owner             Member?        @relation("productOwner", fields: [ownerEmail], references: [email])
+    uuid              String         @id @default(uuid())
+    name              String
+    source            String
+    orgId             String
+    org               Org            @relation(fields: [orgId], references: [uuid])
+    repos             ProductRepos[]
+    createdAt         Int
+    monitored         Int            @default(0)
+    monitoredSchedule String         @default("0 7 * * mon-fri") // 7AM weekdays
+    lastMonitored     Int
+    businessCritical  Int            @default(0)
+    tags              ProductTags[]
+    productTagsUuid   String?
+    ownerEmail        String?
+    owner             Member?        @relation("productOwner", fields: [ownerEmail], references: [email])
 }
 
 model ProductRepos {
-  repoName    String
-  repo        GitRepo @relation(fields: [repoName, orgId], references: [fullName, orgId])
-  productUuid String
-  product     Product @relation(fields: [productUuid], references: [uuid])
-  orgId       String
-  org         Org     @relation(fields: [orgId], references: [uuid])
+    repoName    String
+    repo        GitRepo @relation(fields: [repoName, orgId], references: [fullName, orgId])
+    productUuid String
+    product     Product @relation(fields: [productUuid], references: [uuid])
+    orgId       String
+    org         Org     @relation(fields: [orgId], references: [uuid])
 
-  @@id([repoName, productUuid])
+    @@id([repoName, productUuid])
 }
 
 model GitRepo {
-  fullName      String
-  orgId         String
-  org           Org             @relation(fields: [orgId], references: [uuid])
-  ghAppId       Int?
-  ghApp         GitHubApp?      @relation(fields: [ghAppId], references: [installationId])
-  ghPATId       String?
-  ghPAT         GitHubPAT?      @relation(fields: [ghPATId], references: [uuid])
-  ghid          Int?
-  source        String
-  createdAt     Int
-  updatedAt     Int
-  pushedAt      Int
-  defaultBranch String
-  ownerId       Int
-  licenseSpdxId String?
-  licenseName   String?
-  fork          Int             @default(0)
-  template      Int             @default(0)
-  archived      Int             @default(0)
-  visibility    String
-  avatarUrl     String?
-  products      ProductRepos[]
-  sarif         SARIFInfo[]
-  spdx          SPDXInfo[]
-  cdx           CycloneDXInfo[]
-  findings      Finding[]
-  branches      GitBranch[]
+    fullName      String
+    orgId         String
+    org           Org             @relation(fields: [orgId], references: [uuid])
+    ghAppId       Int?
+    ghApp         GitHubApp?      @relation(fields: [ghAppId], references: [installationId])
+    ghPATId       String?
+    ghPAT         GitHubPAT?      @relation(fields: [ghPATId], references: [uuid])
+    ghid          Int?
+    source        String
+    createdAt     Int
+    updatedAt     Int
+    pushedAt      Int
+    defaultBranch String
+    ownerId       Int
+    licenseSpdxId String?
+    licenseName   String?
+    fork          Int             @default(0)
+    template      Int             @default(0)
+    archived      Int             @default(0)
+    visibility    String
+    avatarUrl     String?
+    products      ProductRepos[]
+    sarif         SARIFInfo[]
+    spdx          SPDXInfo[]
+    cdx           CycloneDXInfo[]
+    findings      Finding[]
+    branches      GitBranch[]
 
-  @@id([fullName, orgId])
+    @@id([fullName, orgId])
 }
 
 model GitBranch {
-  name      String
-  repoName  String
-  repo      GitRepo @relation(fields: [repoName, orgId], references: [fullName, orgId])
-  commitSha String
-  protected Int     @default(0)
-  monitored Int     @default(0)
-  orgId     String
-  org       Org     @relation(fields: [orgId], references: [uuid])
+    name      String
+    repoName  String
+    repo      GitRepo @relation(fields: [repoName, orgId], references: [fullName, orgId])
+    commitSha String
+    protected Int     @default(0)
+    monitored Int     @default(0)
+    orgId     String
+    org       Org     @relation(fields: [orgId], references: [uuid])
 
-  @@id([repoName, name])
+    @@id([repoName, name])
 }
 
 model SARIFInfo {
-  reportId     String         @id
-  sarifId      String
-  fullName     String?
-  repo         GitRepo?       @relation(fields: [fullName, orgId], references: [fullName, orgId])
-  orgId        String
-  org          Org            @relation(fields: [orgId], references: [uuid])
-  source       String
-  artifactUuid String
-  artifact     Artifact       @relation(fields: [artifactUuid], references: [uuid])
-  commitSha    String?
-  ref          String?
-  createdAt    Int
-  resultsCount Int
-  rulesCount   Int
-  toolName     String?
-  toolVersion  String?
-  analysisKey  String?
-  warning      String?
-  results      SarifResults[]
+    reportId     String         @id
+    sarifId      String
+    fullName     String?
+    repo         GitRepo?       @relation(fields: [fullName, orgId], references: [fullName, orgId])
+    orgId        String
+    org          Org            @relation(fields: [orgId], references: [uuid])
+    source       String
+    artifactUuid String
+    artifact     Artifact       @relation(fields: [artifactUuid], references: [uuid])
+    commitSha    String?
+    ref          String?
+    createdAt    Int
+    resultsCount Int
+    rulesCount   Int
+    toolName     String?
+    toolVersion  String?
+    analysisKey  String?
+    warning      String?
+    results      SarifResults[]
 }
 
 model SarifResults {
-  guid                String    @id
-  reportId            String
-  sarif               SARIFInfo @relation(fields: [reportId], references: [reportId])
-  messageText         String
-  ruleId              String
-  locations           String?
-  automationDetailsId String?
-  rulesetName         String?
-  level               String?
-  description         String?
-  helpMarkdown        String?
-  securitySeverity    String?
-  precision           String?
-  tags                String?
+    guid                String    @id
+    reportId            String
+    sarif               SARIFInfo @relation(fields: [reportId], references: [reportId])
+    messageText         String
+    ruleId              String
+    locations           String?
+    automationDetailsId String?
+    rulesetName         String?
+    level               String?
+    description         String?
+    helpMarkdown        String?
+    securitySeverity    String?
+    precision           String?
+    tags                String?
 }
 
 model CycloneDXInfo {
-  cdxId        String       @id
-  source       String
-  orgId        String
-  org          Org          @relation(fields: [orgId], references: [uuid])
-  repoName     String?
-  repo         GitRepo?     @relation(fields: [repoName, orgId], references: [fullName, orgId])
-  artifactUuid String
-  artifact     Artifact     @relation(fields: [artifactUuid], references: [uuid])
-  cdxVersion   String
-  serialNumber String?
-  name         String?
-  version      String?
-  createdAt    Int
-  toolName     String?
-  findings     Finding[]
-  dependencies Dependency[] @relation("depsCDX")
+    cdxId        String       @id
+    source       String
+    orgId        String
+    org          Org          @relation(fields: [orgId], references: [uuid])
+    repoName     String?
+    repo         GitRepo?     @relation(fields: [repoName, orgId], references: [fullName, orgId])
+    artifactUuid String
+    artifact     Artifact     @relation(fields: [artifactUuid], references: [uuid])
+    cdxVersion   String
+    serialNumber String?
+    name         String?
+    version      String?
+    createdAt    Int
+    toolName     String?
+    findings     Finding[]
+    dependencies Dependency[] @relation("depsCDX")
 }
 
 model SPDXInfo {
-  spdxId            String       @id
-  source            String
-  orgId             String
-  org               Org          @relation(fields: [orgId], references: [uuid])
-  repoName          String?
-  repo              GitRepo?     @relation(fields: [repoName, orgId], references: [fullName, orgId])
-  artifactUuid      String
-  artifact          Artifact     @relation(fields: [artifactUuid], references: [uuid])
-  spdxVersion       String
-  dataLicense       String?
-  name              String?
-  version           String?
-  documentNamespace String?
-  createdAt         Int
-  toolName          String?
-  documentDescribes String?
-  comment           String?
-  findings          Finding[]
-  dependencies      Dependency[] @relation("depsSPDX")
+    spdxId            String       @id
+    source            String
+    orgId             String
+    org               Org          @relation(fields: [orgId], references: [uuid])
+    repoName          String?
+    repo              GitRepo?     @relation(fields: [repoName, orgId], references: [fullName, orgId])
+    artifactUuid      String
+    artifact          Artifact     @relation(fields: [artifactUuid], references: [uuid])
+    spdxVersion       String
+    dataLicense       String?
+    name              String?
+    version           String?
+    documentNamespace String?
+    createdAt         Int
+    toolName          String?
+    documentDescribes String?
+    comment           String?
+    findings          Finding[]
+    dependencies      Dependency[] @relation("depsSPDX")
 }
 
 model Dependency {
-  key              String         @id
-  name             String
-  version          String
-  license          String?
-  packageEcosystem String?
-  isDev            Int            @default(0)
-  isDirect         Int            @default(0)
-  isIndirect       Int            @default(0)
-  isTransitive     Int            @default(0)
-  isShared         Int            @default(0)
-  isPeer           Int            @default(0)
-  childOfKey       String?
-  childOf          Dependency?    @relation("dependsOn", fields: [childOfKey], references: [key])
-  dependencies     Dependency[]   @relation("dependsOn")
-  spdxId           String?
-  spdx             SPDXInfo?      @relation("depsSPDX", fields: [spdxId], references: [spdxId])
-  cdxId            String?
-  cdx              CycloneDXInfo? @relation("depsCDX", fields: [cdxId], references: [cdxId])
+    key              String         @id
+    name             String
+    version          String
+    license          String?
+    packageEcosystem String?
+    isDev            Int            @default(0)
+    isDirect         Int            @default(0)
+    isIndirect       Int            @default(0)
+    isTransitive     Int            @default(0)
+    isShared         Int            @default(0)
+    isPeer           Int            @default(0)
+    childOfKey       String?
+    childOf          Dependency?    @relation("dependsOn", fields: [childOfKey], references: [key])
+    dependencies     Dependency[]   @relation("dependsOn")
+    spdxId           String?
+    spdx             SPDXInfo?      @relation("depsSPDX", fields: [spdxId], references: [spdxId])
+    cdxId            String?
+    cdx              CycloneDXInfo? @relation("depsCDX", fields: [cdxId], references: [cdxId])
 
-  @@unique([name, version, spdxId], name: "spdx_dep")
-  @@unique([name, version, cdxId], name: "cdx_dep")
+    @@unique([name, version, spdxId], name: "spdx_dep")
+    @@unique([name, version, cdxId], name: "cdx_dep")
 }
 
 model IntegrationUsageLog {
-  id         Int     @id @default(autoincrement())
-  orgId      String
-  org        Org     @relation(fields: [orgId], references: [uuid])
-  source     String
-  memberUuid String
-  member     Member  @relation(fields: [memberUuid], references: [uuid])
-  request    String
-  response   String?
-  statusCode Int
-  createdAt  Int
+    id         Int     @id @default(autoincrement())
+    orgId      String
+    org        Org     @relation(fields: [orgId], references: [uuid])
+    source     String
+    memberUuid String
+    member     Member  @relation(fields: [memberUuid], references: [uuid])
+    request    String
+    response   String?
+    statusCode Int
+    createdAt  Int
 }
 
 model Finding {
-  uuid                       String         @id @default(uuid())
-  findingId                  String
-  orgId                      String
-  org                        Org            @relation(fields: [orgId], references: [uuid])
-  repoName                   String?
-  repo                       GitRepo?       @relation(fields: [repoName, orgId], references: [fullName, orgId])
-  source                     String
-  category                   String
-  createdAt                  Int
-  modifiedAt                 Int
-  publishedAt                Int?
-  detectionTitle             String
-  detectionDescription       String?
-  purl                       String?
-  cpe                        String?
-  databaseReviewed           Int?
-  aliases                    String?
-  cwes                       String?
-  packageName                String
-  packageVersion             String?
-  packageLicense             String?
-  vendor                     String?
-  product                    String?
-  packageEcosystem           String?
-  customCvssVector           String?
-  customCvssScore            String?
-  advisoryUrl                String?
-  exploitsJSON               String?
-  knownExploitsJSON          String?
-  cisaDateAdded              Int?
-  knownRansomwareCampaignUse String?
-  fixVersion                 String?
-  fixAutomatable             Int?
-  vulnerableVersionRange     String?
-  affectedFunctions          String?
-  malicious                  Int?
-  abandoned                  Int?
-  squattedPackage            String?
-  referencesJSON             String?
-  timelineJSON               String?
-  confidenceScore            String?
-  confidenceLevel            String?
-  confidenceRationaleJSON    String?
-  spdxId                     String?
-  spdx                       SPDXInfo?      @relation(fields: [spdxId], references: [spdxId])
-  cdxId                      String?
-  cdx                        CycloneDXInfo? @relation(fields: [cdxId], references: [cdxId])
-  triage                     Triage[]
+    uuid                       String         @id @default(uuid())
+    findingId                  String
+    orgId                      String
+    org                        Org            @relation(fields: [orgId], references: [uuid])
+    repoName                   String?
+    repo                       GitRepo?       @relation(fields: [repoName, orgId], references: [fullName, orgId])
+    source                     String
+    category                   String
+    createdAt                  Int
+    modifiedAt                 Int
+    publishedAt                Int?
+    detectionTitle             String
+    detectionDescription       String?
+    purl                       String?
+    cpe                        String?
+    databaseReviewed           Int?
+    aliases                    String?
+    cwes                       String?
+    packageName                String
+    packageVersion             String?
+    packageLicense             String?
+    vendor                     String?
+    product                    String?
+    packageEcosystem           String?
+    customCvssVector           String?
+    customCvssScore            String?
+    advisoryUrl                String?
+    exploitsJSON               String?
+    knownExploitsJSON          String?
+    cisaDateAdded              Int?
+    knownRansomwareCampaignUse String?
+    fixVersion                 String?
+    fixAutomatable             Int?
+    vulnerableVersionRange     String?
+    affectedFunctions          String?
+    malicious                  Int?
+    abandoned                  Int?
+    squattedPackage            String?
+    referencesJSON             String?
+    timelineJSON               String?
+    confidenceScore            String?
+    confidenceLevel            String?
+    confidenceRationaleJSON    String?
+    spdxId                     String?
+    spdx                       SPDXInfo?      @relation(fields: [spdxId], references: [spdxId])
+    cdxId                      String?
+    cdx                        CycloneDXInfo? @relation(fields: [cdxId], references: [cdxId])
+    triage                     Triage[]
 }
 
 model Triage {
-  uuid                  String    @id @default(uuid())
-  artifactUuid          String?
-  artifact              Artifact? @relation(fields: [artifactUuid], references: [uuid])
-  findingUuid           String
-  finding               Finding   @relation(fields: [findingUuid], references: [uuid])
-  createdAt             Int
-  triagedAt             Int?
-  lastObserved          Int
-  seen                  Int
-  seenAt                Int?
-  cvssVector            String?
-  cvssScore             String?
-  epssPercentile        String?
-  epssScore             String?
-  ssvc                  String?
-  remediation           String?
-  analysisState         String
-  analysisJustification String?
-  analysisResponse      String?
-  analysisDetail        String?
-  triageAutomated       Int       @default(0)
-  memberUuid            String?
-  member                Member?   @relation(fields: [memberUuid], references: [uuid])
+    uuid                  String    @id @default(uuid())
+    artifactUuid          String?
+    artifact              Artifact? @relation(fields: [artifactUuid], references: [uuid])
+    findingUuid           String
+    finding               Finding   @relation(fields: [findingUuid], references: [uuid])
+    createdAt             Int
+    triagedAt             Int?
+    lastObserved          Int
+    seen                  Int
+    seenAt                Int?
+    cvssVector            String?
+    cvssScore             String?
+    epssPercentile        String?
+    epssScore             String?
+    ssvc                  String?
+    remediation           String?
+    analysisState         String
+    analysisJustification String?
+    analysisResponse      String?
+    analysisDetail        String?
+    triageAutomated       Int       @default(0)
+    memberUuid            String?
+    member                Member?   @relation(fields: [memberUuid], references: [uuid])
 
-  @@unique([memberUuid, analysisState])
+    @@unique([memberUuid, analysisState])
 }
 
 model CVEMetadata {
-  cveId                String               @id
-  dataVersion          String
-  state                String
-  datePublished        Int
-  dateUpdated          Int?
-  dateReserved         Int?
-  vectorString         String?
-  title                String
-  sourceAdvisoryRef    String?
-  affectedVendor       String?
-  affectedProduct      String?
-  affectedVersionsJSON String?
-  cpesJSON             String?
-  cnaOrgId             String
-  cna                  CVENumberingAuthrity @relation(fields: [cnaOrgId], references: [orgId])
-  fileLinkId           Int
-  fileLink             Link                 @relation(fields: [fileLinkId], references: [id])
-  adp                  CVEADP[]
+    cveId                String               @id
+    dataVersion          String
+    state                String
+    datePublished        Int
+    dateUpdated          Int?
+    dateReserved         Int?
+    vectorString         String?
+    title                String
+    sourceAdvisoryRef    String?
+    affectedVendor       String?
+    affectedProduct      String?
+    affectedVersionsJSON String?
+    cpesJSON             String?
+    cnaOrgId             String
+    cna                  CVENumberingAuthrity @relation(fields: [cnaOrgId], references: [orgId])
+    fileLinkId           Int
+    fileLink             Link                 @relation(fields: [fileLinkId], references: [id])
+    adp                  CVEADP[]
 }
 
 model CVENumberingAuthrity {
-  orgId     String        @id
-  shortName String
-  cves      CVEMetadata[]
+    orgId     String        @id
+    shortName String
+    cves      CVEMetadata[]
 }
 
 model CVEADP {
-  cve   CVEMetadata             @relation(fields: [cveId], references: [cveId])
-  cveId String
-  adp   AuthorizedDataPublisher @relation(fields: [adpId], references: [orgId])
-  adpId String
+    cve   CVEMetadata             @relation(fields: [cveId], references: [cveId])
+    cveId String
+    adp   AuthorizedDataPublisher @relation(fields: [adpId], references: [orgId])
+    adpId String
 
-  @@id([cveId, adpId])
+    @@id([cveId, adpId])
 }
 
 model AuthorizedDataPublisher {
-  orgId     String   @id
-  shortName String
-  title     String
-  cves      CVEADP[]
+    orgId     String   @id
+    shortName String
+    title     String
+    cves      CVEADP[]
 }
 
 model Link {
-  id           Int           @id @default(autoincrement())
-  url          String
-  contentType  String // OCI PLAIN_JSON OCTET_STREAM PLAIN_XML
-  artifact     Artifact?     @relation(fields: [artifactUuid], references: [uuid])
-  artifactUuid String?
-  cves         CVEMetadata[]
+    id           Int           @id @default(autoincrement())
+    url          String
+    contentType  String // OCI PLAIN_JSON OCTET_STREAM PLAIN_XML
+    artifact     Artifact?     @relation(fields: [artifactUuid], references: [uuid])
+    artifactUuid String?
+    cves         CVEMetadata[]
 }
 
 model Artifact {
-  uuid          String          @id @default(uuid())
-  // displayIdentifier String
-  type          String // BOM ATTESTATION VDR VEX OTHER
-  date          Int
-  bomFormat     String
-  downloadLinks Link[]
-  // inventoryTypes    String // SOFTWARE HARDWARE CRYPTOGRAPHY SERVICE VULNERABILITY
-  // identities        Identity[]
-  // Collection        Collection? @relation(fields: [collectionUuid], references: [uuid])
-  // collectionUuid    String?
-  sarif         SARIFInfo[]
-  cdx           CycloneDXInfo[]
-  spdx          SPDXInfo[]
-  vex           Triage[]
+    uuid          String          @id @default(uuid())
+    // displayIdentifier String
+    type          String // BOM ATTESTATION VDR VEX OTHER
+    date          Int
+    bomFormat     String
+    downloadLinks Link[]
+    // inventoryTypes    String // SOFTWARE HARDWARE CRYPTOGRAPHY SERVICE VULNERABILITY
+    // identities        Identity[]
+    // Collection        Collection? @relation(fields: [collectionUuid], references: [uuid])
+    // collectionUuid    String?
+    sarif         SARIFInfo[]
+    cdx           CycloneDXInfo[]
+    spdx          SPDXInfo[]
+    vex           Triage[]
 }
 
 // model Lifecycle {
