@@ -15,6 +15,9 @@ clean: ## Cleanup tmp files
 setup: ## FOR DOCO ONLY - Run these one at a time, do not call this target directly
 	nvm install --lts
 	nvm use --lts
+	npm install -g corepack
+	rm ~/.pnp.cjs
+	corepack enable
 	yarn set version stable
 	yarn plugin import https://raw.githubusercontent.com/spdx/yarn-plugin-spdx/main/bundles/@yarnpkg/plugin-spdx.js
 	yarn plugin import https://github.com/CycloneDX/cyclonedx-node-yarn/releases/latest/download/yarn-plugin-cyclonedx.cjs
@@ -52,22 +55,22 @@ deployments: ## FOR DOCO ONLY
 	npx wrangler pages deployment list --project-name vulnetix
 
 deploy: ## FOR DOCO ONLY
-	npx wrangler pages deployment create ./dist --project-name vulnetix --branch demo --upload-source-maps=true
+	npx wrangler pages deployment create ./dist --project-name vulnetix --branch staging --upload-source-maps=true
 
 run: ## FOR DOCO ONLY - Run these one at a time, do not call this target directly
 	lsof -i tcp:8788
 	npm run preview
 
-git-demo:
-	[[ -z "$(shell git status -s)" ]] || git stash save "changes for demo"
+git-staging:
+	[[ -z "$(shell git status -s)" ]] || git stash save "changes for staging"
 	git checkout -f main
-	git branch -D demo
+	git branch -D staging
 	git fetch -a
 	git submodule foreach git fetch -a
 	git submodule foreach git pull
 	git pull
-	git checkout -b demo main
-	git push --set-upstream origin demo
+	git checkout -b staging main
+	git push --set-upstream origin staging
 	git submodule sync
 	git submodule foreach git submodule update
 	git stash pop || true

@@ -1,0 +1,1 @@
+ALTER TABLE Org ADD enforceGitHubOAuth INTEGER DEFAULT 0;

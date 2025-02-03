@@ -1,0 +1,33 @@
+{
+    "compilerOptions": {
+        "paths": {
+            "@/*": [
+                "./src/*"
+            ],
+            "@shared/*": [
+                "./shared/*"
+            ],
+            "@core/*": [
+                "./src/@core/*"
+            ],
+            "@layouts/*": [
+                "./src/@layouts/*"
+            ],
+            "@images/*": [
+                "./src/assets/images/*"
+            ],
+            "@styles/*": [
+                "./src/styles/*"
+            ],
+            "@configured-variables": [
+                "./src/styles/variables/_template.scss"
+            ],
+            "@axios": [
+                "./src/plugins/axios"
+            ]
+        },
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "resolveJsonModule": true
+    }
+}
