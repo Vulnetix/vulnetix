@@ -35,3 +35,23 @@ FROM
   Org o
 LEFT JOIN Member m ON o.uuid = m.orgId
 ORDER BY o.uuid;
+
+WITH vars AS (
+    SELECT '045B7C81-B05E-4275-B54A-2828ED335EEE' as orgId
+)
+SELECT
+    (SELECT COUNT(1) FROM IntegrationConfig WHERE orgId = vars.orgId) as configs,
+    (SELECT COUNT(1) FROM IntegrationUsageLog WHERE orgId = vars.orgId) as logs,
+    (SELECT COUNT(1) FROM Product WHERE orgId = vars.orgId) as products,
+    (SELECT COUNT(1) FROM ProductRepos WHERE orgId = vars.orgId) as "repo product links",
+    (SELECT COUNT(1) FROM SARIFInfo WHERE orgId = vars.orgId) as SARIF,
+    (SELECT COUNT(1) FROM CycloneDXInfo WHERE orgId = vars.orgId) as CycloneDX,
+    (SELECT COUNT(1) FROM SPDXInfo WHERE orgId = vars.orgId) as SPDX,
+    (SELECT COUNT(1) FROM GitBranch WHERE orgId = vars.orgId) as branches,
+    (SELECT COUNT(1) FROM GitHubApp WHERE orgId = vars.orgId) as apps,
+    (SELECT COUNT(1) FROM GitHubOAuth WHERE orgId = vars.orgId) as oauths,
+    (SELECT COUNT(1) FROM GitHubPAT WHERE orgId = vars.orgId) as tokens,
+    (SELECT COUNT(1) FROM Member WHERE orgId = vars.orgId) as members,
+    (SELECT COUNT(1) FROM `Session` WHERE orgId = vars.orgId) as "sessions",
+    (SELECT COUNT(1) FROM Finding WHERE orgId = vars.orgId) as findings
+FROM vars;

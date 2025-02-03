@@ -1,3 +1,5 @@
+PRAGMA defer_foreign_keys=ON;
+PRAGMA foreign_keys=OFF;
 CREATE TABLE "new_GitRepo" (
     "fullName" TEXT NOT NULL,
     "orgId" TEXT NOT NULL,
@@ -23,3 +25,5 @@ CREATE TABLE "new_GitRepo" (
 INSERT INTO "new_GitRepo" ("archived", "avatarUrl", "createdAt", "defaultBranch", "fork", "fullName", "ghid", "licenseName", "licenseSpdxId", "orgId", "ownerId", "pushedAt", "source", "template", "updatedAt", "visibility") SELECT "archived", "avatarUrl", "createdAt", "defaultBranch", "fork", "fullName", "ghid", "licenseName", "licenseSpdxId", "orgId", "ownerId", "pushedAt", "source", "template", "updatedAt", "visibility" FROM "GitRepo";
 DROP TABLE "GitRepo";
 ALTER TABLE "new_GitRepo" RENAME TO "GitRepo";
+PRAGMA foreign_keys=ON;
+PRAGMA defer_foreign_keys=OFF;
