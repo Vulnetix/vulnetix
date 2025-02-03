@@ -97,10 +97,10 @@ const errorHandling = async (context: Context) => {
         "attackbot", "backdorbot", "becomebot", "gptbot", "kauaibot", "zagbot"
     ]
     // Check if the User-Agent contains any blocked substrings
-    if (blockedSubstrings.some(substring => lowerUserAgent.includes(substring))) {
-        // Respond with 403 Forbidden
-        return new Response('Forbidden', { status: 403 })
-    }
+    // if (blockedSubstrings.some(substring => lowerUserAgent.includes(substring))) {
+    //     // Respond with 403 Forbidden
+    //     return new Response('Forbidden', { status: 403 })
+    // }
     data.logger = anylogger('vulnetix-worker')
     setLoggerLevel(data.logger, env.LOG_LEVEL)
     try {
