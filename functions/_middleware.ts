@@ -145,81 +145,85 @@ const setupDependencies = async (context: Context) => {
 // Ensure authentication is always performed, with specified exceptions
 const authentication = async (context: Context) => {
     const { request, next, data } = context
-    const url: URL = new URL(request.url)
-    const origin: string = request.headers.get('host') || '127.0.0.1'
-    if (origin !== '127.0.0.1' && (request.cf.botManagement.verifiedBot || request.cf.botManagement.score <= 60)) {
-        return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } } as ErrorResponse), { status: 403 })
-    }
-    const authRequired: boolean =
-        !unauthenticatedRoutes.static.includes(url.pathname) &&
-        !unauthenticatedRoutes.prefixes.map(i => url.pathname.startsWith(i)).includes(true)
+    try {
+        const url: URL = new URL(request.url)
+        const origin: string = request.headers.get('host') || '127.0.0.1'
+        if (origin !== '127.0.0.1' && (request.cf.botManagement.verifiedBot || request.cf.botManagement.score <= 60)) {
+            return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } } as ErrorResponse), { status: 403 })
+        }
+        const authRequired: boolean =
+            !unauthenticatedRoutes.static.includes(url.pathname) &&
+            !unauthenticatedRoutes.prefixes.map(i => url.pathname.startsWith(i)).includes(true)
 
-    if (!authRequired || !url.pathname.startsWith('/api/')) {
-        return await next()
-    }
-    if (origin === 'staging.vulnetix.com') {
-        data.session = await data.prisma.session.findFirstOrThrow({
-            where: { kid: '18f55ff2-cd8e-4c31-8d62-43bc60d3117e' }
+        if (!authRequired || !url.pathname.startsWith('/api/')) {
+            return await next()
+        }
+        if (origin === 'staging.vulnetix.com') {
+            data.session = await data.prisma.session.findFirstOrThrow({
+                where: { kid: '18f55ff2-cd8e-4c31-8d62-43bc60d3117e' }
+            })
+            return await next()
+        }
+        const method: string = request.method.toUpperCase()
+        const path: string = url.pathname + url.search
+        const body: string = ['GET', 'DELETE'].includes(method.toUpperCase()) ? '' : await ensureStrReqBody(request)
+        // Retrieve signature and timestamp from headers
+        const signature: string | null = request.headers.get('authorization')?.replace('HMAC ', '')
+        const timestampStr: string | null = request.headers.get('x-timestamp')
+        const kid: string | null = request.headers.get('x-vulnetix-kid')
+
+        if (!signature || !timestampStr || !kid) {
+            return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } }), { status: 403 })
+        }
+
+        // Convert timestamp from string to integer
+        const timestamp: number = parseInt(timestampStr, 10)
+        if (isNaN(timestamp)) {
+            data.logger.warn('Invalid timestamp format', timestamp)
+            return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } }), { status: 403 })
+        }
+        // Validate timestamp (you may want to add a check to ensure the request isn't too old)
+        const currentTimestamp: number = new Date().getTime()
+        if (Math.abs(currentTimestamp - timestamp) > 3e+5) { // e.g., allow a 5-minute skew
+            data.logger.warn('expired, skew', timestamp)
+            return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.EXPIRED } }), { status: 401 })
+        }
+        // Retrieve the session key from the database using Prisma
+        const session: Session = await data.prisma.session.findFirstOrThrow({
+            where: { kid }
         })
-        return await next()
-    }
-    const method: string = request.method.toUpperCase()
-    const path: string = url.pathname + url.search
-    const body: string = ['GET', 'DELETE'].includes(method.toUpperCase()) ? '' : await ensureStrReqBody(request)
-    // Retrieve signature and timestamp from headers
-    const signature: string | null = request.headers.get('authorization')?.replace('HMAC ', '')
-    const timestampStr: string | null = request.headers.get('x-timestamp')
-    const kid: string | null = request.headers.get('x-vulnetix-kid')
+        if (!session.expiry || session.expiry <= new Date().getTime()) {
+            data.logger.warn('expired', timestamp)
+            return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.EXPIRED } }), { status: 401 })
+        }
+        const secretKeyBytes: Uint8Array = new TextEncoder().encode(session.secret)
+        const payloadBytes: Uint8Array = Client.makePayload({
+            method,
+            path,
+            kid,
+            timestamp,
+            body: encodeURIComponent(body)
+        })
+        const key: CryptoKey = await crypto.subtle.importKey(
+            "raw",
+            secretKeyBytes,
+            { name: "HMAC", hash: "SHA-512" },
+            false,
+            ["verify"]
+        )
 
-    if (!signature || !timestampStr || !kid) {
-        return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } }), { status: 403 })
-    }
+        const signatureBytes: Uint8Array = hexStringToUint8Array(signature)
+        const isValid: boolean = await crypto.subtle.verify("HMAC", key, signatureBytes, payloadBytes)
 
-    // Convert timestamp from string to integer
-    const timestamp: number = parseInt(timestampStr, 10)
-    if (isNaN(timestamp)) {
-        data.logger.warn('Invalid timestamp format', timestamp)
-        return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } }), { status: 403 })
+        if (!isValid) {
+            data.logger.warn('Invalid signature', signature)
+            return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } }), { status: 401 })
+        }
+        data.session = session
+    } catch (err) {
+        data.logger.error(err.message, err.stack)
+        return new Response("Forbidden", { status: 403 })
     }
-    // Validate timestamp (you may want to add a check to ensure the request isn't too old)
-    const currentTimestamp: number = new Date().getTime()
-    if (Math.abs(currentTimestamp - timestamp) > 3e+5) { // e.g., allow a 5-minute skew
-        data.logger.warn('expired, skew', timestamp)
-        return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.EXPIRED } }), { status: 401 })
-    }
-    // Retrieve the session key from the database using Prisma
-    const session: Session = await data.prisma.session.findFirstOrThrow({
-        where: { kid }
-    })
-    if (!session.expiry || session.expiry <= new Date().getTime()) {
-        data.logger.warn('expired', timestamp)
-        return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.EXPIRED } }), { status: 401 })
-    }
-    const secretKeyBytes: Uint8Array = new TextEncoder().encode(session.secret)
-    const payloadBytes: Uint8Array = Client.makePayload({
-        method,
-        path,
-        kid,
-        timestamp,
-        body: encodeURIComponent(body)
-    })
-    const key: CryptoKey = await crypto.subtle.importKey(
-        "raw",
-        secretKeyBytes,
-        { name: "HMAC", hash: "SHA-512" },
-        false,
-        ["verify"]
-    )
-
-    const signatureBytes: Uint8Array = hexStringToUint8Array(signature)
-    const isValid: boolean = await crypto.subtle.verify("HMAC", key, signatureBytes, payloadBytes)
-
-    if (!isValid) {
-        data.logger.warn('Invalid signature', signature)
-        return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } }), { status: 401 })
-    }
-    data.session = session
-
     return await next()
 }
 
