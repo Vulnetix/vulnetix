@@ -1,13 +1,13 @@
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { Prisma, PrismaClient } from '@prisma/client';
-import { Context, ErrorResponse, Session } from "@shared/interfaces";
+import { Context, FetchResponse, Session } from "@shared/interfaces";
 import {
-    AuthResult,
-    Client,
-    ensureStrReqBody,
-    hexStringToUint8Array,
-    isJSON,
-    unauthenticatedRoutes
+  AuthResult,
+  Client,
+  ensureStrReqBody,
+  hexStringToUint8Array,
+  isJSON,
+  unauthenticatedRoutes
 } from "@shared/utils";
 import anylogger from 'anylogger';
 import 'anylogger-console';
@@ -149,7 +149,7 @@ const authentication = async (context: Context) => {
         const url: URL = new URL(request.url)
         const origin: string = request.headers.get('host') || '127.0.0.1'
         if (origin !== '127.0.0.1' && (request.cf.botManagement.verifiedBot || request.cf.botManagement.score <= 60)) {
-            return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } } as ErrorResponse), { status: 403 })
+            return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } } as FetchResponse), { status: 403 })
         }
         const authRequired: boolean =
             !unauthenticatedRoutes.static.includes(url.pathname) &&
@@ -247,15 +247,30 @@ const redirect = async (context: Context) => {
 // Set CORS to all /api responses
 const dynamicHeaders = async (context: Context) => {
     const { request, next } = context
-    const response = await next()
     const CF_ray: string | null = request.headers.get('CF-ray') || null
     if (!CF_ray) {
         allowedOrigins.push('localhost:8788')
     }
     const origin: string = request.headers.get('host') || ''
     const proto: string = origin === 'localhost:8788' ? 'http://' : 'https://'
-    response.headers.set('Access-Control-Allow-Origin', allowedOrigins.includes(origin) ? `${proto}${origin}` : 'https://app.vulnetix.com')
-    return response
+    const acao: string = allowedOrigins.includes(origin) ? `${proto}${origin}` : 'https://app.vulnetix.com'
+    try {
+        const response = await next()
+        response.headers.set('Access-Control-Allow-Origin', acao)
+        return response
+    } catch (err) {
+        console.error(err)
+        return new Response(JSON.stringify({
+            ok: false,
+            error: { type: err.constructor.name, message: err.message }
+        }), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': acao
+            },
+        })
+    }
 }
 
 /**
