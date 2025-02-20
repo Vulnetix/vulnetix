@@ -36,7 +36,7 @@ model Org {
     sarif                 SARIFInfo[]
     cdx                   CycloneDXInfo[]
     spdx                  SPDXInfo[]
-    repos                 ProductRepos[]
+    productRepos          ProductRepos[]
     branches              GitBranch[]
     products              Product[]
     tags                  Tags[]
