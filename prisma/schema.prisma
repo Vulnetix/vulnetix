@@ -24,27 +24,27 @@ model Session {
 }
 
 model Org {
-    uuid                      String                     @id @default(uuid())
-    name                      String                     @unique
-    enforceGitHubOAuth        Int                        @default(0)
-    members                   Member[]
-    sessions                  Session[]
-    git_repos                 GitRepo[]
-    integrations              IntegrationConfig[]
-    integration_usage_log     IntegrationUsageLog[]
-    findings                  Finding[]
-    sarif                     SARIFInfo[]
-    cdx                       CycloneDXInfo[]
-    spdx                      SPDXInfo[]
-    repos                     ProductRepos[]
-    branches                  GitBranch[]
-    products                  Product[]
-    tags                      Tags[]
-    gitHubPAT                 GitHubPAT[]
-    gitHubApps                GitHubApp[]
-    gitHubOAuth               GitHubOAuth[]
-    reports                   Report[]
-    requirementResults        RequirementResult[]
+    uuid                  String                @id @default(uuid())
+    name                  String                @unique
+    enforceGitHubOAuth    Int                   @default(0)
+    members               Member[]
+    sessions              Session[]
+    git_repos             GitRepo[]
+    integrations          IntegrationConfig[]
+    integration_usage_log IntegrationUsageLog[]
+    findings              Finding[]
+    sarif                 SARIFInfo[]
+    cdx                   CycloneDXInfo[]
+    spdx                  SPDXInfo[]
+    repos                 ProductRepos[]
+    branches              GitBranch[]
+    products              Product[]
+    tags                  Tags[]
+    gitHubPAT             GitHubPAT[]
+    gitHubApps            GitHubApp[]
+    gitHubOAuth           GitHubOAuth[]
+    reports               Report[]
+    requirementResults    RequirementResult[]
 }
 
 model IntegrationConfig {
@@ -489,7 +489,7 @@ model Link {
 }
 
 model Artifact {
-    uuid                      String                     @id @default(uuid())
+    uuid                      String                   @id @default(uuid())
     // displayIdentifier String
     type                      String // BOM ATTESTATION VDR VEX OTHER
     date                      Int
@@ -574,13 +574,15 @@ model ReportingInstructions {
 }
 
 model Requirement {
-    uuid              String              @id @default(uuid())
-    reportTypeId      String
-    reportType        ReportType          @relation(fields: [reportTypeId], references: [uuid])
-    title             String
-    description       String
-    testingProcedures TestingProcedure[]
-    results           RequirementResult[]
+    uuid                  String              @id @default(uuid())
+    reportTypeId          String
+    reportType            ReportType          @relation(fields: [reportTypeId], references: [uuid])
+    title                 String
+    description           String
+    currentlyBestPractice Int                 @default(0)
+    serviceProvidersOnly  Int                 @default(0)
+    testingProcedures     TestingProcedure[]
+    results               RequirementResult[]
 }
 
 model TestingProcedure {

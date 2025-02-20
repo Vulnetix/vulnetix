@@ -26,7 +26,9 @@ CREATE TABLE "Requirement" (
     "uuid" TEXT NOT NULL PRIMARY KEY,
     "reportTypeId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
-    "description" TEXT NOT NULL
+    "description" TEXT NOT NULL,
+    "currentlyBestPractice" INTEGER NOT NULL DEFAULT 0,
+    "serviceProvidersOnly" INTEGER NOT NULL DEFAULT 0
 );
 
 -- CreateTable
