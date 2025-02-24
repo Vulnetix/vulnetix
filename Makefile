@@ -63,6 +63,7 @@ run: ## FOR DOCO ONLY - Run these one at a time, do not call this target directl
 
 git-staging:
 	[[ -z "$(shell git status -s)" ]] || git stash save "changes for staging"
+	git submodule foreach '[[ -z "$(shell git status -s)" ]] || git stash save "changes for staging"'
 	git checkout -f main
 	git branch -D staging
 	git fetch -a
@@ -74,6 +75,7 @@ git-staging:
 	git submodule sync
 	git submodule foreach git submodule update
 	git stash pop || true
+	git submodule foreach 'git stash pop || true'
 	git status
 
 _helpers: ## FOR DOCO ONLY
