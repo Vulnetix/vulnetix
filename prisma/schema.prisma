@@ -591,6 +591,7 @@ model TestingProcedure {
     reportType              ReportType               @relation(fields: [reportTypeId], references: [uuid])
     requirementId           String
     requirement             Requirement              @relation(fields: [requirementId], references: [uuid])
+    title                   String
     description             String
     // Many-to-many relation with ReportingInstructions
     instructions            ReportingInstructions[]  @relation("TestingProcedureInstructions")
