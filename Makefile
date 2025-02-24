@@ -79,6 +79,9 @@ git-staging:
 _helpers: ## FOR DOCO ONLY
 	npx wrangler d1 execute vulnetix --local --file ./migrations/0001_init.sql
 	npx wrangler d1 execute vulnetix --remote --command "SELECT * FROM Member;"
+	npx wrangler d1 execute vulnetix --local --command 'PRAGMA table_list;'
+	npx wrangler d1 execute vulnetix --local --command 'PRAGMA table_info("Member");'
+	npx wrangler d1 execute vulnetix --remote --command 'INSERT INTO MemberGroups (memberUuid, groupUuid) VALUES ("a5c8611d-81e9-4cd0-8b16-f3e278064c3e", "8ac52122-b9ae-40fb-b4c6-7c83238ae8d6");'
 	npx prisma migrate diff \
 	--from-empty \
 	--to-schema-datamodel ./prisma/schema.prisma \

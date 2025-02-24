@@ -36,13 +36,15 @@ model Org {
     sarif                 SARIFInfo[]
     cdx                   CycloneDXInfo[]
     spdx                  SPDXInfo[]
-    repos                 ProductRepos[]
+    productRepos          ProductRepos[]
     branches              GitBranch[]
     products              Product[]
     tags                  Tags[]
     gitHubPAT             GitHubPAT[]
     gitHubApps            GitHubApp[]
     gitHubOAuth           GitHubOAuth[]
+    reports               Report[]
+    requirementResults    RequirementResult[]
 }
 
 model IntegrationConfig {
@@ -193,33 +195,34 @@ model ProductRepos {
 }
 
 model GitRepo {
-    fullName      String
-    orgId         String
-    org           Org             @relation(fields: [orgId], references: [uuid])
-    ghAppId       Int?
-    ghApp         GitHubApp?      @relation(fields: [ghAppId], references: [installationId])
-    ghPATId       String?
-    ghPAT         GitHubPAT?      @relation(fields: [ghPATId], references: [uuid])
-    ghid          Int?
-    source        String
-    createdAt     Int
-    updatedAt     Int
-    pushedAt      Int
-    defaultBranch String
-    ownerId       Int
-    licenseSpdxId String?
-    licenseName   String?
-    fork          Int             @default(0)
-    template      Int             @default(0)
-    archived      Int             @default(0)
-    visibility    String
-    avatarUrl     String?
-    products      ProductRepos[]
-    sarif         SARIFInfo[]
-    spdx          SPDXInfo[]
-    cdx           CycloneDXInfo[]
-    findings      Finding[]
-    branches      GitBranch[]
+    fullName         String
+    orgId            String
+    org              Org                @relation(fields: [orgId], references: [uuid])
+    ghAppId          Int?
+    ghApp            GitHubApp?         @relation(fields: [ghAppId], references: [installationId])
+    ghPATId          String?
+    ghPAT            GitHubPAT?         @relation(fields: [ghPATId], references: [uuid])
+    ghid             Int?
+    source           String
+    createdAt        Int
+    updatedAt        Int
+    pushedAt         Int
+    defaultBranch    String
+    ownerId          Int
+    licenseSpdxId    String?
+    licenseName      String?
+    fork             Int                @default(0)
+    template         Int                @default(0)
+    archived         Int                @default(0)
+    visibility       String
+    avatarUrl        String?
+    products         ProductRepos[]
+    sarif            SARIFInfo[]
+    spdx             SPDXInfo[]
+    cdx              CycloneDXInfo[]
+    findings         Finding[]
+    branches         GitBranch[]
+    RequirementScope RequirementScope[]
 
     @@id([fullName, orgId])
 }
@@ -486,26 +489,27 @@ model Link {
 }
 
 model Artifact {
-    uuid          String          @id @default(uuid())
+    uuid                      String                   @id @default(uuid())
     // displayIdentifier String
-    type          String // BOM ATTESTATION VDR VEX OTHER
-    date          Int
-    bomFormat     String
-    downloadLinks Link[]
+    type                      String // BOM ATTESTATION VDR VEX OTHER
+    date                      Int
+    bomFormat                 String
+    downloadLinks             Link[]
     // inventoryTypes    String // SOFTWARE HARDWARE CRYPTOGRAPHY SERVICE VULNERABILITY
     // identities        Identity[]
     // Collection        Collection? @relation(fields: [collectionUuid], references: [uuid])
     // collectionUuid    String?
-    sarif         SARIFInfo[]
-    cdx           CycloneDXInfo[]
-    spdx          SPDXInfo[]
-    vex           Triage[]
+    sarif                     SARIFInfo[]
+    cdx                       CycloneDXInfo[]
+    spdx                      SPDXInfo[]
+    vex                       Triage[]
+    testingProcedureEvidences TestingProcedureResult[] @relation("TestingProcedureEvidence")
 }
 
 // model Lifecycle {
 //   uuid  String   @id @default(uuid())
 //   event String // list enum String
-//   date  DateTime
+//   date  Int
 //   Collection     Collection? @relation(fields: [collectionUuid], references: [uuid])
 //   collectionUuid String?
 //   Leaf           Leaf?       @relation(fields: [leafUuid], references: [uuid])
@@ -542,3 +546,93 @@ model Artifact {
 //   Product     Product?    @relation(fields: [productUuid], references: [uuid])
 //   productUuid String?
 // }
+
+model Report {
+    uuid               String              @id @default(uuid())
+    lastGenerated      Int
+    initialDate        Int
+    assessmentDueDate  Int
+    status             String              @default("draft")
+    orgId              String
+    org                Org                 @relation(fields: [orgId], references: [uuid])
+    requirementResults RequirementResult[]
+}
+
+model ReportType {
+    uuid              String             @id @default(uuid())
+    type              String // e.g. "PCI DSS"
+    version           String // e.g. "4.0.1"
+    requirements      Requirement[]
+    testingProcedures TestingProcedure[]
+}
+
+model ReportingInstructions {
+    uuid              String             @id @default(uuid())
+    text              String
+    // Implicit many-to-many relation with TestingProcedure
+    testingProcedures TestingProcedure[] @relation("TestingProcedureInstructions")
+}
+
+model Requirement {
+    uuid                  String              @id @default(uuid())
+    reportTypeId          String
+    reportType            ReportType          @relation(fields: [reportTypeId], references: [uuid])
+    title                 String
+    description           String
+    currentlyBestPractice Int                 @default(0)
+    serviceProvidersOnly  Int                 @default(0)
+    testingProcedures     TestingProcedure[]
+    results               RequirementResult[]
+}
+
+model TestingProcedure {
+    uuid                    String                   @id @default(uuid())
+    reportTypeId            String
+    reportType              ReportType               @relation(fields: [reportTypeId], references: [uuid])
+    requirementId           String
+    requirement             Requirement              @relation(fields: [requirementId], references: [uuid])
+    description             String
+    // Many-to-many relation with ReportingInstructions
+    instructions            ReportingInstructions[]  @relation("TestingProcedureInstructions")
+    testingProcedureResults TestingProcedureResult[]
+}
+
+model RequirementResult {
+    uuid              String                   @id @default(uuid())
+    requirementId     String
+    requirement       Requirement              @relation(fields: [requirementId], references: [uuid])
+    reportId          String
+    report            Report                   @relation(fields: [reportId], references: [uuid])
+    orgId             String
+    org               Org                      @relation(fields: [orgId], references: [uuid])
+    detail            String
+    assessmentFinding String                   @default("Not Tested")
+    method            String?
+    step1             String                   @default("")
+    step2             String                   @default("")
+    step3             String                   @default("")
+    step4             String                   @default("")
+    // Relation to scope and testing procedures results
+    scope             RequirementScope[]
+    results           TestingProcedureResult[]
+}
+
+model RequirementScope {
+    uuid                String            @id @default(uuid())
+    orgId               String
+    requirementResultId String
+    requirementResult   RequirementResult @relation(fields: [requirementResultId], references: [uuid])
+    repoName            String
+    repo                GitRepo           @relation(fields: [repoName, orgId], references: [fullName, orgId])
+}
+
+model TestingProcedureResult {
+    uuid                String            @id @default(uuid())
+    testingProcedureId  String
+    testingProcedure    TestingProcedure  @relation(fields: [testingProcedureId], references: [uuid])
+    requirementResultId String
+    requirementResult   RequirementResult @relation(fields: [requirementResultId], references: [uuid])
+    reportingDetails    String
+    // Implicit many-to-many relation with Artifacts
+    evidence            Artifact[]        @relation("TestingProcedureEvidence")
+}
