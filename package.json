@@ -96,7 +96,7 @@
     "vite-plugin-vue-layouts": "^0.8.0",
     "vite-plugin-vuetify": "1.0.2",
     "vue-shepherd": "^3.0.0",
-    "wrangler": "^3.99.0"
+    "wrangler": "^3.109.3"
   },
   "packageManager": "yarn@4.5.1",
   "resolutions": {
