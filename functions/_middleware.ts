@@ -11,6 +11,7 @@ import {
 } from "@shared/utils";
 import anylogger from 'anylogger';
 import 'anylogger-console';
+import { parse } from "cookie";
 import { createRemoteJWKSet, JWTPayload, jwtVerify } from 'jose';
 
 const allowedOrigins: string[] = ['www.vulnetix.com', 'staging.vulnetix.com', 'app.vulnetix.com']
@@ -165,18 +166,23 @@ const authentication = async (context: Context) => {
             return next()
         }
         if (origin === 'staging.vulnetix.com') {
-            const token = request.headers['cf-access-jwt-assertion']
-            // Make sure that the incoming request has our token header
+            const cookie = parse(request.headers.get("Cookie") || "")
+            const token = cookie['CF_Authorization']
             if (!token) {
-                return next()
+                return new Response('Forbidden', { status: 403 })
             }
-            const result = await jwtVerify(token, JWKS, {
-                issuer: ISS,
-                audience: AUD,
-                subject: SUB,
-                algorithms: ['RS256'],
-            })
-            data.cfzt = result.payload as JWTPayload
+            try {
+                const result = await jwtVerify(token, JWKS, {
+                    issuer: ISS,
+                    audience: AUD,
+                    subject: SUB,
+                    algorithms: ['RS256'],
+                })
+                data.cfzt = result.payload as JWTPayload
+            } catch (err) {
+                data.logger.error(err.message, err.stack)
+                return new Response('Forbidden', { status: 403 })
+            }
             data.session = await data.prisma.session.findFirstOrThrow({
                 where: { kid: '18f55ff2-cd8e-4c31-8d62-43bc60d3117e' }
             })
