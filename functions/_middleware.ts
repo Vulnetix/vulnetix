@@ -11,8 +11,14 @@ import {
 } from "@shared/utils";
 import anylogger from 'anylogger';
 import 'anylogger-console';
+import { createRemoteJWKSet, JWTPayload, jwtVerify } from 'jose';
 
 const allowedOrigins: string[] = ['www.vulnetix.com', 'staging.vulnetix.com', 'app.vulnetix.com']
+const AUD = "21a6c56a1e5ec33802bd3d21fdc632a00de789978cc1d15c15bd9c2049bf0ec9" // CF Zero Trust Access (WARP)
+const ISS = "https://vulnetix-staff.cloudflareaccess.com"
+const SUB = "23baebb8-6232-5d70-bc8c-73a523db723a" // Google SSO Staging
+const CERTS_URL = `${ISS}/cdn-cgi/access/certs`
+const JWKS = createRemoteJWKSet(new URL(CERTS_URL))
 
 // Respond to OPTIONS method
 export const onRequestOptions = async (context: Context) => {
@@ -104,7 +110,7 @@ const errorHandling = async (context: Context) => {
     data.logger = anylogger('vulnetix-worker')
     setLoggerLevel(data.logger, env.LOG_LEVEL)
     try {
-        return await next()
+        return next()
     } catch (err) {
         data.logger.error(err.message, err.stack)
         return new Response(err.message, { status: 500 })
@@ -139,7 +145,7 @@ const setupDependencies = async (context: Context) => {
         })
     }
 
-    return await next()
+    return next()
 }
 
 // Ensure authentication is always performed, with specified exceptions
@@ -156,13 +162,25 @@ const authentication = async (context: Context) => {
             !unauthenticatedRoutes.prefixes.map(i => url.pathname.startsWith(i)).includes(true)
 
         if (!authRequired || !url.pathname.startsWith('/api/')) {
-            return await next()
+            return next()
         }
         if (origin === 'staging.vulnetix.com') {
+            const token = request.headers['cf-access-jwt-assertion']
+            // Make sure that the incoming request has our token header
+            if (!token) {
+                return next()
+            }
+            const result = await jwtVerify(token, JWKS, {
+                issuer: ISS,
+                audience: AUD,
+                subject: SUB,
+                algorithms: ['RS256'],
+            })
+            data.cfzt = result.payload as JWTPayload
             data.session = await data.prisma.session.findFirstOrThrow({
                 where: { kid: '18f55ff2-cd8e-4c31-8d62-43bc60d3117e' }
             })
-            return await next()
+            return next()
         }
         const method: string = request.method.toUpperCase()
         const path: string = url.pathname + url.search
@@ -224,7 +242,7 @@ const authentication = async (context: Context) => {
         data.logger.error(err.message, err.stack)
         return new Response("Forbidden", { status: 403 })
     }
-    return await next()
+    return next()
 }
 
 const redirect = async (context: Context) => {
@@ -241,7 +259,7 @@ const redirect = async (context: Context) => {
             },
         })
     }
-    return await next()
+    return next()
 }
 
 // Set CORS to all /api responses
