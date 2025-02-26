@@ -1,3 +1,51 @@
+Automatable
+Software inventory
+
+
+
+Requirement 2.2.7 All non-console administrative access is encrypted using strong cryptography.
+Requirement 3.3.2 SAD that is stored electronically prior to completion of authorization is encrypted using strong cryptography.
+Requirement 3.3.3 Any storage of sensitive
+authentication data is Encrypted using strong cryptography.
+Requirement 5.3.2.1 If periodic malware scans
+Requirement 5.3.4 Audit logs for the anti-malware solution(s) are enabled and retained in accordance with Requirement 10.5.1.
+Requirement 6.2.3.1 If manual code reviews are performed for bespoke and custom software prior to release to production, code changes are:
+• Reviewed by individuals other than the originating code author, and who are knowledgeable about code-review techniques and secure coding practices.
+• Reviewed and approved by management prior to release.
+Requirement 6.3.2 An inventory of bespoke and custom software, and third-party software components incorporated into bespoke and custom software is maintained to facilitate vulnerability and patch management.
+SSF 2.1
+SSF 3.2
+SSF 3.3
+SSF 4.1
+SSF 6.1
+SSF 7.1
+
+Interesting for automation
+
+Requirement 2.2.2
+Requirement 3.4.1
+Requirement 3.7.4
+Requirement 3.7.7
+Requirement 4.2.1
+Requirement 5.3.5
+Requirement 6.2.1
+Requirement 6.2.4
+
+
+Admin
+- Startmate KYC/AML
+- Set up bank accounts
+Business Development
+- Advisors
+- Marketing strategy
+Comms / Marketing
+- communications plan (geoff)
+- marketing list
+- waiting list
+- Design review for one-pager
+- SEO? no
+
+
 # PCI Software Supply Chain Security Requirements Matrix
 
 | PCI Req ID | Description | Format |
