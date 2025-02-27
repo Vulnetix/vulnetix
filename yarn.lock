@@ -4156,6 +4156,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"cookie@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "cookie@npm:1.0.2"
+  checksum: 10c0/fd25fe79e8fbcfcaf6aa61cd081c55d144eeeba755206c058682257cb38c4bd6795c6620de3f064c740695bb65b7949ebb1db7a95e4636efb8357a335ad3f54b
+  languageName: node
+  linkType: hard
+
 "core-js-compat@npm:^3.37.1, core-js-compat@npm:^3.38.0":
   version: 3.39.0
   resolution: "core-js-compat@npm:3.39.0"
@@ -10446,6 +10453,7 @@ __metadata:
     better-npm-audit: "npm:^3.8.3"
     boxicons: "npm:^2.1.4"
     chart.js: "npm:^4.1.2"
+    cookie: "npm:^1.0.2"
     crypto-es: "npm:^2.1.0"
     disposable-email: "npm:^0.2.3"
     dompurify: "npm:^3.2.1"

@@ -89,3 +89,11 @@ _helpers: ## FOR DOCO ONLY
 	--to-schema-datamodel ./prisma/schema.prisma \
 	--script \
 	--output migrations/0001_init.sql
+	npx wrangler d1 execute vulnetix --local --command 'DELETE FROM "TestingProcedureResult";'
+	npx wrangler d1 execute vulnetix --local --command 'DELETE FROM "RequirementScope";'
+	npx wrangler d1 execute vulnetix --local --command 'DELETE FROM "RequirementResult";'
+	npx wrangler d1 execute vulnetix --local --command 'DELETE FROM "TestingProcedure";'
+	npx wrangler d1 execute vulnetix --local --command 'DELETE FROM "Requirement";'
+	npx wrangler d1 execute vulnetix --local --command 'DELETE FROM "ReportingInstructions";'
+	npx wrangler d1 execute vulnetix --local --command 'DELETE FROM "ReportType";'
+	npx wrangler d1 execute vulnetix --local --command 'DELETE FROM "Report";'
