@@ -161,7 +161,7 @@ model Tags {
 model ProductTags {
     product     Product @relation(fields: [productUuid], references: [uuid])
     productUuid String
-    Tags        Tags    @relation(fields: [tagsUuid], references: [uuid])
+    tag         Tags    @relation(fields: [tagsUuid], references: [uuid])
     tagsUuid    String
 
     @@id([productUuid, tagsUuid])
