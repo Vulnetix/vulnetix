@@ -7,6 +7,11 @@ import vuetify from 'vite-plugin-vuetify'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+    server: {
+        allowedHosts: ['.vulnetix.com', 'localhost', '127.0.0.1'],
+        strictPort: true,
+        port: 5173,
+    },
     css: {
         preprocessorOptions: {
             scss: {
@@ -18,6 +23,7 @@ export default defineConfig({
                 silenceDeprecations: ["legacy-js-api"],
             },
         },
+        devSourcemap: true,
     },
     plugins: [
         vue(),

@@ -26,6 +26,8 @@
                 "./src/plugins/axios"
             ]
         },
+        "types": ["worker-configuration.d.ts"],
+        "sourceMap": true,
         "module": "nodenext",
         "moduleResolution": "nodenext",
         "resolveJsonModule": true

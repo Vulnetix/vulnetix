@@ -2,12 +2,12 @@ import { PrismaD1 } from '@prisma/adapter-d1';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { Context, FetchResponse, Session } from "@shared/interfaces";
 import {
-  AuthResult,
-  Client,
-  ensureStrReqBody,
-  hexStringToUint8Array,
-  isJSON,
-  unauthenticatedRoutes
+    AuthResult,
+    Client,
+    ensureStrReqBody,
+    hexStringToUint8Array,
+    isJSON,
+    unauthenticatedRoutes
 } from "@shared/utils";
 import anylogger from 'anylogger';
 import 'anylogger-console';
