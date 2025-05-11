@@ -180,7 +180,6 @@ model Product {
     lastMonitored     Int
     businessCritical  Int            @default(0)
     tags              ProductTags[]
-    productTagsUuid   String?
     ownerEmail        String?
     owner             Member?        @relation("productOwner", fields: [ownerEmail], references: [email])
 }

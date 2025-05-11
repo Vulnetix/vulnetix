@@ -1,12 +1,18 @@
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath } from 'node:url'
 import AutoImport from 'unplugin-auto-import/vite'
+import Fonts from 'unplugin-fonts/vite'
 import Components from 'unplugin-vue-components/vite'
 import { defineConfig } from 'vite'
 import vuetify from 'vite-plugin-vuetify'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+    server: {
+        allowedHosts: ['.vulnetix.com', 'localhost', '127.0.0.1'],
+        strictPort: true,
+        port: 5173,
+    },
     css: {
         preprocessorOptions: {
             scss: {
@@ -18,6 +24,7 @@ export default defineConfig({
                 silenceDeprecations: ["legacy-js-api"],
             },
         },
+        devSourcemap: true,
     },
     plugins: [
         vue(),
@@ -31,7 +38,22 @@ export default defineConfig({
             dirs: ['src/@core/components'],
             dts: true,
         }),
-
+        Fonts({
+          fontsource: {
+            families: [
+              {
+                name: 'Roboto',
+                weights: [100, 300, 400, 500, 700, 900],
+                styles: ['normal', 'italic'],
+              },
+              {
+                name: 'Segoe UI',
+                weights: [100, 300, 400, 500, 700, 900],
+                styles: ['normal', 'italic'],
+              }
+            ],
+          },
+        }),
         // Docs: https://github.com/antfu/unplugin-auto-import#unplugin-auto-import
         AutoImport({
             eslintrc: {
