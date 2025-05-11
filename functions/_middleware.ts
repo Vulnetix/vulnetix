@@ -105,8 +105,7 @@ const errorHandling = async (context: Context) => {
     ]
     // Check if the User-Agent contains any blocked substrings
     if (blockedSubstrings.some(substring => lowerUserAgent.includes(substring))) {
-        // Respond with 403 Forbidden
-        return new Response('Forbidden', { status: 403 })
+        return new Response(AuthResult.FORBIDDEN, { status: 403 })
     }
     data.logger = anylogger('vulnetix-worker')
     setLoggerLevel(data.logger, env.LOG_LEVEL)
@@ -156,7 +155,7 @@ const authentication = async (context: Context) => {
         const url: URL = new URL(request.url)
         const origin: string = request.headers.get('host') || '127.0.0.1'
         if (origin !== '127.0.0.1' && (request.cf.botManagement.verifiedBot || request.cf.botManagement.score <= 60)) {
-            return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } } as FetchResponse), { status: 403 })
+            return new Response(AuthResult.FORBIDDEN, { status: 403 })
         }
         const authRequired: boolean =
             !unauthenticatedRoutes.static.includes(url.pathname) &&
@@ -169,7 +168,7 @@ const authentication = async (context: Context) => {
             const cookie = parse(request.headers.get("Cookie") || "")
             const token = cookie['CF_Authorization']
             if (!token) {
-                return new Response('Forbidden', { status: 403 })
+                return new Response(AuthResult.FORBIDDEN, { status: 403 })
             }
             try {
                 const result = await jwtVerify(token, JWKS, {
@@ -181,7 +180,7 @@ const authentication = async (context: Context) => {
                 data.cfzt = result.payload as JWTPayload
             } catch (err) {
                 data.logger.error(err.message, err.stack)
-                return new Response('Forbidden', { status: 403 })
+                return new Response(AuthResult.FORBIDDEN, { status: 403 })
             }
             data.session = await data.prisma.session.findFirstOrThrow({
                 where: { kid: '18f55ff2-cd8e-4c31-8d62-43bc60d3117e' }
@@ -197,14 +196,14 @@ const authentication = async (context: Context) => {
         const kid: string | null = request.headers.get('x-vulnetix-kid')
 
         if (!signature || !timestampStr || !kid) {
-            return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } }), { status: 403 })
+            return new Response(AuthResult.FORBIDDEN, { status: 403 })
         }
 
         // Convert timestamp from string to integer
         const timestamp: number = parseInt(timestampStr, 10)
         if (isNaN(timestamp)) {
             data.logger.warn('Invalid timestamp format', timestamp)
-            return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } }), { status: 403 })
+            return new Response(AuthResult.FORBIDDEN, { status: 403 })
         }
         // Validate timestamp (you may want to add a check to ensure the request isn't too old)
         const currentTimestamp: number = new Date().getTime()
@@ -241,12 +240,12 @@ const authentication = async (context: Context) => {
 
         if (!isValid) {
             data.logger.warn('Invalid signature', signature)
-            return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.FORBIDDEN } }), { status: 401 })
+            return new Response(AuthResult.FORBIDDEN, { status: 401 })
         }
         data.session = session
     } catch (err) {
         data.logger.error(err.message, err.stack)
-        return new Response("Forbidden", { status: 403 })
+        return new Response(AuthResult.FORBIDDEN, { status: 403 })
     }
     return next()
 }
