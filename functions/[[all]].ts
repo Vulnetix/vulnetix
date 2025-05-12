@@ -1,4 +1,4 @@
-import { Context } from "@shared/interfaces";
+import { Context } from "@prisma/client";
 
 const artifacts = [
     'cyclonedx', 'spdx', 'vex' , 'vdr', 'sarif', 'cvelistv5'

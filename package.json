@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "generate-types": "wrangler types",
+    "generate-types": "wrangler types && prisma generate",
     "build": "npm run generate-types && vite build",
     "watch": "npm run generate-types && vite build --watch",
     "preview": "wrangler pages dev ./dist",

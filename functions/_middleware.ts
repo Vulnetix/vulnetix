@@ -1,6 +1,6 @@
 import { PrismaD1 } from '@prisma/adapter-d1';
-import { Prisma, PrismaClient } from '@prisma/client';
-import { Context, FetchResponse, Session } from "@shared/interfaces";
+import { Prisma, PrismaClient, Session } from '@prisma/client';
+import { Context } from "@shared/interfaces";
 import {
     AuthResult,
     Client,
