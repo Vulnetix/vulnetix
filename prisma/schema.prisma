@@ -28,6 +28,7 @@ model Org {
     name                  String                @unique
     createdAt             Int
     enforceGitHubOAuth    Int                   @default(0)
+    enforceCompanyDomain  String?               @default("")
     members               Member[]
     sessions              Session[]
     git_repos             GitRepo[]
@@ -46,6 +47,40 @@ model Org {
     gitHubOAuth           GitHubOAuth[]
     reports               Report[]
     requirementResults    RequirementResult[]
+    triagePolicies        OrgTriagePolicy[]
+}
+
+model TriagePolicy {
+    uuid                                    String   @id @default(uuid())
+    name                                    String
+    description                             String?
+    createdAt                               Int
+    enabled                                 Int      @default(1)
+    isSystem                                Int      @default(0) // 1 = system/global, 0 = org-specific
+    cvssCriticalRemediationDays             Int
+    cvssHighRemediationDays                 Int
+    cvssMediumRemediationDays               Int
+    cvssLowRemediationDays                  Int
+    remediationCriticalThresholdAllowance   Int
+    remediationHighThresholdAllowance       Int
+    remediationMediumThresholdAllowance     Int
+    remediationLowThresholdAllowance        Int
+    triageThresholdDays                     Int
+    exposureWindowDays                      Int
+    severityHighThreshold                   Float // 8.9 for CVSS
+    severityMediumThreshold                 Float // 6.9 for CVSS
+    severityLowThreshold                    Float // 3.9 for CVSS
+
+    orgs                                    OrgTriagePolicy[]
+}
+
+model OrgTriagePolicy {
+    orgId         String
+    triagePolicyId String
+    org           Org          @relation(fields: [orgId], references: [uuid])
+    triagePolicy  TriagePolicy @relation(fields: [triagePolicyId], references: [uuid])
+
+    @@id([orgId, triagePolicyId])
 }
 
 model IntegrationConfig {

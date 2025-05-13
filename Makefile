@@ -49,13 +49,17 @@ sarif: clean ## generate SARIF from Semgrep for this project
 	semgrep scan $(SEMGREP_ARGS) $(SEMGREP_RULES) | jq >semgrep.sarif.json
 
 sbom: clean ## generate CycloneDX from NPM for this project
-	yarn cyclonedx --spec-version 1.6 --output-format JSON --output-file vulnetix.cdx.json
-	yarn spdx
+	npx cyclonedx --spec-version 1.6 --output-format JSON --output-file vulnetix.cdx.json
+	npx spdx
 
 deployments: ## FOR DOCO ONLY
 	npx wrangler pages deployment list --project-name vulnetix
 
 deploy: ## FOR DOCO ONLY
+	npx wrangler types
+	npx prisma generate
+	node src/@iconify/build-icons.js
+	npx vite build --force --clearScreen --mode production --sourcemap inline
 	npx wrangler pages deployment create ./dist --project-name vulnetix --branch staging --upload-source-maps=true
 
 run: ## FOR DOCO ONLY - Run these one at a time, do not call this target directly
