@@ -55,11 +55,18 @@ sbom: clean ## generate CycloneDX from NPM for this project
 deployments: ## FOR DOCO ONLY
 	npx wrangler pages deployment list --project-name vulnetix
 
-deploy: ## FOR DOCO ONLY
+types:
 	npx wrangler types
 	npx prisma generate
+
+build:
 	node src/@iconify/build-icons.js
 	npx vite build --force --clearScreen --mode production --sourcemap inline
+
+deploy-prod: types build
+	npx wrangler pages deployment create ./dist --project-name vulnetix --branch main -c wrangler-prod.toml
+
+deploy-preview: types build
 	npx wrangler pages deployment create ./dist --project-name vulnetix --branch staging --upload-source-maps=true
 
 run: ## FOR DOCO ONLY - Run these one at a time, do not call this target directly

@@ -15,7 +15,7 @@ import { parse } from "cookie";
 import { createRemoteJWKSet, JWTPayload, jwtVerify } from 'jose';
 
 const allowedOrigins: string[] = ['www.vulnetix.com', 'staging.vulnetix.com', 'app.vulnetix.com']
-const AUD = "21a6c56a1e5ec33802bd3d21fdc632a00de789978cc1d15c15bd9c2049bf0ec9" // CF Zero Trust Access (WARP)
+const AUD = "30bd33509be064eb1c217310e933a935cba3c8bd4a08092cbfaf32de134eed96" // CF Zero Trust Access (WARP)
 const ISS = "https://vulnetix-staff.cloudflareaccess.com"
 const SUB = "23baebb8-6232-5d70-bc8c-73a523db723a" // Google SSO Staging
 const CERTS_URL = `${ISS}/cdn-cgi/access/certs`
