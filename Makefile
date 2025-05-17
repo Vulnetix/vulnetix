@@ -61,12 +61,16 @@ types:
 
 build:
 	node src/@iconify/build-icons.js
+	npx vite build --force --clearScreen --mode production
+
+build-staging:
+	node src/@iconify/build-icons.js
 	npx vite build --force --clearScreen --mode production --sourcemap inline
 
 deploy-prod: types build
 	npx wrangler pages deployment create ./dist --project-name vulnetix --branch main -c wrangler-prod.toml
 
-deploy-preview: types build
+deploy-staging: types build-staging
 	npx wrangler pages deployment create ./dist --project-name vulnetix --branch staging --upload-source-maps=true
 
 run: ## FOR DOCO ONLY - Run these one at a time, do not call this target directly
@@ -95,7 +99,7 @@ _helpers: ## FOR DOCO ONLY
 	npx wrangler d1 execute vulnetix --remote --command "SELECT * FROM Member;"
 	npx wrangler d1 execute vulnetix --local --command 'PRAGMA table_list;'
 	npx wrangler d1 execute vulnetix --local --command 'PRAGMA table_info("Member");'
-	npx wrangler d1 execute vulnetix --remote --command 'INSERT INTO MemberGroups (memberUuid, groupUuid) VALUES ("a5c8611d-81e9-4cd0-8b16-f3e278064c3e", "8ac52122-b9ae-40fb-b4c6-7c83238ae8d6");'
+	npx wrangler d1 execute vulnetix --local --command 'INSERT INTO MemberGroups (memberUuid, groupUuid) SELECT uuid, "8ac52122-b9ae-40fb-b4c6-7c83238ae8d6" FROM Member;'
 	npx prisma migrate diff \
 	--from-empty \
 	--to-schema-datamodel ./prisma/schema.prisma \

@@ -7,6 +7,9 @@
             "@shared/*": [
                 "./shared/*"
             ],
+            "@schemas/*": [
+                "./schemas/*"
+            ],
             "@core/*": [
                 "./src/@core/*"
             ],

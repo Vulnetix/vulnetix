@@ -48,37 +48,38 @@ model Org {
     reports               Report[]
     requirementResults    RequirementResult[]
     triagePolicies        OrgTriagePolicy[]
+    queueMessages         QueueMessage[]
 }
 
 model TriagePolicy {
-    uuid                                    String   @id @default(uuid())
-    name                                    String
-    description                             String?
-    createdAt                               Int
-    enabled                                 Int      @default(1)
-    isSystem                                Int      @default(0) // 1 = system/global, 0 = org-specific
-    cvssCriticalRemediationDays             Int
-    cvssHighRemediationDays                 Int
-    cvssMediumRemediationDays               Int
-    cvssLowRemediationDays                  Int
-    remediationCriticalThresholdAllowance   Int
-    remediationHighThresholdAllowance       Int
-    remediationMediumThresholdAllowance     Int
-    remediationLowThresholdAllowance        Int
-    triageThresholdDays                     Int
-    exposureWindowDays                      Int
-    severityHighThreshold                   Float // 8.9 for CVSS
-    severityMediumThreshold                 Float // 6.9 for CVSS
-    severityLowThreshold                    Float // 3.9 for CVSS
+    uuid                                  String  @id @default(uuid())
+    name                                  String
+    description                           String?
+    createdAt                             Int
+    enabled                               Int     @default(1)
+    isSystem                              Int     @default(0) // 1 = system/global, 0 = org-specific
+    cvssCriticalRemediationDays           Int
+    cvssHighRemediationDays               Int
+    cvssMediumRemediationDays             Int
+    cvssLowRemediationDays                Int
+    remediationCriticalThresholdAllowance Int
+    remediationHighThresholdAllowance     Int
+    remediationMediumThresholdAllowance   Int
+    remediationLowThresholdAllowance      Int
+    triageThresholdDays                   Int
+    exposureWindowDays                    Int
+    severityHighThreshold                 Float // 8.9 for CVSS
+    severityMediumThreshold               Float // 6.9 for CVSS
+    severityLowThreshold                  Float // 3.9 for CVSS
 
-    orgs                                    OrgTriagePolicy[]
+    orgs OrgTriagePolicy[]
 }
 
 model OrgTriagePolicy {
-    orgId         String
+    orgId          String
     triagePolicyId String
-    org           Org          @relation(fields: [orgId], references: [uuid])
-    triagePolicy  TriagePolicy @relation(fields: [triagePolicyId], references: [uuid])
+    org            Org          @relation(fields: [orgId], references: [uuid])
+    triagePolicy   TriagePolicy @relation(fields: [triagePolicyId], references: [uuid])
 
     @@id([orgId, triagePolicyId])
 }
@@ -516,12 +517,13 @@ model AuthorizedDataPublisher {
 }
 
 model Link {
-    id           Int           @id @default(autoincrement())
-    url          String
-    contentType  String // OCI PLAIN_JSON OCTET_STREAM PLAIN_XML
-    artifact     Artifact?     @relation(fields: [artifactUuid], references: [uuid])
-    artifactUuid String?
-    cves         CVEMetadata[]
+    id            Int            @id @default(autoincrement())
+    url           String
+    contentType   String // OCI PLAIN_JSON OCTET_STREAM PLAIN_XML
+    artifact      Artifact?      @relation(fields: [artifactUuid], references: [uuid])
+    artifactUuid  String?
+    cves          CVEMetadata[]
+    queueMessages QueueMessage[]
 }
 
 model Artifact {
@@ -680,4 +682,16 @@ model Report {
     orgId              String
     org                Org                 @relation(fields: [orgId], references: [uuid])
     requirementResults RequirementResult[]
+}
+
+model QueueMessage {
+    messageId String @unique
+    status    String
+    uniqueId  String
+    linkId    Int
+    link      Link   @relation(fields: [linkId], references: [id])
+    type      String
+    orgId     String
+    org       Org    @relation(fields: [orgId], references: [uuid])
+    createdAt Int
 }
