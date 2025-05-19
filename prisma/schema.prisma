@@ -38,9 +38,7 @@ model Org {
     sarif                 SARIFInfo[]
     cdx                   CycloneDXInfo[]
     spdx                  SPDXInfo[]
-    productRepos          ProductRepos[]
     branches              GitBranch[]
-    products              Product[]
     tags                  Tags[]
     gitHubPAT             GitHubPAT[]
     gitHubApps            GitHubApp[]
@@ -49,6 +47,8 @@ model Org {
     requirementResults    RequirementResult[]
     triagePolicies        OrgTriagePolicy[]
     queueMessages         QueueMessage[]
+    collections            Collection[]
+    collectionRepos        CollectionRepo[]
 }
 
 model TriagePolicy {
@@ -73,6 +73,7 @@ model TriagePolicy {
     severityLowThreshold                  Float // 3.9 for CVSS
 
     orgs OrgTriagePolicy[]
+    collections Collection[] @relation("CollectionTriagePolicy")
 }
 
 model OrgTriagePolicy {
@@ -129,10 +130,10 @@ model Member {
     sessions              Session[]
     integration_usage_log IntegrationUsageLog[]
     triage_activity       Triage[]
-    ownedProducts         Product[]             @relation("productOwner")
     ghTokens              GitHubOAuth[]
-
-    @@index([orgId, email])
+    ownedCollections      Collection[]          @relation("CollectionOwner")
+    leadCollections       Collection[]          @relation("CollectionLead")
+    collectionMembers     CollectionMember[]
 }
 
 model GitHubOAuth {
@@ -191,44 +192,15 @@ model Tags {
     url      String?
     orgId    String
     org      Org           @relation(fields: [orgId], references: [uuid])
-    products ProductTags[]
+    collections   CollectionTag[]
 }
 
-model ProductTags {
-    product     Product @relation(fields: [productUuid], references: [uuid])
-    productUuid String
-    tag         Tags    @relation(fields: [tagsUuid], references: [uuid])
-    tagsUuid    String
-
-    @@id([productUuid, tagsUuid])
-}
-
-model Product {
-    uuid              String         @id @default(uuid())
-    name              String
-    source            String
-    orgId             String
-    org               Org            @relation(fields: [orgId], references: [uuid])
-    repos             ProductRepos[]
-    createdAt         Int
-    monitored         Int            @default(0)
-    monitoredSchedule String         @default("0 7 * * mon-fri") // 7AM weekdays
-    lastMonitored     Int
-    businessCritical  Int            @default(0)
-    tags              ProductTags[]
-    ownerEmail        String?
-    owner             Member?        @relation("productOwner", fields: [ownerEmail], references: [email])
-}
-
-model ProductRepos {
-    repoName    String
-    repo        GitRepo @relation(fields: [repoName, orgId], references: [fullName, orgId])
-    productUuid String
-    product     Product @relation(fields: [productUuid], references: [uuid])
-    orgId       String
-    org         Org     @relation(fields: [orgId], references: [uuid])
-
-    @@id([repoName, productUuid])
+model CollectionTag {
+    collectionId String
+    tagId        String
+    collection   Collection @relation(fields: [collectionId], references: [uuid])
+    tag          Tags       @relation(fields: [tagId], references: [uuid])
+    @@id([collectionId, tagId])
 }
 
 model GitRepo {
@@ -253,13 +225,13 @@ model GitRepo {
     archived         Int                @default(0)
     visibility       String
     avatarUrl        String?
-    products         ProductRepos[]
     sarif            SARIFInfo[]
     spdx             SPDXInfo[]
     cdx              CycloneDXInfo[]
     findings         Finding[]
     branches         GitBranch[]
     RequirementScope RequirementScope[]
+    collectionRepos   CollectionRepo[]
 
     @@id([fullName, orgId])
 }
@@ -528,63 +500,101 @@ model Link {
 
 model Artifact {
     uuid                      String                   @id @default(uuid())
-    // displayIdentifier String
     type                      String // BOM ATTESTATION VDR VEX OTHER
     date                      Int
     bomFormat                 String
     downloadLinks             Link[]
-    // inventoryTypes    String // SOFTWARE HARDWARE CRYPTOGRAPHY SERVICE VULNERABILITY
-    // identities        Identity[]
-    // Collection        Collection? @relation(fields: [collectionUuid], references: [uuid])
-    // collectionUuid    String?
     sarif                     SARIFInfo[]
     cdx                       CycloneDXInfo[]
     spdx                      SPDXInfo[]
     vex                       Triage[]
     testingProcedureEvidences TestingProcedureResult[] @relation("TestingProcedureEvidence")
+    collectionArtifacts       CollectionArtifact[]
 }
 
-// model Lifecycle {
-//   uuid  String   @id @default(uuid())
-//   event String // list enum String
-//   date  Int
-//   Collection     Collection? @relation(fields: [collectionUuid], references: [uuid])
-//   collectionUuid String?
-//   Leaf           Leaf?       @relation(fields: [leafUuid], references: [uuid])
-//   leafUuid       String?
-//   Product        Product?    @relation(fields: [productUuid], references: [uuid])
-//   productUuid    String?
-// }
+model CollectionRepo {
+    id           Int        @id @default(autoincrement())
+    collectionId String
+    collection   Collection @relation(fields: [collectionId], references: [uuid])
+    repoName     String
+    repo         GitRepo    @relation(fields: [repoName, orgId], references: [fullName, orgId])
+    orgId        String
+    org          Org        @relation(fields: [orgId], references: [uuid])
+}
 
-// model Identity {
-//   id             String      @id @default(cuid())
-//   type           String
-//   identifier     String
-//   Artifact       Artifact?   @relation(fields: [artifactUuid], references: [uuid])
-//   artifactUuid   String?
-//   Collection     Collection? @relation(fields: [collectionUuid], references: [uuid])
-//   collectionUuid String?
-// }
+model CollectionArtifact {
+    id           Int        @id @default(autoincrement())
+    collectionId String
+    collection   Collection @relation(fields: [collectionId], references: [uuid])
+    artifactUuid String
+    artifact     Artifact   @relation(fields: [artifactUuid], references: [uuid])
+}
 
-// model Collection {
-//   uuid       String      @id @default(uuid())
-//   version    String?
-//   created    Int
-//   identities Identity[]
-//   artifacts  Artifact[]
-//   lifecycle  Lifecycle[]
-// }
+model CollectionMember {
+    id           Int        @id @default(autoincrement())
+    collectionId String
+    collection   Collection @relation(fields: [collectionId], references: [uuid])
+    memberUuid   String
+    member       Member     @relation(fields: [memberUuid], references: [uuid])
+    title        String?
+}
 
-// model Leaf {
-//   uuid        String      @id @default(uuid())
-//   name        String
-//   tei         String      @unique
-//   version     String
-//   lifecycle   Lifecycle[]
-//   Product     Product?    @relation(fields: [productUuid], references: [uuid])
-//   productUuid String?
-// }
+model CollectionTeam {
+    productId String
+    teamId    String
+    product   Collection @relation("ProductTeamsProduct", fields: [productId], references: [uuid])
+    team      Collection @relation("ProductTeamsTeam", fields: [teamId], references: [uuid])
+    @@id([productId, teamId])
+}
 
+model CollectionProject {
+    productId String
+    projectId String
+    product   Collection @relation("ProductProjectsProduct", fields: [productId], references: [uuid])
+    project   Collection @relation("ProductProjectsProject", fields: [projectId], references: [uuid])
+    @@id([productId, projectId])
+}
+
+model Collection {
+    uuid           String        @id @default(uuid())
+    name           String
+    type           String // 'Project' | 'Product' | 'Team' | 'Campaign' | 'Group'
+    orgId          String
+    org            Org          @relation(fields: [orgId], references: [uuid])
+    parentUuid     String?      // For sub-collections/groups
+    parent         Collection?  @relation("CollectionParent", fields: [parentUuid], references: [uuid])
+    subCollections Collection[] @relation("CollectionParent")
+    // Common fields
+    ownerEmail     String?      // For Product, Project, Team, Campaign (SME)
+    owner          Member?      @relation("CollectionOwner", fields: [ownerEmail], references: [email])
+    leadEmail      String?      // For Project, Team (main contact)
+    lead           Member?      @relation("CollectionLead", fields: [leadEmail], references: [email])
+    triagePolicyId String?
+    triagePolicy   TriagePolicy? @relation("CollectionTriagePolicy", fields: [triagePolicyId], references: [uuid])
+    releaseBranch  String?
+    // Project/Team specific
+    deadline       Int?         // For Project (required), Campaign (required)
+    // Campaign specific
+    description    String?
+    cweList        String?      // CSV or JSON string
+    findingAliases String?      // CSV or JSON string
+    keywords       String?      // CSV or JSON string
+    cvssThreshold  Float?
+    // Relations
+    gitRepos       CollectionRepo[]
+    artifacts      CollectionArtifact[]
+    members        CollectionMember[]
+    // Product sub-collections (many-to-many via join tables)
+    teams          CollectionTeam[] @relation("ProductTeamsProduct")
+    asTeam         CollectionTeam[] @relation("ProductTeamsTeam")
+    projects       CollectionProject[] @relation("ProductProjectsProduct")
+    asProject      CollectionProject[] @relation("ProductProjectsProject")
+    createdAt      Int
+    tags          CollectionTag[]
+    reports       Report[]
+}
+
+// --- Remove Product, ProductRepos, ProductTags, ProductTags, ProductOwner, ProductArtifacts, etc. if not needed ---
 // Following are shared records
 model ReportType {
     uuid              String             @id @default(uuid())
@@ -682,6 +692,8 @@ model Report {
     orgId              String
     org                Org                 @relation(fields: [orgId], references: [uuid])
     requirementResults RequirementResult[]
+    collectionId String?
+    collection   Collection? @relation(fields: [collectionId], references: [uuid])
 }
 
 model QueueMessage {

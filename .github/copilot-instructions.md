@@ -1,6 +1,19 @@
+Avoid positioning using raw CSS because it is not responsive, use Vuetify correctly instead to position things.
 All JavaScript code must be written in TypeScript.
+Never weaken the type safety of TypeScript using athe `any` or `unknown` types.
+Never use `var` for variable declarations. Always use `let` or `const`.
+Never use `function` keyword for function declarations. Always use arrow functions.
+Never use `this` keyword in arrow functions. Use `this` keyword only in class methods.
 Use template strings (backticks) for string literals instead of single or double quotes.
 Indent code using 4 spaces.
+All API calls must be made using the `Client` class from `@shared/utils`.
+When calling a backend api (in `functions` directory) the path should start after the inherent prefix `/api/:path` (e.g., `/:path`).
+The `:path` follows the directory structure of the `functions/api` directory.
+The syntax for path variables in file names is Cloudfalre methodology (i.e. `[uuid]`) which makes the value available in the `context.params` object.
+When asked always complete frontend apicalls with a call to existing API or create a new API file and implemnetation to satisfy the request.
+When creating a new API file, use the following naming convention: `api/[name].ts` where `[name]` is the name of the API endpoint.
+Avoid using returned data directly in Vue components, instead, use a Pinia store to manage the state and data flow.
+Use `async/await` for asynchronous code instead of `.then()` and `.catch()`.
 Vue components must be structured as Single-File Components (.vue files).
 SFCs should utilize TypeScript for `<script setup lang="ts">` rather than `defineComponent`, SCSS for `<style lang="scss" scoped>`, and scoped styling.
 Vue Composition API functions (e.g., `ref`, `reactive`, `computed`, `watch` and related functions) are treated as keywords and do not require explicit imports from `vue`.
