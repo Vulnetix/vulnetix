@@ -12,7 +12,7 @@ import {
 import anylogger from 'anylogger';
 import 'anylogger-console';
 import { parse } from "cookie";
-import { createRemoteJWKSet, JWTPayload, jwtVerify } from 'jose';
+import { createRemoteJWKSet, JWTPayload, jwtVerify, JWTVerifyResult } from 'jose';
 
 const allowedOrigins: string[] = ['www.vulnetix.com', 'staging.vulnetix.com', 'app.vulnetix.com']
 const AUD = "30bd33509be064eb1c217310e933a935cba3c8bd4a08092cbfaf32de134eed96" // CF Zero Trust Access (WARP)
@@ -164,26 +164,11 @@ const authentication = async (context: Context) => {
         if (!authRequired || !url.pathname.startsWith('/api/')) {
             return next()
         }
-        if (origin === 'staging.vulnetix.com') {
-            const cookie = parse(request.headers.get("Cookie") || "")
-            const token = cookie['CF_Authorization']
-            if (!token) {
-                return new Response(AuthResult.FORBIDDEN, { status: 403 })
-            }
-            try {
-                const result = await jwtVerify(token, JWKS, {
-                    issuer: ISS,
-                    audience: AUD,
-                    subject: SUB,
-                    algorithms: ['RS256'],
-                })
-                data.cfzt = result.payload as JWTPayload
-            } catch (err) {
-                data.logger.error(err.message, err.stack)
-                return new Response(AuthResult.FORBIDDEN, { status: 403 })
-            }
+        if (origin === 'staging.vulnetix.com' && data?.jwtVerifyResult) {
+            data.cfzt = data.jwtVerifyResult.payload as JWTPayload // all claims verified previously
+            delete data.jwtVerifyResult
             data.session = await data.prisma.session.findFirstOrThrow({
-                where: { kid: '18f55ff2-cd8e-4c31-8d62-43bc60d3117e' }
+                where: { kid: '18f55ff2-cd8e-4c31-8d62-43bc60d3117e' } // special Staging INTERNAL_ADMIN user
             })
             return next()
         }
@@ -250,12 +235,85 @@ const authentication = async (context: Context) => {
     return next()
 }
 
+// Ensure authentication is always performed, with specified exceptions
+const pre_authentication = async (context: Context) => {
+    const { request, next, data } = context
+    try {
+        const url: URL = new URL(request.url)
+        const origin: string = request.headers.get('host') || '127.0.0.1'
+        if (origin !== '127.0.0.1' && (request.cf.botManagement.verifiedBot || request.cf.botManagement.score <= 60)) {
+            return new Response(AuthResult.FORBIDDEN, { status: 403 })
+        }
+        const authRequired: boolean =
+            !unauthenticatedRoutes.static.includes(url.pathname) &&
+            !unauthenticatedRoutes.prefixes.map(i => url.pathname.startsWith(i)).includes(true)
+
+        if (!authRequired || !url.pathname.startsWith('/api/')) {
+            return next()
+        }
+        if (origin === 'staging.vulnetix.com') {
+            const cookie = parse(request.headers.get("Cookie") || "")
+            const token = cookie['CF_Authorization']
+            if (!token) {
+                console.warn('Potentially malicious request')
+                return new Response(AuthResult.REVOKED, { status: 302, headers: { 'Location': `${ISS}/cdn-cgi/access/logout` } })
+            }
+            try {
+                 data.jwtVerifyResult = await jwtVerify(token, JWKS, {
+                    issuer: ISS,
+                    audience: AUD,
+                    subject: SUB,
+                    algorithms: ['RS256'],
+                }) as JWTVerifyResult
+                // Validate expiry timestamp
+                const currentTimestamp: number = new Date().getTime()
+                if (Math.abs(currentTimestamp - data.jwtVerifyResult.payload.exp) > -200) { // allow 200ms skew
+                    console.warn('expired', data.cfzt)
+                    return new Response(AuthResult.EXPIRED, { status: 302, headers: { 'Location': `${ISS}/cdn-cgi/access/logout` } })
+                }
+            } catch (err) {
+                console.error(err.message, err.stack)
+                return new Response(AuthResult.FORBIDDEN, { status: 403, headers: { 'Location': `${ISS}/cdn-cgi/access/logout` } })
+            }
+            return next()
+        }
+        // Retrieve signature and timestamp from headers
+        const signature: string | null = request.headers.get('authorization')?.replace('HMAC ', '')
+        const timestampStr: string | null = request.headers.get('x-timestamp')
+        const kid: string | null = request.headers.get('x-vulnetix-kid')
+        if (!signature || !timestampStr || !kid) {
+            return new Response(AuthResult.FORBIDDEN, { status: 403 })
+        }
+        // Convert timestamp from string to integer
+        const timestamp: number = parseInt(timestampStr, 10)
+        if (isNaN(timestamp)) {
+            console.warn('Invalid timestamp format', timestamp)
+            return new Response(AuthResult.FORBIDDEN, { status: 403 })
+        }
+        // Pre-validate timestamp (you may want to add a check to ensure the request isn't too old)
+        const currentTimestamp: number = new Date().getTime()
+        if (Math.abs(currentTimestamp - timestamp) > 3e+5) { // e.g., allow a 5-minute skew
+            console.warn('expired, skew', timestamp)
+            return new Response(JSON.stringify({ ok: false, error: { message: AuthResult.EXPIRED } }), { status: 401 })
+        }
+
+    } catch (err) {
+        console.error(err.message, err.stack)
+        return new Response(AuthResult.FORBIDDEN, { status: 403 })
+    }
+    return next()
+}
+
 const redirect = async (context: Context) => {
-    const { request, next } = context
+    const { request, data, next } = context
     const redirects: Record<string, string> = {
         '/': 'https://www.vulnetix.com'
     }
+    const origin: string = request.headers.get('host') || '127.0.0.1'
     const url = new URL(request.url)
+    if (origin === 'staging.vulnetix.com') {
+        return next()
+    }
     if (redirects[url.pathname]) {
         return new Response(null, {
             status: 307,
@@ -315,4 +373,11 @@ export const setLoggerLevel = (log: any, level: string = "WARN") => {
     log.level = !level || !(level in LOG_LEVEL_MAP) ? log.LOG : LOG_LEVEL_MAP[level]
 }
 
-export const onRequest = [redirect, errorHandling, setupDependencies, authentication, dynamicHeaders]
+export const onRequest = [
+    redirect, // Redirect to Vulnetix homepage
+    errorHandling, // Handle errors and log them
+    pre_authentication, // Check signatures for requests before connecting to the Database
+    setupDependencies, // Setup Prisma ORM and ensure JSON body is available
+    authentication, // Authenticate requests
+    dynamicHeaders // Set CORS headers for all /api responses
+]
