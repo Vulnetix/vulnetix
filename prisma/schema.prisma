@@ -47,8 +47,12 @@ model Org {
     requirementResults    RequirementResult[]
     triagePolicies        OrgTriagePolicy[]
     queueMessages         QueueMessage[]
-    collections            Collection[]
-    collectionRepos        CollectionRepo[]
+    collections           Collection[]
+    collectionRepos       CollectionRepo[]
+    teaProducts           TeaProduct[]
+    teaComponents         TeaComponent[]
+    teaReleases           TeaRelease[]
+    teaCollections        TeaCollection[]
 }
 
 model TriagePolicy {
@@ -72,8 +76,8 @@ model TriagePolicy {
     severityMediumThreshold               Float // 6.9 for CVSS
     severityLowThreshold                  Float // 3.9 for CVSS
 
-    orgs OrgTriagePolicy[]
-    collections Collection[] @relation("CollectionTriagePolicy")
+    orgs        OrgTriagePolicy[]
+    collections Collection[]      @relation("CollectionTriagePolicy")
 }
 
 model OrgTriagePolicy {
@@ -187,12 +191,12 @@ model GitHubApp {
 }
 
 model Tags {
-    uuid     String        @id @default(uuid())
-    name     String
-    url      String?
-    orgId    String
-    org      Org           @relation(fields: [orgId], references: [uuid])
-    collections   CollectionTag[]
+    uuid        String          @id @default(uuid())
+    name        String
+    url         String?
+    orgId       String
+    org         Org             @relation(fields: [orgId], references: [uuid])
+    collections CollectionTag[]
 }
 
 model CollectionTag {
@@ -200,6 +204,7 @@ model CollectionTag {
     tagId        String
     collection   Collection @relation(fields: [collectionId], references: [uuid])
     tag          Tags       @relation(fields: [tagId], references: [uuid])
+
     @@id([collectionId, tagId])
 }
 
@@ -231,7 +236,7 @@ model GitRepo {
     findings         Finding[]
     branches         GitBranch[]
     RequirementScope RequirementScope[]
-    collectionRepos   CollectionRepo[]
+    collectionRepos  CollectionRepo[]
 
     @@id([fullName, orgId])
 }
@@ -544,6 +549,7 @@ model CollectionTeam {
     teamId    String
     product   Collection @relation("ProductTeamsProduct", fields: [productId], references: [uuid])
     team      Collection @relation("ProductTeamsTeam", fields: [teamId], references: [uuid])
+
     @@id([productId, teamId])
 }
 
@@ -552,46 +558,47 @@ model CollectionProject {
     projectId String
     product   Collection @relation("ProductProjectsProduct", fields: [productId], references: [uuid])
     project   Collection @relation("ProductProjectsProject", fields: [projectId], references: [uuid])
+
     @@id([productId, projectId])
 }
 
 model Collection {
-    uuid           String        @id @default(uuid())
+    uuid           String               @id @default(uuid())
     name           String
     type           String // 'Project' | 'Product' | 'Team' | 'Campaign' | 'Group'
     orgId          String
-    org            Org          @relation(fields: [orgId], references: [uuid])
-    parentUuid     String?      // For sub-collections/groups
-    parent         Collection?  @relation("CollectionParent", fields: [parentUuid], references: [uuid])
-    subCollections Collection[] @relation("CollectionParent")
+    org            Org                  @relation(fields: [orgId], references: [uuid])
+    parentUuid     String? // For sub-collections/groups
+    parent         Collection?          @relation("CollectionParent", fields: [parentUuid], references: [uuid])
+    subCollections Collection[]         @relation("CollectionParent")
     // Common fields
-    ownerEmail     String?      // For Product, Project, Team, Campaign (SME)
-    owner          Member?      @relation("CollectionOwner", fields: [ownerEmail], references: [email])
-    leadEmail      String?      // For Project, Team (main contact)
-    lead           Member?      @relation("CollectionLead", fields: [leadEmail], references: [email])
+    ownerEmail     String? // For Product, Project, Team, Campaign (SME)
+    owner          Member?              @relation("CollectionOwner", fields: [ownerEmail], references: [email])
+    leadEmail      String? // For Project, Team (main contact)
+    lead           Member?              @relation("CollectionLead", fields: [leadEmail], references: [email])
     triagePolicyId String?
-    triagePolicy   TriagePolicy? @relation("CollectionTriagePolicy", fields: [triagePolicyId], references: [uuid])
+    triagePolicy   TriagePolicy?        @relation("CollectionTriagePolicy", fields: [triagePolicyId], references: [uuid])
     releaseBranch  String?
     // Project/Team specific
-    deadline       Int?         // For Project (required), Campaign (required)
+    deadline       Int? // For Project (required), Campaign (required)
     // Campaign specific
     description    String?
-    cweList        String?      // CSV or JSON string
-    findingAliases String?      // CSV or JSON string
-    keywords       String?      // CSV or JSON string
+    cweList        String? // CSV or JSON string
+    findingAliases String? // CSV or JSON string
+    keywords       String? // CSV or JSON string
     cvssThreshold  Float?
     // Relations
     gitRepos       CollectionRepo[]
     artifacts      CollectionArtifact[]
     members        CollectionMember[]
     // Product sub-collections (many-to-many via join tables)
-    teams          CollectionTeam[] @relation("ProductTeamsProduct")
-    asTeam         CollectionTeam[] @relation("ProductTeamsTeam")
-    projects       CollectionProject[] @relation("ProductProjectsProduct")
-    asProject      CollectionProject[] @relation("ProductProjectsProject")
+    teams          CollectionTeam[]     @relation("ProductTeamsProduct")
+    asTeam         CollectionTeam[]     @relation("ProductTeamsTeam")
+    projects       CollectionProject[]  @relation("ProductProjectsProduct")
+    asProject      CollectionProject[]  @relation("ProductProjectsProject")
     createdAt      Int
-    tags          CollectionTag[]
-    reports       Report[]
+    tags           CollectionTag[]
+    reports        Report[]
 }
 
 // --- Remove Product, ProductRepos, ProductTags, ProductTags, ProductOwner, ProductArtifacts, etc. if not needed ---
@@ -692,8 +699,8 @@ model Report {
     orgId              String
     org                Org                 @relation(fields: [orgId], references: [uuid])
     requirementResults RequirementResult[]
-    collectionId String?
-    collection   Collection? @relation(fields: [collectionId], references: [uuid])
+    collectionId       String?
+    collection         Collection?         @relation(fields: [collectionId], references: [uuid])
 }
 
 model QueueMessage {
@@ -706,4 +713,129 @@ model QueueMessage {
     orgId     String
     org       Org    @relation(fields: [orgId], references: [uuid])
     createdAt Int
+}
+
+// TEA (Transparency Exchange API) Models
+model TeaProduct {
+    uuid            String                @id
+    type            String
+    barcode         String?
+    sku             String?
+    vendor          String?
+    namespace       String
+    name            String
+    version         String?
+    qualifiers      String? // JSON array of qualifiers
+    identifiers     String? // JSON array of identifiers
+    subpath         String?
+    primaryLanguage String?
+    homepageUrl     String?
+    downloadUrl     String?
+    description     String?
+    releaseDate     String?
+    validUntilDate  String?
+    orgId           String?
+    org             Org?                  @relation(fields: [orgId], references: [uuid])
+    createdAt       Int
+    updatedAt       Int
+    releases        TeaRelease[]
+    components      TeaProductComponent[]
+    collections     TeaCollection[]       @relation("TeaCollectionProducts")
+
+    @@index([type, namespace, name])
+    @@index([orgId])
+}
+
+model TeaComponent {
+    uuid            String                @id
+    type            String
+    barcode         String?
+    sku             String?
+    vendor          String?
+    namespace       String
+    name            String
+    version         String?
+    qualifiers      String? // JSON array of qualifiers
+    identifiers     String? // JSON array of identifiers
+    subpath         String?
+    primaryLanguage String?
+    homepageUrl     String?
+    downloadUrl     String?
+    description     String?
+    releaseDate     String?
+    validUntilDate  String?
+    orgId           String?
+    org             Org?                  @relation(fields: [orgId], references: [uuid])
+    createdAt       Int
+    updatedAt       Int
+    products        TeaProductComponent[]
+    releases        TeaReleaseComponent[]
+
+    @@index([type, namespace, name])
+    @@index([orgId])
+}
+
+model TeaRelease {
+    uuid           String                @id
+    productUuid    String
+    product        TeaProduct            @relation(fields: [productUuid], references: [uuid])
+    tag            String
+    version        String?
+    name           String?
+    description    String?
+    releaseDate    String?
+    validUntilDate String?
+    prerelease     Boolean               @default(false)
+    draft          Boolean               @default(false)
+    orgId          String?
+    org            Org?                  @relation(fields: [orgId], references: [uuid])
+    createdAt      Int
+    updatedAt      Int
+    components     TeaReleaseComponent[]
+
+    @@index([productUuid])
+    @@index([orgId])
+}
+
+model TeaCollection {
+    uuid        String       @id
+    name        String
+    description String?
+    artifacts   String? // JSON array of artifacts
+    lifecycle   String? // JSON object for lifecycle info
+    orgId       String?
+    org         Org?         @relation(fields: [orgId], references: [uuid])
+    createdAt   Int
+    updatedAt   Int
+    products    TeaProduct[] @relation("TeaCollectionProducts")
+
+    @@index([orgId])
+}
+
+model TeaProductComponent {
+    id            Int          @id @default(autoincrement())
+    productUuid   String
+    product       TeaProduct   @relation(fields: [productUuid], references: [uuid])
+    componentUuid String
+    component     TeaComponent @relation(fields: [componentUuid], references: [uuid])
+    relationship  String?
+    createdAt     Int
+
+    @@unique([productUuid, componentUuid])
+    @@index([productUuid])
+    @@index([componentUuid])
+}
+
+model TeaReleaseComponent {
+    id            Int          @id @default(autoincrement())
+    releaseUuid   String
+    release       TeaRelease   @relation(fields: [releaseUuid], references: [uuid])
+    componentUuid String
+    component     TeaComponent @relation(fields: [componentUuid], references: [uuid])
+    relationship  String?
+    createdAt     Int
+
+    @@unique([releaseUuid, componentUuid])
+    @@index([releaseUuid])
+    @@index([componentUuid])
 }
