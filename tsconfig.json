@@ -29,10 +29,13 @@
                 "./src/plugins/axios"
             ]
         },
-        "types": ["worker-configuration.d.ts"],
+        "types": [
+            "worker-configuration.d.ts"
+        ],
         "sourceMap": true,
         "module": "nodenext",
         "moduleResolution": "nodenext",
         "resolveJsonModule": true
-    }
+    },
+	"exclude": ["node_modules", "dist", "tests"]
 }

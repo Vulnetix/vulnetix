@@ -1,9 +1,6 @@
 [submodule "api"]
 	path = functions/api
 	url = git@github.com:Vulnetix/workers-api.git
-[submodule "koala"]
-	path = functions/tea
-	url = git@github.com:Vulnetix/transparency-exchange-api.git
 [submodule "static"]
 	path = public
 	url = git@github.com:Vulnetix/saas-static.git

@@ -48,7 +48,7 @@ def get_description(w: Dict[str, Any]) -> Optional[str]:
 def get_detail(w: Dict[str, Any]) -> str:
     detail_parts = []
     if w.get('ExtendedDescription'):
-        detail_parts.append(f"**Extended Description:**\n{w['ExtendedDescription']}")
+        detail_parts.append(f"**Extended Description:**\n{w['ExtendedDescription']}\n")
     if w.get('AlternateTerms'):
         terms = w['AlternateTerms']
         if isinstance(terms, list):
@@ -56,34 +56,34 @@ def get_detail(w: Dict[str, Any]) -> str:
         else:
             terms_md = terms.get('Term', '')
         if terms_md:
-            detail_parts.append(f"**Alternate Terms:** {terms_md}")
+            detail_parts.append(f"**Alternate Terms:** {terms_md}\n")
     if w.get('ModesOfIntroduction'):
         modes = w['ModesOfIntroduction']
         if isinstance(modes, list):
             for m in modes:
                 if m.get('Note'):
-                    detail_parts.append(f"**Mode of Introduction:** {m['Note']}")
+                    detail_parts.append(f"**Mode of Introduction:** {m['Note']}\n")
         elif modes.get('Note'):
-            detail_parts.append(f"**Mode of Introduction:** {modes['Note']}")
+            detail_parts.append(f"**Mode of Introduction:** {modes['Note']}\n")
     if w.get('BackgroundDetails'):
-        detail_parts.append(f"**Background Details:**\n{w['BackgroundDetails']}")
+        detail_parts.append(f"**Background Details:**\n{w['BackgroundDetails']}\n")
     if w.get('CommonConsequences'):
         cc = w['CommonConsequences']
         if isinstance(cc, list):
             for c in cc:
                 if c.get('Note'):
-                    detail_parts.append(f"**Consequence Note:** {c['Note']}")
+                    detail_parts.append(f"**Consequence Note:** {c['Note']}\n")
         elif cc.get('Note'):
-            detail_parts.append(f"**Consequence Note:** {cc['Note']}")
+            detail_parts.append(f"**Consequence Note:** {cc['Note']}\n")
     if w.get('DemonstrativeExamples'):
         ex = w['DemonstrativeExamples']
         if isinstance(ex, list):
             for e in ex:
                 if e.get('Description'):
-                    detail_parts.append(f"**Example:**\n{e['Description']}")
+                    detail_parts.append(f"**Example:**\n{e['Description']}\n")
         elif ex.get('Description'):
-            detail_parts.append(f"**Example:**\n{ex['Description']}")
-    return '\n\n'.join(detail_parts)
+            detail_parts.append(f"**Example:**\n{ex['Description']}\n")
+    return '\n'.join(detail_parts)
 
 def get_scopes(w: Dict[str, Any]) -> Set[str]:
     scopes = set()
@@ -124,22 +124,22 @@ def get_mitigation(w: Dict[str, Any]) -> str:
         if isinstance(dm, list):
             for d in dm:
                 if d.get('Description'):
-                    mitigation_parts.append(f"**Detection:** {d['Description']}")
+                    mitigation_parts.append(f"**Detection:** {d['Description']}\n")
         elif dm.get('Description'):
-            mitigation_parts.append(f"**Detection:** {dm['Description']}")
+            mitigation_parts.append(f"**Detection:** {dm['Description']}\n")
     if w.get('PotentialMitigations'):
         pm = w['PotentialMitigations']
         if isinstance(pm, list):
             for p in pm:
                 if p.get('Description'):
-                    mitigation_parts.append(f"**Mitigation:** {p['Description']}")
+                    mitigation_parts.append(f"**Mitigation:** {p['Description']}\n")
                 if p.get('EffectivenessNotes'):
-                    mitigation_parts.append(f"**Effectiveness:** {p['EffectivenessNotes']}")
+                    mitigation_parts.append(f"**Effectiveness:** {p['EffectivenessNotes']}\n")
         else:
             if pm.get('Description'):
-                mitigation_parts.append(f"**Mitigation:** {pm['Description']}")
+                mitigation_parts.append(f"**Mitigation:** {pm['Description']}\n")
             if pm.get('EffectivenessNotes'):
-                mitigation_parts.append(f"**Effectiveness:** {pm['EffectivenessNotes']}")
+                mitigation_parts.append(f"**Effectiveness:** {pm['EffectivenessNotes']}\n")
     return '\n'.join(mitigation_parts)
 
 def get_languages(w: Dict[str, Any]) -> Set[str]:

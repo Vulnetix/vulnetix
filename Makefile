@@ -60,6 +60,7 @@ types:
 	npx prisma generate
 
 build:
+	cd .repo && python3 parse_cwe.py > ../shared/cwes.json
 	node src/@iconify/build-icons.js
 	npx vite build --force --clearScreen --mode production
 
