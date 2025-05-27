@@ -435,6 +435,7 @@ model Triage {
     seenAt                Int?
     cvssVector            String?
     cvssScore             String?
+    cvssSource            String?
     epssPercentile        String?
     epssScore             String?
     ssvc                  String?
