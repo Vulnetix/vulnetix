@@ -237,6 +237,8 @@ model GitRepo {
     branches         GitBranch[]
     RequirementScope RequirementScope[]
     collectionRepos  CollectionRepo[]
+    contributors     GitRepoContributor[]
+    languages        GitRepoLanguage[]
 
     @@id([fullName, orgId])
 }
@@ -707,9 +709,9 @@ model Report {
 model QueueMessage {
     messageId String @unique
     status    String
-    uniqueId  String
-    linkId    Int
-    link      Link   @relation(fields: [linkId], references: [id])
+    uniqueId  String?
+    linkId    Int?
+    link      Link?   @relation(fields: [linkId], references: [id])
     type      String
     orgId     String
     org       Org    @relation(fields: [orgId], references: [uuid])
@@ -839,4 +841,42 @@ model TeaReleaseComponent {
     @@unique([releaseUuid, componentUuid])
     @@index([releaseUuid])
     @@index([componentUuid])
+}
+
+model GitRepoContributor {
+    repoName              String
+    orgId                 String
+    repo                  GitRepo @relation(fields: [repoName, orgId], references: [fullName, orgId])
+    githubId              Int
+    login                 String
+    avatarUrl             String?
+    type                  String
+    siteAdmin             Int     @default(0)
+    contributions         Int
+    createdAt             Int
+    updatedAt             Int
+
+    @@id([repoName, orgId])
+}
+
+model Languages {
+    uuid        String            @id @default(uuid())
+    displayName String
+    slug        String            @unique
+    githubId    String?
+    repos       GitRepoLanguage[]
+
+    @@index([slug])
+}
+
+model GitRepoLanguage {
+    repoName     String
+    orgId        String
+    repo         GitRepo   @relation(fields: [repoName, orgId], references: [fullName, orgId])
+    languageUuid String
+    language     Languages @relation(fields: [languageUuid], references: [uuid])
+
+    @@id([repoName, orgId, languageUuid])
+    @@index([repoName, orgId])
+    @@index([languageUuid])
 }
