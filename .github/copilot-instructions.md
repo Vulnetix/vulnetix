@@ -34,6 +34,8 @@ Use Pinia for state management across routes.
 Use the `src/store` directory for Pinia store modules and state management.
 Put all API calls in the `functions` directory using Cloudflare Workers.
 In Workers functions, use the `context.data.prisma` object to access the Prisma client and perform database operations.
+The SQL database has a maximum bound parameters per query of 100, which include all WERE params and the value counts in the `IN` clause.
+The maximum arguments per SQL function 32 so the include, select, and where clauses of Prisma queries should be kept under the limit.
 Use the `context.data.session` object to access the session data following `Session` model from `@prisma/client`.
 Use the `context.env` object to access environment variables.
 For R2 storage, use the `context.env.r2artifacts` object to access the R2 bucket.
