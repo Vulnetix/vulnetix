@@ -72,6 +72,7 @@ model TriagePolicy {
     remediationLowThresholdAllowance      Int
     triageThresholdDays                   Int
     exposureWindowDays                    Int
+    threatWindowDays                      Int
     severityHighThreshold                 Float // 8.9 for CVSS
     severityMediumThreshold               Float // 6.9 for CVSS
     severityLowThreshold                  Float // 3.9 for CVSS

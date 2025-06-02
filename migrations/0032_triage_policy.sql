@@ -46,10 +46,32 @@ INSERT INTO TriagePolicy (
     `remediationLowThresholdAllowance`,
     `triageThresholdDays`,
     `exposureWindowDays`,
+    `threatWindowDays`,
     `severityHighThreshold`,
     `severityMediumThreshold`,
     `severityLowThreshold`
 ) VALUES (
+    "b1e2c3d4-0001-0000-0000-000000000000",
+    "Baseline CVSS",
+    "Basic Triage Policy for Vulnerability Management",
+    strftime("%s", "now"),
+    1,
+    1,
+    30,
+    90,
+    180,
+    365,
+    30,
+    90,
+    180,
+    365,
+    30,
+    2,
+    14,
+    8.9,
+    6.9,
+    4.0
+), (
     "b1e2c3d4-0001-0000-0000-000000000001",
     "NIST SP 800-40",
     "NIST SP 800-40 does not specify exact remediation timeframes, but aligns with recommendations from CISA",
@@ -66,32 +88,11 @@ INSERT INTO TriagePolicy (
     180,
     1,
     2,
+    14,
     8.9,
     6.9,
     4.0
-);
-
-INSERT INTO TriagePolicy (
-    `uuid`,
-    `name`,
-    `description`,
-    `createdAt`,
-    `enabled`,
-    `isSystem`,
-    `cvssCriticalRemediationDays`,
-    `cvssHighRemediationDays`,
-    `cvssMediumRemediationDays`,
-    `cvssLowRemediationDays`,
-    `remediationCriticalThresholdAllowance`,
-    `remediationHighThresholdAllowance`,
-    `remediationMediumThresholdAllowance`,
-    `remediationLowThresholdAllowance`,
-    `triageThresholdDays`,
-    `exposureWindowDays`,
-    `severityHighThreshold`,
-    `severityMediumThreshold`,
-    `severityLowThreshold`
-) VALUES (
+), (
     "b1e2c3d4-0001-0000-0000-000000000002",
     "FedRAMP",
     "FedRAMP Plan of Actions and Milestones (POA&M)",
@@ -108,32 +109,11 @@ INSERT INTO TriagePolicy (
     180,
     14,
     30,
+    14,
     8.9,
     6.9,
     4.0
-);
-
-INSERT INTO TriagePolicy (
-    `uuid`,
-    `name`,
-    `description`,
-    `createdAt`,
-    `enabled`,
-    `isSystem`,
-    `cvssCriticalRemediationDays`,
-    `cvssHighRemediationDays`,
-    `cvssMediumRemediationDays`,
-    `cvssLowRemediationDays`,
-    `remediationCriticalThresholdAllowance`,
-    `remediationHighThresholdAllowance`,
-    `remediationMediumThresholdAllowance`,
-    `remediationLowThresholdAllowance`,
-    `triageThresholdDays`,
-    `exposureWindowDays`,
-    `severityHighThreshold`,
-    `severityMediumThreshold`,
-    `severityLowThreshold`
-) VALUES (
+), (
     "b1e2c3d4-0001-0000-0000-000000000003",
     "Essential 8",
     "Australian Information Security Manual (ISM) Essential Eight Maturity Model",
@@ -150,32 +130,11 @@ INSERT INTO TriagePolicy (
     90,
     1,
     2,
+    14,
     8.9,
     6.9,
     4.0
-);
-
-INSERT INTO TriagePolicy (
-    `uuid`,
-    `name`,
-    `description`,
-    `createdAt`,
-    `enabled`,
-    `isSystem`,
-    `cvssCriticalRemediationDays`,
-    `cvssHighRemediationDays`,
-    `cvssMediumRemediationDays`,
-    `cvssLowRemediationDays`,
-    `remediationCriticalThresholdAllowance`,
-    `remediationHighThresholdAllowance`,
-    `remediationMediumThresholdAllowance`,
-    `remediationLowThresholdAllowance`,
-    `triageThresholdDays`,
-    `exposureWindowDays`,
-    `severityHighThreshold`,
-    `severityMediumThreshold`,
-    `severityLowThreshold`
-) VALUES (
+), (
     "b1e2c3d4-0001-0000-0000-000000000004",
     "CISA BOD 19-02",
     "CISA Binding Operational Directive 19-02 (BOD 19-02) Critical Vulnerability Mitigation Req11ireme111.for Federal Civilian Executive Branch Departments and Agencies Internet-Accessible Systems (May 21, 2015)",
@@ -191,6 +150,7 @@ INSERT INTO TriagePolicy (
     30,
     30,
     1,
+    15,
     15,
     8.9,
     6.9,

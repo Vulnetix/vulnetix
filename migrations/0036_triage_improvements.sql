@@ -1,3 +1,4 @@
+ALTER TABLE "TriagePolicy" ADD "threatWindowDays" INTEGER DEFAULT 14;
 ALTER TABLE Triage ADD cvssSource TEXT default 'CVE.org';
 ALTER TABLE "Report" ADD COLUMN "collectionId" TEXT;
 CREATE TABLE "GitRepoContributor" (

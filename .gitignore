@@ -43,4 +43,5 @@ semgrep.sarif.json
 osv.sarif.json
 vulnetix.cdx.json
 vulnetix.spdx.json
-.repo/cwe.json
+.repo/cwe*.json
+**/__pycache__

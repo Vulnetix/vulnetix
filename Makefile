@@ -60,6 +60,8 @@ types:
 	npx prisma generate
 
 build:
+	uv run --with requests,rich -s .repo/get_cwe.py .repo/cwe-latest.json --view 699 --insecure --show-stats && \
+		uv run --with rich -s .repo/parse_cwe.py .repo/cwe-latest.json
 	node src/@iconify/build-icons.js
 	npx vite build --force --clearScreen --mode production
 
