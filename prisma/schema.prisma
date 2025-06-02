@@ -179,13 +179,20 @@ model GitHubPAT {
     repos     GitRepo[]
 }
 
+enum GitHubIdentifierType {
+    ORG @map("org")
+    USER @map("user")
+    APP @map("app")
+    INSTALLATION @map("installation")
+}
+
 model GitHubApp {
-    installationId Int           @id
+    installationId Int                   @id
     orgId          String
-    org            Org           @relation(fields: [orgId], references: [uuid])
+    org            Org                   @relation(fields: [orgId], references: [uuid])
     tokens         GitHubOAuth[]
     identifier     String
-    identifierType String // org, user
+    identifierType GitHubIdentifierType
     created        Int
     avatarUrl      String?
     repos          GitRepo[]
@@ -229,7 +236,7 @@ model GitRepo {
     fork             Int                @default(0)
     template         Int                @default(0)
     archived         Int                @default(0)
-    visibility       String
+    visibility       GitRepoVisibility
     avatarUrl        String?
     sarif            SARIFInfo[]
     spdx             SPDXInfo[]
@@ -242,6 +249,12 @@ model GitRepo {
     languages        GitRepoLanguage[]
 
     @@id([fullName, orgId])
+}
+
+enum GitRepoVisibility {
+    PUBLIC @map("public")
+    PRIVATE @map("private")
+    INTERNAL @map("internal")
 }
 
 model GitBranch {
@@ -426,11 +439,11 @@ model Finding {
 }
 
 model Triage {
-    uuid                  String    @id @default(uuid())
+    uuid                  String                    @id @default(uuid())
     artifactUuid          String?
-    artifact              Artifact? @relation(fields: [artifactUuid], references: [uuid])
+    artifact              Artifact?                 @relation(fields: [artifactUuid], references: [uuid])
     findingUuid           String
-    finding               Finding   @relation(fields: [findingUuid], references: [uuid])
+    finding               Finding                   @relation(fields: [findingUuid], references: [uuid])
     createdAt             Int
     triagedAt             Int?
     lastObserved          Int
@@ -443,15 +456,44 @@ model Triage {
     epssScore             String?
     ssvc                  String?
     remediation           String?
-    analysisState         String
-    analysisJustification String?
-    analysisResponse      String?
+    analysisState         VexAnalysisState
+    analysisJustification VexAnalysisJustification?
+    analysisResponse      VexAnalysisResponse?
     analysisDetail        String?
-    triageAutomated       Int       @default(0)
+    triageAutomated       Int                       @default(0)
     memberUuid            String?
-    member                Member?   @relation(fields: [memberUuid], references: [uuid])
+    member                Member?                   @relation(fields: [memberUuid], references: [uuid])
 
     @@unique([memberUuid, analysisState])
+}
+
+enum VexAnalysisState {
+    RESOLVED @map("resolved")
+    RESOLVED_WITH_PEDIGREE @map("resolved_with_pedigree")
+    EXPLOITABLE @map("exploitable")
+    IN_TRIAGE @map("in_triage")
+    FALSE_POSITIVE @map("false_positive")
+    NOT_AFFECTED @map("not_affected")
+}
+
+enum VexAnalysisJustification {
+    CODE_NOT_PRESENT @map("code_not_present")
+    CODE_NOT_REACHABLE @map("code_not_reachable")
+    REQUIRES_CONFIGURATION @map("requires_configuration")
+    REQUIRES_DEPENDENCY @map("requires_dependency")
+    REQUIRES_ENVIRONMENT @map("requires_environment")
+    PROTECTED_BY_COMPILER @map("protected_by_compiler")
+    PROTECTED_AT_RUNTIME @map("protected_at_runtime")
+    PROTECTED_AT_PERIMETER @map("protected_at_perimeter")
+    PROTECTED_BY_MITIGATING_CONTROL @map("protected_by_mitigating_control")
+}
+
+enum VexAnalysisResponse {
+    CAN_NOT_FIX @map("can_not_fix")
+    WILL_NOT_FIX @map("will_not_fix")
+    UPDATE @map("update")
+    ROLLBACK @map("rollback")
+    WORKAROUND_AVAILABLE @map("workaround_available")
 }
 
 model CVEMetadata {
@@ -566,10 +608,18 @@ model CollectionProject {
     @@id([productId, projectId])
 }
 
+enum CollectionType {
+    PROJECT @map("Project")
+    PRODUCT @map("Product")
+    TEAM @map("Team")
+    CAMPAIGN @map("Campaign")
+    GROUP @map("Group")
+}
+
 model Collection {
     uuid           String               @id @default(uuid())
     name           String
-    type           String // 'Project' | 'Product' | 'Team' | 'Campaign' | 'Group'
+    type           CollectionType
     orgId          String
     org            Org                  @relation(fields: [orgId], references: [uuid])
     parentUuid     String? // For sub-collections/groups
@@ -587,9 +637,9 @@ model Collection {
     deadline       Int? // For Project (required), Campaign (required)
     // Campaign specific
     description    String?
-    cweList        String? // CSV or JSON string
-    findingAliases String? // CSV or JSON string
-    keywords       String? // CSV or JSON string
+    cweList        String? // JSON string
+    findingAliases String? // JSON string
+    keywords       String? // JSON string
     cvssThreshold  Float?
     // Relations
     gitRepos       CollectionRepo[]
