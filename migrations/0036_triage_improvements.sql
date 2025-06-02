@@ -37,3 +37,46 @@ CREATE TABLE "GitRepoLanguage" (
 
 CREATE INDEX "GitRepoLanguage_repoName_orgId_idx" ON "GitRepoLanguage"("repoName", "orgId");
 CREATE INDEX "GitRepoLanguage_languageUuid_idx" ON "GitRepoLanguage"("languageUuid");
+INSERT INTO TriagePolicy (
+    `uuid`,
+    `name`,
+    `description`,
+    `createdAt`,
+    `enabled`,
+    `isSystem`,
+    `cvssCriticalRemediationDays`,
+    `cvssHighRemediationDays`,
+    `cvssMediumRemediationDays`,
+    `cvssLowRemediationDays`,
+    `remediationCriticalThresholdAllowance`,
+    `remediationHighThresholdAllowance`,
+    `remediationMediumThresholdAllowance`,
+    `remediationLowThresholdAllowance`,
+    `triageThresholdDays`,
+    `exposureWindowDays`,
+    `threatWindowDays`,
+    `severityHighThreshold`,
+    `severityMediumThreshold`,
+    `severityLowThreshold`
+) VALUES (
+    "b1e2c3d4-0001-0000-0000-000000000000",
+    "Baseline CVSS",
+    "Basic Triage Policy for Vulnerability Management",
+    strftime("%s", "now"),
+    1,
+    1,
+    30,
+    90,
+    180,
+    365,
+    30,
+    90,
+    180,
+    365,
+    30,
+    2,
+    14,
+    8.9,
+    6.9,
+    4.0
+);
