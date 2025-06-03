@@ -1,4 +1,10 @@
 {
+    "include": [
+        "src/**/*",
+        "shared/**/*",
+        "schemas/**/*",
+        "*.d.ts"
+    ],
     "compilerOptions": {
         "paths": {
             "@/*": [
@@ -29,9 +35,6 @@
                 "./src/plugins/axios"
             ]
         },
-        "types": [
-            "worker-configuration.d.ts"
-        ],
         "sourceMap": true,
         "module": "nodenext",
         "moduleResolution": "nodenext",
