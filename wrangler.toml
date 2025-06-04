@@ -1,6 +1,6 @@
 name = "vulnetix"
 compatibility_date = "2024-03-20"
-compatibility_flags = ["nodejs_compat"]
+compatibility_flags = ["cf_botmanagement_default"]
 upload_source_maps = true
 pages_build_output_dir = "./dist"
 
