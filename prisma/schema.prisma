@@ -511,13 +511,13 @@ model CVEMetadata {
     affectedVersionsJSON String?
     cpesJSON             String?
     cnaOrgId             String
-    cna                  CVENumberingAuthrity @relation(fields: [cnaOrgId], references: [orgId])
+    cna                  CVENumberingAuthority @relation(fields: [cnaOrgId], references: [orgId])
     fileLinkId           Int
     fileLink             Link                 @relation(fields: [fileLinkId], references: [id])
     adp                  CVEADP[]
 }
 
-model CVENumberingAuthrity {
+model CVENumberingAuthority {
     orgId     String        @id
     shortName String
     cves      CVEMetadata[]
@@ -641,6 +641,7 @@ model Collection {
     findingAliases String? // JSON string
     keywords       String? // JSON string
     cvssThreshold  Float?
+    epssThreshold  Float?
     // Relations
     gitRepos       CollectionRepo[]
     artifacts      CollectionArtifact[]
