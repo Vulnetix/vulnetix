@@ -393,6 +393,7 @@ model Finding {
     orgId                      String
     org                        Org            @relation(fields: [orgId], references: [uuid])
     repoName                   String?
+    repoSource                 String?
     repo                       GitRepo?       @relation(fields: [repoName, orgId], references: [fullName, orgId])
     source                     String
     category                   String
