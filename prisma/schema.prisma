@@ -179,20 +179,13 @@ model GitHubPAT {
     repos     GitRepo[]
 }
 
-enum GitHubIdentifierType {
-    ORG          @map("org")
-    USER         @map("user")
-    APP          @map("app")
-    INSTALLATION @map("installation")
-}
-
 model GitHubApp {
     installationId Int                  @id
     orgId          String
     org            Org                  @relation(fields: [orgId], references: [uuid])
     tokens         GitHubOAuth[]
     identifier     String
-    identifierType GitHubIdentifierType
+    identifierType String
     created        Int
     avatarUrl      String?
     repos          GitRepo[]
