@@ -180,16 +180,16 @@ model GitHubPAT {
 }
 
 enum GitHubIdentifierType {
-    ORG @map("org")
-    USER @map("user")
-    APP @map("app")
+    ORG          @map("org")
+    USER         @map("user")
+    APP          @map("app")
     INSTALLATION @map("installation")
 }
 
 model GitHubApp {
-    installationId Int                   @id
+    installationId Int                  @id
     orgId          String
-    org            Org                   @relation(fields: [orgId], references: [uuid])
+    org            Org                  @relation(fields: [orgId], references: [uuid])
     tokens         GitHubOAuth[]
     identifier     String
     identifierType GitHubIdentifierType
@@ -219,11 +219,11 @@ model CollectionTag {
 model GitRepo {
     fullName         String
     orgId            String
-    org              Org                @relation(fields: [orgId], references: [uuid])
+    org              Org                  @relation(fields: [orgId], references: [uuid])
     ghAppId          Int?
-    ghApp            GitHubApp?         @relation(fields: [ghAppId], references: [installationId])
+    ghApp            GitHubApp?           @relation(fields: [ghAppId], references: [installationId])
     ghPATId          String?
-    ghPAT            GitHubPAT?         @relation(fields: [ghPATId], references: [uuid])
+    ghPAT            GitHubPAT?           @relation(fields: [ghPATId], references: [uuid])
     ghid             Int?
     source           String
     createdAt        Int
@@ -233,9 +233,9 @@ model GitRepo {
     ownerId          Int
     licenseSpdxId    String?
     licenseName      String?
-    fork             Int                @default(0)
-    template         Int                @default(0)
-    archived         Int                @default(0)
+    fork             Int                  @default(0)
+    template         Int                  @default(0)
+    archived         Int                  @default(0)
     visibility       GitRepoVisibility
     avatarUrl        String?
     sarif            SARIFInfo[]
@@ -252,8 +252,8 @@ model GitRepo {
 }
 
 enum GitRepoVisibility {
-    PUBLIC @map("public")
-    PRIVATE @map("private")
+    PUBLIC   @map("public")
+    PRIVATE  @map("private")
     INTERNAL @map("internal")
 }
 
@@ -459,7 +459,7 @@ model Triage {
     remediation           String?
     analysisState         VexAnalysisState
     analysisJustification VexAnalysisJustification?
-    analysisResponse      VexAnalysisResponse?
+    analysisResponse      String? // JSON array of VexAnalysisResponse enum values
     analysisDetail        String?
     triageAutomated       Int                       @default(0)
     memberUuid            String?
@@ -469,36 +469,36 @@ model Triage {
 }
 
 enum VexAnalysisState {
-    RESOLVED @map("resolved")
+    RESOLVED               @map("resolved")
     RESOLVED_WITH_PEDIGREE @map("resolved_with_pedigree")
-    EXPLOITABLE @map("exploitable")
-    IN_TRIAGE @map("in_triage")
-    FALSE_POSITIVE @map("false_positive")
-    NOT_AFFECTED @map("not_affected")
+    EXPLOITABLE            @map("exploitable")
+    IN_TRIAGE              @map("in_triage")
+    FALSE_POSITIVE         @map("false_positive")
+    NOT_AFFECTED           @map("not_affected")
 }
 
 enum VexAnalysisJustification {
-    CODE_NOT_PRESENT @map("code_not_present")
-    CODE_NOT_REACHABLE @map("code_not_reachable")
-    REQUIRES_CONFIGURATION @map("requires_configuration")
-    REQUIRES_DEPENDENCY @map("requires_dependency")
-    REQUIRES_ENVIRONMENT @map("requires_environment")
-    PROTECTED_BY_COMPILER @map("protected_by_compiler")
-    PROTECTED_AT_RUNTIME @map("protected_at_runtime")
-    PROTECTED_AT_PERIMETER @map("protected_at_perimeter")
+    CODE_NOT_PRESENT                @map("code_not_present")
+    CODE_NOT_REACHABLE              @map("code_not_reachable")
+    REQUIRES_CONFIGURATION          @map("requires_configuration")
+    REQUIRES_DEPENDENCY             @map("requires_dependency")
+    REQUIRES_ENVIRONMENT            @map("requires_environment")
+    PROTECTED_BY_COMPILER           @map("protected_by_compiler")
+    PROTECTED_AT_RUNTIME            @map("protected_at_runtime")
+    PROTECTED_AT_PERIMETER          @map("protected_at_perimeter")
     PROTECTED_BY_MITIGATING_CONTROL @map("protected_by_mitigating_control")
 }
 
 enum VexAnalysisResponse {
-    CAN_NOT_FIX @map("can_not_fix")
-    WILL_NOT_FIX @map("will_not_fix")
-    UPDATE @map("update")
-    ROLLBACK @map("rollback")
+    CAN_NOT_FIX          @map("can_not_fix")
+    WILL_NOT_FIX         @map("will_not_fix")
+    UPDATE               @map("update")
+    ROLLBACK             @map("rollback")
     WORKAROUND_AVAILABLE @map("workaround_available")
 }
 
 model CVEMetadata {
-    cveId                String               @id
+    cveId                String                @id
     dataVersion          String
     state                String
     datePublished        Int
@@ -514,7 +514,7 @@ model CVEMetadata {
     cnaOrgId             String
     cna                  CVENumberingAuthority @relation(fields: [cnaOrgId], references: [orgId])
     fileLinkId           Int
-    fileLink             Link                 @relation(fields: [fileLinkId], references: [id])
+    fileLink             Link                  @relation(fields: [fileLinkId], references: [id])
     adp                  CVEADP[]
 }
 
@@ -610,11 +610,11 @@ model CollectionProject {
 }
 
 enum CollectionType {
-    PROJECT @map("Project")
-    PRODUCT @map("Product")
-    TEAM @map("Team")
+    PROJECT  @map("Project")
+    PRODUCT  @map("Product")
+    TEAM     @map("Team")
     CAMPAIGN @map("Campaign")
-    GROUP @map("Group")
+    GROUP    @map("Group")
 }
 
 model Collection {
@@ -760,15 +760,16 @@ model Report {
 }
 
 model QueueMessage {
-    messageId String @unique
-    status    String
-    uniqueId  String?
-    linkId    Int?
-    link      Link?   @relation(fields: [linkId], references: [id])
-    type      String
-    orgId     String
-    org       Org    @relation(fields: [orgId], references: [uuid])
-    createdAt Int
+    messageId   String  @unique
+    status      String
+    uniqueId    String?
+    linkId      Int?
+    link        Link?   @relation(fields: [linkId], references: [id])
+    type        String
+    displayText String
+    orgId       String
+    org         Org     @relation(fields: [orgId], references: [uuid])
+    createdAt   Int
 }
 
 // TEA (Transparency Exchange API) Models
@@ -897,17 +898,17 @@ model TeaReleaseComponent {
 }
 
 model GitRepoContributor {
-    repoName              String
-    orgId                 String
-    repo                  GitRepo @relation(fields: [repoName, orgId], references: [fullName, orgId])
-    githubId              Int
-    login                 String
-    avatarUrl             String?
-    type                  String
-    siteAdmin             Int     @default(0)
-    contributions         Int
-    createdAt             Int
-    updatedAt             Int
+    repoName      String
+    orgId         String
+    repo          GitRepo @relation(fields: [repoName, orgId], references: [fullName, orgId])
+    githubId      Int
+    login         String
+    avatarUrl     String?
+    type          String
+    siteAdmin     Int     @default(0)
+    contributions Int
+    createdAt     Int
+    updatedAt     Int
 
     @@id([repoName, orgId])
 }
