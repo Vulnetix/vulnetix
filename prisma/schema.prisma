@@ -180,9 +180,9 @@ model GitHubPAT {
 }
 
 model GitHubApp {
-    installationId Int                  @id
+    installationId Int           @id
     orgId          String
-    org            Org                  @relation(fields: [orgId], references: [uuid])
+    org            Org           @relation(fields: [orgId], references: [uuid])
     tokens         GitHubOAuth[]
     identifier     String
     identifierType String
@@ -926,4 +926,9 @@ model GitRepoLanguage {
     @@id([repoName, orgId, languageUuid])
     @@index([repoName, orgId])
     @@index([languageUuid])
+}
+
+model Unused {
+    uuid             String               @id @default(uuid())
+    analysisResponse VexAnalysisResponse?
 }
