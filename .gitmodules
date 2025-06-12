@@ -10,3 +10,6 @@
 [submodule "shared"]
 	path = shared
 	url = git@github.com:Vulnetix/shared-javascript.git
+[submodule "scan-processor"]
+	path = queue-consumers/scan-processor
+	url = git@github.com:Vulnetix/scan-processor.git
