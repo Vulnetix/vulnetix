@@ -6,25 +6,6 @@ import Components from 'unplugin-vue-components/vite'
 import { defineConfig } from 'vite'
 import vuetify from 'vite-plugin-vuetify'
 
-function getModulePath(moduleName) {
-  try {
-    const moduleUrl = import.meta.resolve(moduleName);
-    const modulePath = fileURLToPath(moduleUrl);
-    return (
-      modulePath
-        .substring(0, modulePath.lastIndexOf("node_modules"))
-        .replace(/\/+$/, "") || ""
-    );
-  } catch (error) {
-    console.error(
-      `Module ${moduleName} resolution failed:`,
-      error.message,
-    );
-    return "";
-  }
-}
-
-const prismaNodeModulesPath = `${getModulePath("@prisma/client")}/node_modules`;
 // https://vitejs.dev/config/
 export default defineConfig({
     server: {
@@ -95,7 +76,6 @@ export default defineConfig({
             '@configured-variables': fileURLToPath(new URL('./src/styles/variables/_template.scss', import.meta.url)),
             '@axios': fileURLToPath(new URL('./src/plugins/axios', import.meta.url)),
             '@schemas': fileURLToPath(new URL('./schemas', import.meta.url)),
-            ".prisma/client/index-browser": `${prismaNodeModulesPath}/.prisma/client/index-browser.js`,
         },
     },
     build: {

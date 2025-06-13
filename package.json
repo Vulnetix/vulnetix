@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "generate-types": "wrangler types && prisma generate",
+    "generate-types": "wrangler types && DATABASE_URL=vulnetix.db prisma generate",
     "build": "npm run generate-types && vite build --clearScreen --mode development",
     "watch": "npm run generate-types && vite build --watch --clearScreen --mode development --sourcemap inline",
-    "preview": "wrangler pages dev ./dist",
+    "preview": "wrangler pages dev ./dist --port 8788 --local",
+    "consumer": "cd queue-consumers/scan-processor && wrangler types && cd ../.. && wrangler dev --config queue-consumers/scan-processor/wrangler.toml",
     "lint": "npm run generate-types && eslint . -c .eslintrc.js --fix --ext .ts,.js,.vue,.tsx --ignore-path .gitignore",
     "build:icons": "node src/@iconify/build-icons.js",
     "postinstall": "npm run build:icons",
@@ -74,7 +75,7 @@
     "vite-plugin-pages": "^0.30.1",
     "vite-plugin-vue-layouts": "^0.8.0",
     "vite-plugin-vuetify": "^2.1.1",
-    "wrangler": "^4.4.0"
+    "wrangler": "4"
   },
   "packageManager": "yarn@4.9.2"
 }

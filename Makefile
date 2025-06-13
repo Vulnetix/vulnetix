@@ -23,6 +23,21 @@ setup: ## FOR DOCO ONLY - Run these one at a time, do not call this target direc
 	yarn install
 	yarn plugin import https://raw.githubusercontent.com/spdx/yarn-plugin-spdx/main/bundles/@yarnpkg/plugin-spdx.js
 	yarn plugin import https://github.com/CycloneDX/cyclonedx-node-yarn/releases/latest/download/yarn-plugin-cyclonedx.cjs
+	npx wrangler queues --cwd queue-consumers/scan-processor consumer worker add scan-queue vulnetix-scan-processor
+	npx wrangler queues --cwd queue-consumers/scan-processor consumer worker remove scan-queue vulnetix-scan-processor
+
+info: ## get info about the current cloudflare project
+	npx wrangler whoami
+	@echo "Local"
+	npx wrangler pages info --local
+	npx wrangler d1 list --local
+	npx wrangler d1 info vulnetix --local
+	@echo "Remote"
+	npx wrangler pages info --remotw
+	npx wrangler pages deployment list --project-name vulnetix
+	npx wrangler queues --cwd queue-consumers/scan-processor info scan-queue
+	npx wrangler d1 list --remote
+	npx wrangler d1 info vulnetix --remote
 
 migrate: ## migrate incoming schema changes for prisma orm
 	npx wrangler d1 migrations apply vulnetix --local

@@ -45,3 +45,4 @@ vulnetix.cdx.json
 vulnetix.spdx.json
 .repo/cwe*.json
 **/__pycache__
+vulnetix.db
