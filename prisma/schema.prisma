@@ -19,6 +19,9 @@ model Session {
     secret     String?
     authn_ip   String?
     authn_ua   String?
+    // Authentication provider information
+    authProvider String? @default("password") // "password", "github", "google"
+    authProviderData String? // JSON string for provider-specific data
 
     @@index([orgId, memberUuid])
 }
@@ -28,6 +31,7 @@ model Org {
     name                  String                @unique
     createdAt             Int
     enforceGitHubOAuth    Int                   @default(0)
+    enforceGoogleSSO      Int                   @default(0)
     enforceCompanyDomain  String?               @default("")
     members               Member[]
     sessions              Session[]
@@ -53,6 +57,8 @@ model Org {
     teaComponents         TeaComponent[]
     teaReleases           TeaRelease[]
     teaCollections        TeaCollection[]
+    googleSSOConfigs      GoogleSSOConfig[]
+    githubSSOConfigs      GitHubSSOConfig[]
 }
 
 model TriagePolicy {
@@ -139,6 +145,8 @@ model Member {
     ownedCollections      Collection[]          @relation("CollectionOwner")
     leadCollections       Collection[]          @relation("CollectionLead")
     collectionMembers     CollectionMember[]
+    googleSSOConfigs      GoogleSSOConfig[]
+    githubSSOConfigs      GitHubSSOConfig[]
 }
 
 model GitHubOAuth {
@@ -931,4 +939,56 @@ model GitRepoLanguage {
 model Unused {
     uuid             String               @id @default(uuid())
     analysisResponse VexAnalysisResponse?
+}
+
+model GoogleSSOConfig {
+    id                Int      @id @default(autoincrement())
+    orgId             String
+    org               Org      @relation(fields: [orgId], references: [uuid])
+    memberUuid        String?
+    member            Member?  @relation(fields: [memberUuid], references: [uuid])
+    googleId          String   // Google OAuth user ID
+    email             String
+    name              String?
+    picture           String?
+    accessToken       String?
+    refreshToken      String?
+    idToken           String?
+    tokenExpiry       Int?     // Unix timestamp when token expires
+    created           Int
+    lastUsed          Int?
+    blocked           Int      @default(0) // 0 = active, 1 = blocked
+    
+    @@unique([orgId, googleId])
+    @@unique([orgId, email])
+}
+
+model GitHubSSOConfig {
+    id                Int      @id @default(autoincrement())
+    orgId             String
+    org               Org      @relation(fields: [orgId], references: [uuid])
+    memberUuid        String?
+    member            Member?  @relation(fields: [memberUuid], references: [uuid])
+    githubId          Int      // GitHub user ID
+    login             String   // GitHub username
+    email             String
+    name              String?
+    avatarUrl         String?
+    accessToken       String?
+    scope             String?
+    tokenType         String?
+    created           Int
+    lastUsed          Int?
+    blocked           Int      @default(0) // 0 = active, 1 = blocked
+    
+    @@unique([orgId, githubId])
+    @@unique([orgId, email])
+}
+
+model AuthProvider {
+    id          Int    @id @default(autoincrement())
+    name        String @unique // "password", "github", "google"
+    displayName String
+    enabled     Int    @default(1)
+    config      String? // JSON configuration for the provider
 }
