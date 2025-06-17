@@ -6,7 +6,7 @@ help: ## This help.
 
 .DEFAULT_GOAL := help
 
-SEMGREP_ARGS=--use-git-ignore --metrics=off --force-color --disable-version-check --experimental --dataflow-traces --sarif --timeout=0
+SEMGREP_ARGS=--verbose --use-git-ignore --metrics=off --force-color --disable-version-check --experimental --dataflow-traces --sarif --timeout=0
 SEMGREP_RULES=-c p/default -c p/python -c p/php -c p/c -c p/rust -c p/apex -c p/nginx -c p/terraform -c p/csharp -c p/nextjs -c p/golang -c p/nodejs -c p/kotlin -c p/django -c p/docker -c p/kubernetes -c p/lockfiles -c p/supply-chain -c p/headless-browser -c p/expressjs -c p/cpp-audit -c p/mobsfscan -c p/ruby -c p/java -c p/javascript -c p/typescript -c p/bandit -c p/flask -c p/gosec -c p/flawfinder -c p/gitleaks -c p/eslint -c p/phpcs-security-audit -c p/react -c p/brakeman -c p/findsecbugs -c p/secrets -c p/sql-injection -c p/jwt -c p/insecure-transport -c p/command-injection -c p/security-code-scan -c p/xss
 
 clean: ## Cleanup tmp files
@@ -19,8 +19,25 @@ setup: ## FOR DOCO ONLY - Run these one at a time, do not call this target direc
 	rm ~/.pnp.cjs
 	corepack enable
 	yarn set version stable
+	yarn dlx @yarnpkg/sdks vscode
+	yarn install
 	yarn plugin import https://raw.githubusercontent.com/spdx/yarn-plugin-spdx/main/bundles/@yarnpkg/plugin-spdx.js
 	yarn plugin import https://github.com/CycloneDX/cyclonedx-node-yarn/releases/latest/download/yarn-plugin-cyclonedx.cjs
+	npx wrangler queues --cwd queue-consumers/scan-processor consumer worker add scan-queue vulnetix-scan-processor
+	npx wrangler queues --cwd queue-consumers/scan-processor consumer worker remove scan-queue vulnetix-scan-processor
+
+info: ## get info about the current cloudflare project
+	npx wrangler whoami
+	@echo "Local"
+	npx wrangler pages info --local
+	npx wrangler d1 list --local
+	npx wrangler d1 info vulnetix --local
+	@echo "Remote"
+	npx wrangler pages info --remotw
+	npx wrangler pages deployment list --project-name vulnetix
+	npx wrangler queues --cwd queue-consumers/scan-processor info scan-queue
+	npx wrangler d1 list --remote
+	npx wrangler d1 info vulnetix --remote
 
 migrate: ## migrate incoming schema changes for prisma orm
 	npx wrangler d1 migrations apply vulnetix --local
@@ -45,16 +62,33 @@ install: ## install deps and build icons
 
 sarif: clean ## generate SARIF from Semgrep for this project
 	osv-scanner --format sarif --call-analysis=all -r . | jq >osv.sarif.json
-	semgrep $(SEMGREP_ARGS) $(SEMGREP_RULES) | jq >semgrep.sarif.json
+	semgrep scan $(SEMGREP_ARGS) $(SEMGREP_RULES) | jq >semgrep.sarif.json
 
 sbom: clean ## generate CycloneDX from NPM for this project
-	yarn cyclonedx --spec-version 1.6 --output-format JSON --output-file vulnetix.cdx.json
-	yarn spdx
+	npx cyclonedx --spec-version 1.6 --output-format JSON --output-file vulnetix.cdx.json
+	npx spdx
 
 deployments: ## FOR DOCO ONLY
 	npx wrangler pages deployment list --project-name vulnetix
 
-deploy: ## FOR DOCO ONLY
+types:
+	npx wrangler types
+	npx prisma generate
+
+build:
+	uv run --with requests,rich -s .repo/get_cwe.py .repo/cwe-latest.json --view 699 --insecure --show-stats && \
+		uv run --with rich -s .repo/parse_cwe.py .repo/cwe-latest.json
+	node src/@iconify/build-icons.js
+	npx vite build --force --clearScreen --mode production
+
+build-staging:
+	node src/@iconify/build-icons.js
+	npx vite build --force --clearScreen --mode production --sourcemap inline
+
+deploy-prod: types build
+	npx wrangler pages deployment create ./dist --project-name vulnetix --branch main -c wrangler-prod.toml
+
+deploy-staging: types build-staging
 	npx wrangler pages deployment create ./dist --project-name vulnetix --branch staging --upload-source-maps=true
 
 run: ## FOR DOCO ONLY - Run these one at a time, do not call this target directly
@@ -83,7 +117,7 @@ _helpers: ## FOR DOCO ONLY
 	npx wrangler d1 execute vulnetix --remote --command "SELECT * FROM Member;"
 	npx wrangler d1 execute vulnetix --local --command 'PRAGMA table_list;'
 	npx wrangler d1 execute vulnetix --local --command 'PRAGMA table_info("Member");'
-	npx wrangler d1 execute vulnetix --remote --command 'INSERT INTO MemberGroups (memberUuid, groupUuid) VALUES ("a5c8611d-81e9-4cd0-8b16-f3e278064c3e", "8ac52122-b9ae-40fb-b4c6-7c83238ae8d6");'
+	npx wrangler d1 execute vulnetix --local --command 'INSERT INTO MemberGroups (memberUuid, groupUuid) SELECT uuid, "8ac52122-b9ae-40fb-b4c6-7c83238ae8d6" FROM Member;'
 	npx prisma migrate diff \
 	--from-empty \
 	--to-schema-datamodel ./prisma/schema.prisma \

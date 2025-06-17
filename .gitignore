@@ -8,7 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-.DS_Store
+**/.DS_Store
 dist
 dist-ssr
 *.local
@@ -43,3 +43,6 @@ semgrep.sarif.json
 osv.sarif.json
 vulnetix.cdx.json
 vulnetix.spdx.json
+.repo/cwe*.json
+**/__pycache__
+vulnetix.db

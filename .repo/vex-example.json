@@ -1,0 +1,69 @@
+{
+  "$schema": "https://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2025-01-21T12:00:00Z",
+    "component": {
+      "bom-ref": "billing-app",
+      "manufacturer": {
+        "name": "Acme Inc"
+      },
+      "type": "application",
+      "name": "Billing App",
+      "description": "This is an example and serves as the first-party application that contains a vulnerable dependency."
+    }
+  },
+  "vulnerabilities": [
+    {
+      "id": "CVE-2021-44228",
+      "source": {
+        "name": "National Vulnerability Database",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2021-44228"
+      },
+      "ratings": [
+        {
+          "source": {
+            "name": "National Vulnerability Database"
+          },
+          "score": 10.0,
+          "severity": "critical",
+          "method": "CVSSv31",
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H"
+        },
+        {
+          "source": {
+            "name": "Acme PSIRT"
+          },
+          "severity": "low",
+          "method": "OWASP",
+          "vector": "(SL:0/M:0/O:0/S:0/ED:0/EE:0/A:0/ID:3/LC:9/LI:9/LAV:1/LAC:1/FD:0/RD:0/NC:0/PV:0)"
+        }
+      ],
+      "analysis": {
+        "state": "not_affected",
+        "justification": "protected_by_mitigating_control",
+        "response": [
+          "will_not_fix",
+          "update"
+        ],
+        "detail": "Extensive input validation is performed on the endpoint that would otherwise have been vulnerable. This provides a mitigating control against this attack. Customers are encouraged to upgrade to the latest version of the Acme App which bundles a newer version of log4j.",
+        "firstIssued": "2021-12-11T19:00:00Z",
+        "lastUpdated": "2022-01-07T19:00:00Z"
+      },
+      "affects": [
+        {
+          "ref": "billing-app",
+          "versions": [
+            {
+              "range": "vers:semver/1.2.3|>=2.0.0|<5.0.0",
+              "status": "unaffected"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

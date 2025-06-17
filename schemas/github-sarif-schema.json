@@ -1,0 +1,148 @@
+{
+  "$id": "github-sarif-schema",
+  "title": "SARIF GitHub Extended Schema",
+  "description": "An extension of the SARIF 2.1.0 schema to add GitHub-specific requirements.",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "allOf": [
+    {
+      "$ref": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "runs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ruleId": {
+                  "type": "string",
+                  "description": "Unique identifier for the rule."
+                },
+                "message": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string",
+                      "description": "Message text for the result."
+                    }
+                  },
+                  "required": ["text"]
+                },
+                "locations": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "physicalLocation": {
+                        "type": "object",
+                        "properties": {
+                          "artifactLocation": {
+                            "type": "object",
+                            "properties": {
+                              "uri": {
+                                "type": "string",
+                                "description": "Location in the source code where the issue was detected."
+                              }
+                            },
+                            "required": ["uri"]
+                          }
+                        },
+                        "required": ["artifactLocation"]
+                      }
+                    },
+                    "required": ["physicalLocation"]
+                  }
+                },
+                "partialFingerprints": {
+                  "type": "object",
+                  "minProperties": 1,
+                  "description": "A unique identifier for the result"
+                },
+                "rule": {
+                  "type": "object",
+                  "properties": {
+                    "index": {
+                      "type": "integer",
+                      "description": "The index within the tool component rules array of the rule object associated with this result."
+                    }
+                  },
+                  "required": ["index"]
+                }
+              },
+              "required": ["ruleId", "message", "locations"]
+            }
+          },
+          "tool": {
+            "type": "object",
+            "properties": {
+              "driver": {
+                "type": "object",
+                "properties": {
+                  "rules": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Unique identifier for the rule."
+                        },
+                        "shortDescription": {
+                          "type": "object",
+                          "properties": {
+                            "text": {
+                              "type": "string",
+                              "description": "A short summary of the rule."
+                            }
+                          },
+                          "required": ["text"]
+                        },
+                        "fullDescription": {
+                          "type": "object",
+                          "properties": {
+                            "text": {
+                              "type": "string",
+                              "description": "A detailed description of the rule."
+                            }
+                          },
+                          "required": ["text"]
+                        },
+                        "helpUri": {
+                          "type": "string",
+                          "description": "A link to more detailed documentation for the rule."
+                        },
+                        "help": {
+                          "type": "object",
+                          "properties": {
+                            "text": {
+                              "type": "string",
+                              "description": "A markdown description that provides more detailed guidance on the rule."
+                            }
+                          },
+                          "required": ["text"]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "shortDescription",
+                        "fullDescription",
+                        "helpUri",
+                        "help"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

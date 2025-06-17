@@ -226,7 +226,7 @@ module.exports = {
         'import/resolver': {
             node: {
                 extensions: ['.js', '.js', '.jsx', '.jsx', '.mjs', '.png', '.jpg'],
-            }, alias: { 'extensions': ['.ts', '.js', '.tsx', '.jsx', '.mjs'], 'map': [["@", "./src"], ["@core", "./src/@core"], ["@layouts", "./src/@layouts"], ["@images", "./src/assets/images/"], ["@styles", "./src/styles/"], ["@configured-variables", "./src/styles/variables/_template.scss"], ["@axios", "./src/plugins/axios"], ["apexcharts", "node_modules/apexcharts-clevision"]] },
+            }, alias: { 'extensions': ['.ts', '.js', '.tsx', '.jsx', '.mjs'], 'map': [["@", "./src"], ["@core", "./src/@core"], ["@layouts", "./src/@layouts"], ["@images", "./src/assets/images/"], ["@styles", "./src/styles/"], ["@configured-variables", "./src/styles/variables/_template.scss"], ["@axios", "./src/plugins/axios"]] },
         },
     },
 }

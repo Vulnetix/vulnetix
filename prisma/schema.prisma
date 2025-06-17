@@ -19,6 +19,9 @@ model Session {
     secret     String?
     authn_ip   String?
     authn_ua   String?
+    // Authentication provider information
+    authProvider String? @default("password") // "password", "github", "google"
+    authProviderData String? // JSON string for provider-specific data
 
     @@index([orgId, memberUuid])
 }
@@ -28,6 +31,8 @@ model Org {
     name                  String                @unique
     createdAt             Int
     enforceGitHubOAuth    Int                   @default(0)
+    enforceGoogleSSO      Int                   @default(0)
+    enforceCompanyDomain  String?               @default("")
     members               Member[]
     sessions              Session[]
     git_repos             GitRepo[]
@@ -37,15 +42,58 @@ model Org {
     sarif                 SARIFInfo[]
     cdx                   CycloneDXInfo[]
     spdx                  SPDXInfo[]
-    productRepos          ProductRepos[]
     branches              GitBranch[]
-    products              Product[]
     tags                  Tags[]
     gitHubPAT             GitHubPAT[]
     gitHubApps            GitHubApp[]
     gitHubOAuth           GitHubOAuth[]
     reports               Report[]
     requirementResults    RequirementResult[]
+    triagePolicies        OrgTriagePolicy[]
+    queueMessages         QueueMessage[]
+    collections           Collection[]
+    collectionRepos       CollectionRepo[]
+    teaProducts           TeaProduct[]
+    teaComponents         TeaComponent[]
+    teaReleases           TeaRelease[]
+    teaCollections        TeaCollection[]
+    googleSSOConfigs      GoogleSSOConfig[]
+    githubSSOConfigs      GitHubSSOConfig[]
+}
+
+model TriagePolicy {
+    uuid                                  String  @id @default(uuid())
+    name                                  String
+    description                           String?
+    createdAt                             Int
+    enabled                               Int     @default(1)
+    isSystem                              Int     @default(0) // 1 = system/global, 0 = org-specific
+    cvssCriticalRemediationDays           Int
+    cvssHighRemediationDays               Int
+    cvssMediumRemediationDays             Int
+    cvssLowRemediationDays                Int
+    remediationCriticalThresholdAllowance Int
+    remediationHighThresholdAllowance     Int
+    remediationMediumThresholdAllowance   Int
+    remediationLowThresholdAllowance      Int
+    triageThresholdDays                   Int
+    exposureWindowDays                    Int
+    threatWindowDays                      Int
+    severityHighThreshold                 Float // 8.9 for CVSS
+    severityMediumThreshold               Float // 6.9 for CVSS
+    severityLowThreshold                  Float // 3.9 for CVSS
+
+    orgs        OrgTriagePolicy[]
+    collections Collection[]      @relation("CollectionTriagePolicy")
+}
+
+model OrgTriagePolicy {
+    orgId          String
+    triagePolicyId String
+    org            Org          @relation(fields: [orgId], references: [uuid])
+    triagePolicy   TriagePolicy @relation(fields: [triagePolicyId], references: [uuid])
+
+    @@id([orgId, triagePolicyId])
 }
 
 model IntegrationConfig {
@@ -93,10 +141,12 @@ model Member {
     sessions              Session[]
     integration_usage_log IntegrationUsageLog[]
     triage_activity       Triage[]
-    ownedProducts         Product[]             @relation("productOwner")
     ghTokens              GitHubOAuth[]
-
-    @@index([orgId, email])
+    ownedCollections      Collection[]          @relation("CollectionOwner")
+    leadCollections       Collection[]          @relation("CollectionLead")
+    collectionMembers     CollectionMember[]
+    googleSSOConfigs      GoogleSSOConfig[]
+    githubSSOConfigs      GitHubSSOConfig[]
 }
 
 model GitHubOAuth {
@@ -143,67 +193,38 @@ model GitHubApp {
     org            Org           @relation(fields: [orgId], references: [uuid])
     tokens         GitHubOAuth[]
     identifier     String
-    identifierType String // org, user
+    identifierType String
     created        Int
     avatarUrl      String?
     repos          GitRepo[]
 }
 
 model Tags {
-    uuid     String        @id @default(uuid())
-    name     String
-    url      String?
-    orgId    String
-    org      Org           @relation(fields: [orgId], references: [uuid])
-    products ProductTags[]
-}
-
-model ProductTags {
-    product     Product @relation(fields: [productUuid], references: [uuid])
-    productUuid String
-    tag         Tags    @relation(fields: [tagsUuid], references: [uuid])
-    tagsUuid    String
-
-    @@id([productUuid, tagsUuid])
-}
-
-model Product {
-    uuid              String         @id @default(uuid())
-    name              String
-    source            String
-    orgId             String
-    org               Org            @relation(fields: [orgId], references: [uuid])
-    repos             ProductRepos[]
-    createdAt         Int
-    monitored         Int            @default(0)
-    monitoredSchedule String         @default("0 7 * * mon-fri") // 7AM weekdays
-    lastMonitored     Int
-    businessCritical  Int            @default(0)
-    tags              ProductTags[]
-    productTagsUuid   String?
-    ownerEmail        String?
-    owner             Member?        @relation("productOwner", fields: [ownerEmail], references: [email])
-}
-
-model ProductRepos {
-    repoName    String
-    repo        GitRepo @relation(fields: [repoName, orgId], references: [fullName, orgId])
-    productUuid String
-    product     Product @relation(fields: [productUuid], references: [uuid])
+    uuid        String          @id @default(uuid())
+    name        String
+    url         String?
     orgId       String
-    org         Org     @relation(fields: [orgId], references: [uuid])
+    org         Org             @relation(fields: [orgId], references: [uuid])
+    collections CollectionTag[]
+}
 
-    @@id([repoName, productUuid])
+model CollectionTag {
+    collectionId String
+    tagId        String
+    collection   Collection @relation(fields: [collectionId], references: [uuid])
+    tag          Tags       @relation(fields: [tagId], references: [uuid])
+
+    @@id([collectionId, tagId])
 }
 
 model GitRepo {
     fullName         String
     orgId            String
-    org              Org                @relation(fields: [orgId], references: [uuid])
+    org              Org                  @relation(fields: [orgId], references: [uuid])
     ghAppId          Int?
-    ghApp            GitHubApp?         @relation(fields: [ghAppId], references: [installationId])
+    ghApp            GitHubApp?           @relation(fields: [ghAppId], references: [installationId])
     ghPATId          String?
-    ghPAT            GitHubPAT?         @relation(fields: [ghPATId], references: [uuid])
+    ghPAT            GitHubPAT?           @relation(fields: [ghPATId], references: [uuid])
     ghid             Int?
     source           String
     createdAt        Int
@@ -213,20 +234,28 @@ model GitRepo {
     ownerId          Int
     licenseSpdxId    String?
     licenseName      String?
-    fork             Int                @default(0)
-    template         Int                @default(0)
-    archived         Int                @default(0)
-    visibility       String
+    fork             Int                  @default(0)
+    template         Int                  @default(0)
+    archived         Int                  @default(0)
+    visibility       GitRepoVisibility
     avatarUrl        String?
-    products         ProductRepos[]
     sarif            SARIFInfo[]
     spdx             SPDXInfo[]
     cdx              CycloneDXInfo[]
     findings         Finding[]
     branches         GitBranch[]
     RequirementScope RequirementScope[]
+    collectionRepos  CollectionRepo[]
+    contributors     GitRepoContributor[]
+    languages        GitRepoLanguage[]
 
     @@id([fullName, orgId])
+}
+
+enum GitRepoVisibility {
+    PUBLIC   @map("public")
+    PRIVATE  @map("private")
+    INTERNAL @map("internal")
 }
 
 model GitBranch {
@@ -365,6 +394,7 @@ model Finding {
     orgId                      String
     org                        Org            @relation(fields: [orgId], references: [uuid])
     repoName                   String?
+    repoSource                 String?
     repo                       GitRepo?       @relation(fields: [repoName, orgId], references: [fullName, orgId])
     source                     String
     category                   String
@@ -411,11 +441,11 @@ model Finding {
 }
 
 model Triage {
-    uuid                  String    @id @default(uuid())
+    uuid                  String                    @id @default(uuid())
     artifactUuid          String?
-    artifact              Artifact? @relation(fields: [artifactUuid], references: [uuid])
+    artifact              Artifact?                 @relation(fields: [artifactUuid], references: [uuid])
     findingUuid           String
-    finding               Finding   @relation(fields: [findingUuid], references: [uuid])
+    finding               Finding                   @relation(fields: [findingUuid], references: [uuid])
     createdAt             Int
     triagedAt             Int?
     lastObserved          Int
@@ -423,23 +453,53 @@ model Triage {
     seenAt                Int?
     cvssVector            String?
     cvssScore             String?
+    cvssSource            String?
     epssPercentile        String?
     epssScore             String?
     ssvc                  String?
     remediation           String?
-    analysisState         String
-    analysisJustification String?
-    analysisResponse      String?
+    analysisState         VexAnalysisState
+    analysisJustification VexAnalysisJustification?
+    analysisResponse      String? // JSON array of VexAnalysisResponse enum values
     analysisDetail        String?
-    triageAutomated       Int       @default(0)
+    triageAutomated       Int                       @default(0)
     memberUuid            String?
-    member                Member?   @relation(fields: [memberUuid], references: [uuid])
+    member                Member?                   @relation(fields: [memberUuid], references: [uuid])
 
     @@unique([memberUuid, analysisState])
 }
 
+enum VexAnalysisState {
+    RESOLVED               @map("resolved")
+    RESOLVED_WITH_PEDIGREE @map("resolved_with_pedigree")
+    EXPLOITABLE            @map("exploitable")
+    IN_TRIAGE              @map("in_triage")
+    FALSE_POSITIVE         @map("false_positive")
+    NOT_AFFECTED           @map("not_affected")
+}
+
+enum VexAnalysisJustification {
+    CODE_NOT_PRESENT                @map("code_not_present")
+    CODE_NOT_REACHABLE              @map("code_not_reachable")
+    REQUIRES_CONFIGURATION          @map("requires_configuration")
+    REQUIRES_DEPENDENCY             @map("requires_dependency")
+    REQUIRES_ENVIRONMENT            @map("requires_environment")
+    PROTECTED_BY_COMPILER           @map("protected_by_compiler")
+    PROTECTED_AT_RUNTIME            @map("protected_at_runtime")
+    PROTECTED_AT_PERIMETER          @map("protected_at_perimeter")
+    PROTECTED_BY_MITIGATING_CONTROL @map("protected_by_mitigating_control")
+}
+
+enum VexAnalysisResponse {
+    CAN_NOT_FIX          @map("can_not_fix")
+    WILL_NOT_FIX         @map("will_not_fix")
+    UPDATE               @map("update")
+    ROLLBACK             @map("rollback")
+    WORKAROUND_AVAILABLE @map("workaround_available")
+}
+
 model CVEMetadata {
-    cveId                String               @id
+    cveId                String                @id
     dataVersion          String
     state                String
     datePublished        Int
@@ -453,13 +513,13 @@ model CVEMetadata {
     affectedVersionsJSON String?
     cpesJSON             String?
     cnaOrgId             String
-    cna                  CVENumberingAuthrity @relation(fields: [cnaOrgId], references: [orgId])
+    cna                  CVENumberingAuthority @relation(fields: [cnaOrgId], references: [orgId])
     fileLinkId           Int
-    fileLink             Link                 @relation(fields: [fileLinkId], references: [id])
+    fileLink             Link                  @relation(fields: [fileLinkId], references: [id])
     adp                  CVEADP[]
 }
 
-model CVENumberingAuthrity {
+model CVENumberingAuthority {
     orgId     String        @id
     shortName String
     cves      CVEMetadata[]
@@ -482,73 +542,123 @@ model AuthorizedDataPublisher {
 }
 
 model Link {
-    id           Int           @id @default(autoincrement())
-    url          String
-    contentType  String // OCI PLAIN_JSON OCTET_STREAM PLAIN_XML
-    artifact     Artifact?     @relation(fields: [artifactUuid], references: [uuid])
-    artifactUuid String?
-    cves         CVEMetadata[]
+    id            Int            @id @default(autoincrement())
+    url           String
+    contentType   String // OCI PLAIN_JSON OCTET_STREAM PLAIN_XML
+    artifact      Artifact?      @relation(fields: [artifactUuid], references: [uuid])
+    artifactUuid  String?
+    cves          CVEMetadata[]
+    queueMessages QueueMessage[]
 }
 
 model Artifact {
     uuid                      String                   @id @default(uuid())
-    // displayIdentifier String
     type                      String // BOM ATTESTATION VDR VEX OTHER
     date                      Int
     bomFormat                 String
     downloadLinks             Link[]
-    // inventoryTypes    String // SOFTWARE HARDWARE CRYPTOGRAPHY SERVICE VULNERABILITY
-    // identities        Identity[]
-    // Collection        Collection? @relation(fields: [collectionUuid], references: [uuid])
-    // collectionUuid    String?
     sarif                     SARIFInfo[]
     cdx                       CycloneDXInfo[]
     spdx                      SPDXInfo[]
     vex                       Triage[]
     testingProcedureEvidences TestingProcedureResult[] @relation("TestingProcedureEvidence")
+    collectionArtifacts       CollectionArtifact[]
 }
 
-// model Lifecycle {
-//   uuid  String   @id @default(uuid())
-//   event String // list enum String
-//   date  Int
-//   Collection     Collection? @relation(fields: [collectionUuid], references: [uuid])
-//   collectionUuid String?
-//   Leaf           Leaf?       @relation(fields: [leafUuid], references: [uuid])
-//   leafUuid       String?
-//   Product        Product?    @relation(fields: [productUuid], references: [uuid])
-//   productUuid    String?
-// }
+model CollectionRepo {
+    id           Int        @id @default(autoincrement())
+    collectionId String
+    collection   Collection @relation(fields: [collectionId], references: [uuid])
+    repoName     String
+    repo         GitRepo    @relation(fields: [repoName, orgId], references: [fullName, orgId])
+    orgId        String
+    org          Org        @relation(fields: [orgId], references: [uuid])
+}
 
-// model Identity {
-//   id             String      @id @default(cuid())
-//   type           String
-//   identifier     String
-//   Artifact       Artifact?   @relation(fields: [artifactUuid], references: [uuid])
-//   artifactUuid   String?
-//   Collection     Collection? @relation(fields: [collectionUuid], references: [uuid])
-//   collectionUuid String?
-// }
+model CollectionArtifact {
+    id           Int        @id @default(autoincrement())
+    collectionId String
+    collection   Collection @relation(fields: [collectionId], references: [uuid])
+    artifactUuid String
+    artifact     Artifact   @relation(fields: [artifactUuid], references: [uuid])
+}
 
-// model Collection {
-//   uuid       String      @id @default(uuid())
-//   version    String?
-//   created    Int
-//   identities Identity[]
-//   artifacts  Artifact[]
-//   lifecycle  Lifecycle[]
-// }
+model CollectionMember {
+    id           Int        @id @default(autoincrement())
+    collectionId String
+    collection   Collection @relation(fields: [collectionId], references: [uuid])
+    memberUuid   String
+    member       Member     @relation(fields: [memberUuid], references: [uuid])
+    title        String?
+}
 
-// model Leaf {
-//   uuid        String      @id @default(uuid())
-//   name        String
-//   tei         String      @unique
-//   version     String
-//   lifecycle   Lifecycle[]
-//   Product     Product?    @relation(fields: [productUuid], references: [uuid])
-//   productUuid String?
-// }
+model CollectionTeam {
+    productId String
+    teamId    String
+    product   Collection @relation("ProductTeamsProduct", fields: [productId], references: [uuid])
+    team      Collection @relation("ProductTeamsTeam", fields: [teamId], references: [uuid])
 
+    @@id([productId, teamId])
+}
+
+model CollectionProject {
+    productId String
+    projectId String
+    product   Collection @relation("ProductProjectsProduct", fields: [productId], references: [uuid])
+    project   Collection @relation("ProductProjectsProject", fields: [projectId], references: [uuid])
+
+    @@id([productId, projectId])
+}
+
+enum CollectionType {
+    PROJECT  @map("Project")
+    PRODUCT  @map("Product")
+    TEAM     @map("Team")
+    CAMPAIGN @map("Campaign")
+    GROUP    @map("Group")
+}
+
+model Collection {
+    uuid           String               @id @default(uuid())
+    name           String
+    type           CollectionType
+    orgId          String
+    org            Org                  @relation(fields: [orgId], references: [uuid])
+    parentUuid     String? // For sub-collections/groups
+    parent         Collection?          @relation("CollectionParent", fields: [parentUuid], references: [uuid])
+    subCollections Collection[]         @relation("CollectionParent")
+    // Common fields
+    ownerEmail     String? // For Product, Project, Team, Campaign (SME)
+    owner          Member?              @relation("CollectionOwner", fields: [ownerEmail], references: [email])
+    leadEmail      String? // For Project, Team (main contact)
+    lead           Member?              @relation("CollectionLead", fields: [leadEmail], references: [email])
+    triagePolicyId String?
+    triagePolicy   TriagePolicy?        @relation("CollectionTriagePolicy", fields: [triagePolicyId], references: [uuid])
+    releaseBranch  String?
+    // Project/Team specific
+    deadline       Int? // For Project (required), Campaign (required)
+    // Campaign specific
+    description    String?
+    cweList        String? // JSON string
+    findingAliases String? // JSON string
+    keywords       String? // JSON string
+    cvssThreshold  Float?
+    epssThreshold  Float?
+    // Relations
+    gitRepos       CollectionRepo[]
+    artifacts      CollectionArtifact[]
+    members        CollectionMember[]
+    // Product sub-collections (many-to-many via join tables)
+    teams          CollectionTeam[]     @relation("ProductTeamsProduct")
+    asTeam         CollectionTeam[]     @relation("ProductTeamsTeam")
+    projects       CollectionProject[]  @relation("ProductProjectsProduct")
+    asProject      CollectionProject[]  @relation("ProductProjectsProject")
+    createdAt      Int
+    tags           CollectionTag[]
+    reports        Report[]
+}
+
+// --- Remove Product, ProductRepos, ProductTags, ProductTags, ProductOwner, ProductArtifacts, etc. if not needed ---
 // Following are shared records
 model ReportType {
     uuid              String             @id @default(uuid())
@@ -646,4 +756,239 @@ model Report {
     orgId              String
     org                Org                 @relation(fields: [orgId], references: [uuid])
     requirementResults RequirementResult[]
+    collectionId       String?
+    collection         Collection?         @relation(fields: [collectionId], references: [uuid])
+}
+
+model QueueMessage {
+    messageId   String  @unique
+    status      String
+    uniqueId    String?
+    linkId      Int?
+    link        Link?   @relation(fields: [linkId], references: [id])
+    type        String
+    displayText String
+    orgId       String
+    org         Org     @relation(fields: [orgId], references: [uuid])
+    createdAt   Int
+}
+
+// TEA (Transparency Exchange API) Models
+model TeaProduct {
+    uuid            String                @id
+    type            String
+    barcode         String?
+    sku             String?
+    vendor          String?
+    namespace       String
+    name            String
+    version         String?
+    qualifiers      String? // JSON array of qualifiers
+    identifiers     String? // JSON array of identifiers
+    subpath         String?
+    primaryLanguage String?
+    homepageUrl     String?
+    downloadUrl     String?
+    description     String?
+    releaseDate     String?
+    validUntilDate  String?
+    orgId           String?
+    org             Org?                  @relation(fields: [orgId], references: [uuid])
+    createdAt       Int
+    updatedAt       Int
+    releases        TeaRelease[]
+    components      TeaProductComponent[]
+    collections     TeaCollection[]       @relation("TeaCollectionProducts")
+
+    @@index([type, namespace, name])
+    @@index([orgId])
+}
+
+model TeaComponent {
+    uuid            String                @id
+    type            String
+    barcode         String?
+    sku             String?
+    vendor          String?
+    namespace       String
+    name            String
+    version         String?
+    qualifiers      String? // JSON array of qualifiers
+    identifiers     String? // JSON array of identifiers
+    subpath         String?
+    primaryLanguage String?
+    homepageUrl     String?
+    downloadUrl     String?
+    description     String?
+    releaseDate     String?
+    validUntilDate  String?
+    orgId           String?
+    org             Org?                  @relation(fields: [orgId], references: [uuid])
+    createdAt       Int
+    updatedAt       Int
+    products        TeaProductComponent[]
+    releases        TeaReleaseComponent[]
+
+    @@index([type, namespace, name])
+    @@index([orgId])
+}
+
+model TeaRelease {
+    uuid           String                @id
+    productUuid    String
+    product        TeaProduct            @relation(fields: [productUuid], references: [uuid])
+    tag            String
+    version        String?
+    name           String?
+    description    String?
+    releaseDate    String?
+    validUntilDate String?
+    prerelease     Boolean               @default(false)
+    draft          Boolean               @default(false)
+    orgId          String?
+    org            Org?                  @relation(fields: [orgId], references: [uuid])
+    createdAt      Int
+    updatedAt      Int
+    components     TeaReleaseComponent[]
+
+    @@index([productUuid])
+    @@index([orgId])
+}
+
+model TeaCollection {
+    uuid        String       @id
+    name        String
+    description String?
+    artifacts   String? // JSON array of artifacts
+    lifecycle   String? // JSON object for lifecycle info
+    orgId       String?
+    org         Org?         @relation(fields: [orgId], references: [uuid])
+    createdAt   Int
+    updatedAt   Int
+    products    TeaProduct[] @relation("TeaCollectionProducts")
+
+    @@index([orgId])
+}
+
+model TeaProductComponent {
+    id            Int          @id @default(autoincrement())
+    productUuid   String
+    product       TeaProduct   @relation(fields: [productUuid], references: [uuid])
+    componentUuid String
+    component     TeaComponent @relation(fields: [componentUuid], references: [uuid])
+    relationship  String?
+    createdAt     Int
+
+    @@unique([productUuid, componentUuid])
+    @@index([productUuid])
+    @@index([componentUuid])
+}
+
+model TeaReleaseComponent {
+    id            Int          @id @default(autoincrement())
+    releaseUuid   String
+    release       TeaRelease   @relation(fields: [releaseUuid], references: [uuid])
+    componentUuid String
+    component     TeaComponent @relation(fields: [componentUuid], references: [uuid])
+    relationship  String?
+    createdAt     Int
+
+    @@unique([releaseUuid, componentUuid])
+    @@index([releaseUuid])
+    @@index([componentUuid])
+}
+
+model GitRepoContributor {
+    repoName      String
+    orgId         String
+    repo          GitRepo @relation(fields: [repoName, orgId], references: [fullName, orgId])
+    githubId      Int
+    login         String
+    avatarUrl     String?
+    type          String
+    siteAdmin     Int     @default(0)
+    contributions Int
+    createdAt     Int
+    updatedAt     Int
+
+    @@id([repoName, orgId])
+}
+
+model Languages {
+    uuid        String            @id @default(uuid())
+    displayName String
+    slug        String            @unique
+    githubId    String?
+    repos       GitRepoLanguage[]
+
+    @@index([slug])
+}
+
+model GitRepoLanguage {
+    repoName     String
+    orgId        String
+    repo         GitRepo   @relation(fields: [repoName, orgId], references: [fullName, orgId])
+    languageUuid String
+    language     Languages @relation(fields: [languageUuid], references: [uuid])
+
+    @@id([repoName, orgId, languageUuid])
+    @@index([repoName, orgId])
+    @@index([languageUuid])
+}
+
+model Unused {
+    uuid             String               @id @default(uuid())
+    analysisResponse VexAnalysisResponse?
+}
+
+model GoogleSSOConfig {
+    id                Int      @id @default(autoincrement())
+    orgId             String
+    org               Org      @relation(fields: [orgId], references: [uuid])
+    memberUuid        String?
+    member            Member?  @relation(fields: [memberUuid], references: [uuid])
+    googleId          String   // Google OAuth user ID
+    email             String
+    name              String?
+    picture           String?
+    accessToken       String?
+    refreshToken      String?
+    idToken           String?
+    tokenExpiry       Int?     // Unix timestamp when token expires
+    created           Int
+    lastUsed          Int?
+    blocked           Int      @default(0) // 0 = active, 1 = blocked
+    
+    @@unique([orgId, googleId])
+    @@unique([orgId, email])
+}
+
+model GitHubSSOConfig {
+    id                Int      @id @default(autoincrement())
+    orgId             String
+    org               Org      @relation(fields: [orgId], references: [uuid])
+    memberUuid        String?
+    member            Member?  @relation(fields: [memberUuid], references: [uuid])
+    githubId          Int      // GitHub user ID
+    login             String   // GitHub username
+    email             String
+    name              String?
+    avatarUrl         String?
+    accessToken       String?
+    scope             String?
+    tokenType         String?
+    created           Int
+    lastUsed          Int?
+    blocked           Int      @default(0) // 0 = active, 1 = blocked
+    
+    @@unique([orgId, githubId])
+    @@unique([orgId, email])
+}
+
+model AuthProvider {
+    id          Int    @id @default(autoincrement())
+    name        String @unique // "password", "github", "google"
+    displayName String
+    enabled     Int    @default(1)
+    config      String? // JSON configuration for the provider
 }

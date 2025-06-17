@@ -1,4 +1,11 @@
 {
+    "include": [
+        "functions/**/*",
+        "src/**/*",
+        "shared/**/*",
+        "schemas/**/*",
+        "*.d.ts"
+    ],
     "compilerOptions": {
         "paths": {
             "@/*": [
@@ -6,6 +13,9 @@
             ],
             "@shared/*": [
                 "./shared/*"
+            ],
+            "@schemas/*": [
+                "./schemas/*"
             ],
             "@core/*": [
                 "./src/@core/*"
@@ -26,8 +36,10 @@
                 "./src/plugins/axios"
             ]
         },
+        "sourceMap": true,
         "module": "nodenext",
         "moduleResolution": "nodenext",
         "resolveJsonModule": true
-    }
+    },
+	"exclude": ["node_modules", "dist", "tests"]
 }

@@ -19,6 +19,7 @@
     "target": "esnext",
     "module": "esnext",
     "moduleResolution": "node",
+    "resolveJsonModule": true,
     "paths": {
       "@/*": [
         "src/*"
@@ -28,6 +29,9 @@
       ],
       "@layouts": [
         "src/@layouts"
+      ],
+      "@schemas": [
+        "schemas"
       ],
       "@core/*": [
         "src/@core/*"
