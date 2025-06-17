@@ -29,3 +29,6 @@ bucket_name = 'webhooks'
 [[queues.producers]]
 binding = "scanqueue"
 queue = "scan-queue"
+
+[ai]
+binding = "llm"

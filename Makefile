@@ -105,7 +105,7 @@ build-staging: cwe
 	npx wrangler pages functions build --outdir=./dist/worker/
 
 deploy-prod: build ## WARNING: this is only used if GitOps is broken, and cannot inherit Console Env vars!!! Manually Deploy the production build to Cloudflare Pages
-	npx wrangler pages deployment create ./dist --project-name vulnetix --branch main -c wrangler-prod.toml
+	npx wrangler deploy create ./dist --project-name vulnetix --branch main -c wrangler-prod.toml
 
 deploy-staging: types build-staging ## WARNING: this is only used if GitOps is broken, and cannot inherit Console Env vars!!! Manually Deploy the staging build to Cloudflare Pages
 	npx wrangler pages deployment create ./dist --project-name vulnetix --branch staging --upload-source-maps=true

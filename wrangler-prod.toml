@@ -1,8 +1,14 @@
 name = "vulnetix"
-compatibility_date = "2024-03-20"
-compatibility_flags = ["nodejs_compat"]
+compatibility_date = "2025-04-01"
+compatibility_flags = ["cf_botmanagement_default"]
 upload_source_maps = true
-pages_build_output_dir = "./dist"
+main = "./dist/worker/index.js"
+
+[assets]
+directory = "./dist/client/"
+not_found_handling = "single-page-application"
+run_worker_first = true
+binding = "ASSETS"
 
 [limits]
 cpu_ms = 3000
@@ -23,3 +29,6 @@ bucket_name = 'webhooks'
 [[queues.producers]]
 binding = "scanqueue"
 queue = "scan-queue"
+
+[ai]
+binding = "llm"
