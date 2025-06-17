@@ -8,6 +8,7 @@ help: ## This help.
 
 SEMGREP_ARGS=--verbose --use-git-ignore --metrics=off --force-color --disable-version-check --experimental --dataflow-traces --sarif --timeout=0
 SEMGREP_RULES=-c p/default -c p/python -c p/php -c p/c -c p/rust -c p/apex -c p/nginx -c p/terraform -c p/csharp -c p/nextjs -c p/golang -c p/nodejs -c p/kotlin -c p/django -c p/docker -c p/kubernetes -c p/lockfiles -c p/supply-chain -c p/headless-browser -c p/expressjs -c p/cpp-audit -c p/mobsfscan -c p/ruby -c p/java -c p/javascript -c p/typescript -c p/bandit -c p/flask -c p/gosec -c p/flawfinder -c p/gitleaks -c p/eslint -c p/phpcs-security-audit -c p/react -c p/brakeman -c p/findsecbugs -c p/secrets -c p/sql-injection -c p/jwt -c p/insecure-transport -c p/command-injection -c p/security-code-scan -c p/xss
+DATABASE_URL="file:./vulnetix.db"
 
 clean: ## Cleanup tmp files
 	@find . -type f -name '*.DS_Store' -delete 2>/dev/null
@@ -73,22 +74,35 @@ deployments: ## FOR DOCO ONLY
 
 types:
 	npx wrangler types
-	npx prisma generate
+	DATABASE_URL=$(DATABASE_URL) npx prisma generate
 
-build:
+build: types ## build the project for production
 	uv run --with requests,rich -s .repo/get_cwe.py .repo/cwe-latest.json --view 699 --insecure --show-stats && \
 		uv run --with rich -s .repo/parse_cwe.py .repo/cwe-latest.json
 	node src/@iconify/build-icons.js
-	npx vite build --force --clearScreen --mode production
+	npx vite build --force --clearScreen --mode production --outDir ./dist/client/
+	npx wrangler pages functions build --outdir=./dist/worker/
+
+watch: types ## development build with watch
+	npx vite build --watch --clearScreen --mode development --sourcemap inline
+
+preview: ## preview the project in development mode
+	npx wrangler dev ./dist --port 8788 --local --config ./wrangler.toml --config ./queue-consumers/scan-processor/wrangler.toml
+
+consumer: ## Run the scan processor queue consumer
+	npx wrangler --cwd=queue-consumers/scan-processor types
+	npx wrangler --cwd=queue-consumers/scan-processor dev --config queue-consumers/scan-processor/wrangler.toml
 
 build-staging:
-	node src/@iconify/build-icons.js
-	npx vite build --force --clearScreen --mode production --sourcemap inline
+	yarn up
+	npm run postinstall
+	npx vite build --force --clearScreen --mode production --outDir ./dist/client/ --sourcemap inline
+	npx wrangler pages functions build --outdir=./dist/worker/
 
-deploy-prod: types build
+deploy-prod: build ## WARNING: this is only used if GitOps is broken, and cannot inherit Console Env vars!!! Manually Deploy the production build to Cloudflare Pages
 	npx wrangler pages deployment create ./dist --project-name vulnetix --branch main -c wrangler-prod.toml
 
-deploy-staging: types build-staging
+deploy-staging: types build-staging ## WARNING: this is only used if GitOps is broken, and cannot inherit Console Env vars!!! Manually Deploy the staging build to Cloudflare Pages
 	npx wrangler pages deployment create ./dist --project-name vulnetix --branch staging --upload-source-maps=true
 
 run: ## FOR DOCO ONLY - Run these one at a time, do not call this target directly
