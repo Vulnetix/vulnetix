@@ -76,24 +76,29 @@ types:
 	npx wrangler types
 	DATABASE_URL=$(DATABASE_URL) npx prisma generate
 
-build: types ## build the project for production
+cwe: ## Download and parse the latest CWE data
 	uv run --with requests,rich -s .repo/get_cwe.py .repo/cwe-latest.json --view 699 --insecure --show-stats && \
 		uv run --with rich -s .repo/parse_cwe.py .repo/cwe-latest.json
-	node src/@iconify/build-icons.js
+
+build: types ## clean build the project for production
 	npx vite build --force --clearScreen --mode production --outDir ./dist/client/
 	npx wrangler pages functions build --outdir=./dist/worker/
 
-watch: types ## development build with watch
-	npx vite build --watch --clearScreen --mode development --sourcemap inline
+rebuild: ## re-build the project for development
+	npx vite build --clearScreen --mode development --outDir ./dist/client/ --sourcemap inline
+	npx wrangler pages functions build --outdir=./dist/worker/
+
+watch: ## development build with watch
+	npx vite build --outDir ./dist/client/ --watch --clearScreen --mode development --sourcemap inline
 
 preview: ## preview the project in development mode
-	npx wrangler dev ./dist --port 8788 --local --config ./wrangler.toml --config ./queue-consumers/scan-processor/wrangler.toml
+	npx wrangler dev --live-reload --port 8788 --local --config ./wrangler.toml --config ./queue-consumers/scan-processor/wrangler.toml
 
 consumer: ## Run the scan processor queue consumer
 	npx wrangler --cwd=queue-consumers/scan-processor types
 	npx wrangler --cwd=queue-consumers/scan-processor dev --config queue-consumers/scan-processor/wrangler.toml
 
-build-staging:
+build-staging: cwe
 	yarn up
 	npm run postinstall
 	npx vite build --force --clearScreen --mode production --outDir ./dist/client/ --sourcemap inline
