@@ -82,11 +82,9 @@ cwe: ## Download and parse the latest CWE data
 
 build: types ## clean build the project for production
 	npx vite build --force --clearScreen --mode production --outDir ./dist/client/
-	npx wrangler pages functions build --outdir=./dist/worker/
 
 rebuild: ## re-build the project for development
 	npx vite build --clearScreen --mode development --outDir ./dist/client/ --sourcemap inline
-	npx wrangler pages functions build --outdir=./dist/worker/
 
 watch: ## development build with watch
 	npx vite build --outDir ./dist/client/ --watch --clearScreen --mode development --sourcemap inline

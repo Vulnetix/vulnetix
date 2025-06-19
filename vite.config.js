@@ -6,6 +6,38 @@ import Components from 'unplugin-vue-components/vite'
 import { defineConfig } from 'vite'
 import vuetify from 'vite-plugin-vuetify'
 
+const buildWorkerFunctions = () => {
+    // execute npx wrangler commands to build worker functions
+    const { exec } = require('child_process');
+    const util = require('util');
+    const execAsync = util.promisify(exec);
+    
+    const executeCommand = async (command) => {
+        try {
+            console.log(`Executing: ${command}`);
+            const { stdout, stderr } = await execAsync(command);
+            
+            if (stdout) {
+                console.log('stdout:', stdout);
+            }
+            
+            if (stderr) {
+                console.error('stderr:', stderr);
+            }
+        } catch (error) {
+            console.error(`Error executing command: ${command}`, error);
+        }
+    };
+    
+    const command = 'npx wrangler pages functions build --outdir=./dist/worker/';
+    executeCommand(command);
+}
+const postBuild = () => ({
+    name: 'postbuild-commands',
+    handleHotUpdate: async () => { buildWorkerFunctions(); },
+    buildEnd: async () => { buildWorkerFunctions(); },
+});
+
 // https://vitejs.dev/config/
 export default defineConfig({
     server: {
@@ -63,6 +95,7 @@ export default defineConfig({
             imports: ['vue', 'vue-router', '@vueuse/core', '@vueuse/math', 'pinia'],
             vueTemplate: true,
         }),
+        postBuild(),
     ],
     define: { 'process.env': {} },
     resolve: {

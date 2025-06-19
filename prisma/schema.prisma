@@ -438,6 +438,7 @@ model Finding {
     cdxId                      String?
     cdx                        CycloneDXInfo? @relation(fields: [cdxId], references: [cdxId])
     triage                     Triage[]
+    agentInferences            PixLog[]
 }
 
 model Triage {
@@ -991,4 +992,59 @@ model AuthProvider {
     displayName String
     enabled     Int    @default(1)
     config      String? // JSON configuration for the provider
+}
+
+model Pix {
+    uuid               String   @id @default(uuid())
+    createdAt          Int
+    activityKey        String
+    enabled            Int      @default(1)
+    provider           String?
+    responseMaxTokens  Int?
+    temperature        Float?
+    topP               Float?
+    topK               Float?
+    repetitionPenalty  Float?
+    frequencyPenalty   Float?
+    presencePenalty    Float?
+    inferenceModel     String?
+    embeddingModel     String?
+    systemPromptText   String?
+    assistantPrompt    String?
+    costInput          Float?   // per M input tokens
+    costOutput         Float?   // per M output tokens
+    logs               PixLog[]
+
+    @@index([activityKey])
+    @@index([enabled])
+}
+
+model PixLog {
+    uuid               String   @id @default(uuid())
+    createdAt          Int
+    findingUuid        String
+    finding            Finding  @relation(fields: [findingUuid], references: [uuid])
+    pixUuid            String
+    pix                Pix      @relation(fields: [pixUuid], references: [uuid])
+    provider           String?
+    responseMaxTokens  Int?
+    temperature        Float?
+    topP               Float?
+    topK               Float?
+    repetitionPenalty  Float?
+    frequencyPenalty   Float?
+    presencePenalty    Float?
+    inferenceModel     String?
+    embeddingModel     String?
+    systemPromptText   String?
+    userPrompt         String?
+    assistantPrompt    String?
+    responseText       String?
+    promptTokens       Int?
+    completionTokens   Int?
+    totalTokens        Int?
+
+    @@index([findingUuid])
+    @@index([pixUuid])
+    @@index([createdAt])
 }

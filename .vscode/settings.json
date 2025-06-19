@@ -44,5 +44,8 @@
   ],
   "sqltools.useNodeRuntime": true,
   "github.copilot.editor.enableAutoCompletions": true,
-  "github.copilot.chat.completionContext.typescript.mode": ""
+  "github.copilot.chat.completionContext.typescript.mode": "",
+  "cSpell.words": [
+    "Vulnetix"
+  ]
 }
